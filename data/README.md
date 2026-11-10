@@ -15,3 +15,6 @@ layer where its resident is met (`Rules.restore_cost_is_fair`).
 Numbers here are first guesses; BALANCE.md wins when it exists.
 Add a row by copying a neighbour and changing the id and the file name together.
 tests/test_data.gd loads every row and checks the folder's class and the id.
+
+`menu_skin.tres` (MenuSkin, the Showtime menus' look: logo, colours, Jeff and Chuck, the Hillville
+backdrop) is the UI lane's, at the path the menu kit reads (`docs/ui.md`).

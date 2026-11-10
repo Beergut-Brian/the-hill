@@ -1,6 +1,7 @@
 ## Boot scene: the lobby (start screen and main menu), then The Hill (HillGame) under Main, before
-## UI, so pause and the Debug overlay stay on top. The lobby is the template's Showtime kit. Restart (back to the lobby) saves and frees
-## the game. --demo skips the lobby (Game.demo) and plays with both players virtual.
+## UI, so pause and the Debug overlay stay on top. The lobby's look is data/menu_skin.tres.
+## Restart (back to the lobby) saves and frees the game. --demo skips the lobby (Game.demo) and
+## plays with both players virtual.
 ## --proto / --proto-auto boot the Phase 1 prototype instead and skip the lobby.
 extends Node2D
 
@@ -25,6 +26,7 @@ func _ready() -> void:
 	if mode != &"":
 		_boot_proto(mode == &"auto")
 		return
+	_restore_clock()
 	Game.lobby_ready.connect(_on_lobby_ready)
 	Game.back_to_lobby.connect(_clear_game)
 	Game.round_started.connect(_on_round_started)
@@ -38,6 +40,17 @@ func _ready() -> void:
 			Game.start_round()).call_deferred()
 	elif Game.state != Game.State.LOBBY:
 		Game.to_lobby()
+
+
+## The lobby's look is the Showtime skin, data/menu_skin.tres (logo, Jeff and Chuck from the sprite
+## sheets, Hillville blurred behind). Here only the clock: the lobby's Hillville shows the time of
+## day the save left off at (--time=... freezes it instead; --demo keeps the default morning).
+func _restore_clock() -> void:
+	if Game.demo:
+		return
+	var td = Save.get_value("time_of_day")
+	if td is Dictionary:
+		TimeOfDay.load_save(td)
 
 
 func _on_lobby_ready(players: Array) -> void:

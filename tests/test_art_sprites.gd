@@ -21,10 +21,10 @@ func test_sheet_frames_come_from_the_manifest() -> void:
 func test_player_one_is_jeff_and_player_two_is_chuck() -> void:
 	assert_str(SpriteArt.char_of(0)).is_equal("jeff")
 	assert_str(SpriteArt.char_of(1)).is_equal("chuck")
-	var lf := LobbyFigure.new()
-	lf.player = 1
-	assert_str(SpriteArt.char_of(lf.player)).is_equal("chuck")
-	lf.free()
+	var mc: HillMenuCharacter = (load("res://scenes/ui/hill_menu_chuck.tscn") as PackedScene).instantiate()
+	assert_int(mc.player).is_equal(1)
+	assert_str(mc.file()).is_equal("characters/chuck.png")
+	mc.free()
 
 
 func test_vehicle_row_by_driver() -> void:
