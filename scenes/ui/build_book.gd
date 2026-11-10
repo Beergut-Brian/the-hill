@@ -3,6 +3,10 @@
 ## numbers. Greyed when the pile can't afford it. The focused card lifts and glows in the player's
 ## colour. Anchored to director.view_rect_of(player) (the full viewport without a director).
 ## BuildController creates it, feeds it input (steer) and asks focused_id().
+## Pictures, never words, say what a card needs or gives: a bubble on the Garage card shows the
+## vehicle it opens next (and, greyed beside it, the treasure that vehicle still waits for); cards
+## in `locked` (after the others, greyed) show the vehicle that opens them, e.g. the Crane for the
+## Lighthouse and the Water Tower. Picking a locked card bounces its bubble (hint()).
 class_name BuildBook
 extends Control
 
@@ -15,19 +19,22 @@ const BLOCK_ORDER := [&"dirt", &"clay", &"stone", &"ice", &"crystal", &"stranges
 var player := 0
 var controller: Node
 var rows: Array = []          # BuildingData
+var locked: Array = []        # BuildingData shown greyed after `rows`, with what opens them
 var focus := 0
 
 var _open := false
 var _last_x := 0
 var _lift: Array = []
 var _shake := 0.0
+var _hint := 0.0
 var _k := 1.0
 var _tw: Tween
 
 
 func _ready() -> void:
+	texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_lift.resize(rows.size())
+	_lift.resize(_count())
 	_lift.fill(0.0)
 	_anchor()
 	Events.inventory_changed.connect(_on_inventory)
@@ -48,7 +55,7 @@ func is_open() -> bool:
 
 func open() -> void:
 	_open = true
-	focus = clampi(focus, 0, maxi(rows.size() - 1, 0))
+	focus = clampi(focus, 0, maxi(_count() - 1, 0))
 	Audio.play("book_open")
 	_anchor()
 	pivot_offset = size * 0.5
@@ -89,15 +96,37 @@ func steer(x: float) -> void:
 		s = -1
 	elif absf(x) > 0.3:
 		return
-	if s != 0 and s != _last_x and rows.size() > 0:
-		focus = posmod(focus + s, rows.size())
+	if s != 0 and s != _last_x and _count() > 0:
+		focus = posmod(focus + s, _count())
 		Audio.play("ui_move")
 		queue_redraw()
 	_last_x = s
 
 
+func _count() -> int:
+	return rows.size() + locked.size()
+
+
+func _row(i: int) -> BuildingData:
+	return rows[i] if i < rows.size() else locked[i - rows.size()]
+
+
 func focused_id() -> StringName:
-	return rows[focus].id if focus < rows.size() else &""
+	return _row(focus).id if focus < _count() else &""
+
+
+func focused_locked() -> bool:
+	return focus >= rows.size() and focus < _count()
+
+
+func locked_ids() -> Array:
+	return locked.map(func(d: BuildingData) -> StringName: return d.id)
+
+
+## A locked card was picked: its picture of what opens it bounces, with a curious little sound.
+func hint() -> void:
+	_hint = 0.6
+	Audio.play("book_hint")
 
 
 func card_ids() -> Array:
@@ -138,12 +167,15 @@ func _process(delta: float) -> void:
 	if _shake > 0.0:
 		_shake = maxf(0.0, _shake - delta)
 		moving = true
+	if _hint > 0.0:
+		_hint = maxf(0.0, _hint - delta)
+		moving = true
 	if moving:
 		queue_redraw()
 
 
 func _draw() -> void:
-	var n := maxi(rows.size(), 1)
+	var n := maxi(_count(), 1)
 	var need := Vector2(n * CARD.x + (n + 1) * GAP, CARD.y + 2 * GAP + LIFT)
 	_k = minf(1.0, minf((size.x - 40) / need.x, (size.y - 40) / need.y))
 	var panel_size := need * _k
@@ -151,16 +183,16 @@ func _draw() -> void:
 	draw_rect(Rect2(Vector2.ZERO, size), Color(0, 0, 0, 0.35))
 	draw_style_box(UiStyle.panel(UiStyle.PANEL), Rect2(origin, panel_size))
 	draw_style_box(UiStyle.outline(UiStyle.player_color(player), 6), Rect2(origin, panel_size))
-	for i in rows.size():
+	for i in _count():
 		var pos := origin + Vector2(GAP + i * (CARD.x + GAP), GAP + LIFT) * _k
 		pos.y -= _lift[i] * _k if i < _lift.size() else 0.0
 		if i == focus and _shake > 0.0:
 			pos.x += sin(_shake * 70.0) * 10.0 * _k
-		_draw_card(Rect2(pos, CARD * _k), rows[i], i == focus)
+		_draw_card(Rect2(pos, CARD * _k), _row(i), i == focus, i >= rows.size())
 
 
-func _draw_card(r: Rect2, d: BuildingData, focused: bool) -> void:
-	var can := Inventory.can_afford(d.cost)
+func _draw_card(r: Rect2, d: BuildingData, focused: bool, is_locked := false) -> void:
+	var can := Inventory.can_afford(d.cost) and not is_locked
 	var pc := UiStyle.player_color(player)
 	if focused:
 		draw_style_box(UiStyle.glow(pc, UiStyle.RADIUS, int(30 * _k)), r)
@@ -217,3 +249,65 @@ func _draw_card(r: Rect2, d: BuildingData, focused: bool) -> void:
 		x += step
 	if not can:
 		draw_style_box(UiStyle.panel(Color(0, 0, 0, 0.3), UiStyle.RADIUS, 0), r)
+	_draw_needs(pic, d, focused, is_locked)
+
+
+## The picture bubbles: what opens a locked card, what a Garage gives next.
+func _draw_needs(pic: Rect2, d: BuildingData, focused: bool, is_locked: bool) -> void:
+	var rad := pic.size.x * 0.2
+	var bounce := sin(_hint * 18.0) * 8.0 * _k if focused and _hint > 0.0 else 0.0
+	var c := Vector2(pic.end.x - rad * 0.9, pic.position.y + rad * 0.9 - bounce)
+	if is_locked and d.needs_vehicle != &"":
+		_bubble(c, rad, true)
+		_vehicle_pic(c, rad, Progress.vehicle_data(d.needs_vehicle), false)
+		return
+	if d.effect != &"next_vehicle":
+		return
+	var v := Progress.next_in_line()
+	if v == null:
+		return
+	var waits := v.needs_treasure != &"" and not Progress.has_treasure(v.needs_treasure)
+	_bubble(c, rad, false)
+	_vehicle_pic(c, rad, v, waits)
+	if waits:
+		var tc := Vector2(pic.position.x + rad * 0.9, c.y)
+		_bubble(tc, rad * 0.8, true)
+		_treasure_pic(tc, rad * 0.8, v.needs_treasure)
+
+
+## A round picture bubble; `ask`: a gold ring (something to find or get first).
+func _bubble(c: Vector2, rad: float, ask: bool) -> void:
+	draw_circle(c, rad + 3.0 * _k, Color(0.07, 0.06, 0.09))
+	draw_circle(c, rad, Color("fff6dc"))
+	if ask:
+		draw_arc(c, rad - 2.0 * _k, 0.0, TAU, 32, Color("ffd23f"), maxf(2.0, 4.0 * _k))
+
+
+func vehicle_scale(d: VehicleData, rad: float) -> float:
+	var s := Vehicle.body_size(d)
+	return maxf(1.0, floorf(rad * 1.5 / maxf(s.x + 24.0, s.y + 20.0)))
+
+
+func _vehicle_pic(c: Vector2, rad: float, d: VehicleData, grey: bool) -> void:
+	if d == null:
+		return
+	var k := vehicle_scale(d, rad)
+	var feet := c + Vector2(0, Vehicle.body_size(d).y * 0.5 * k)
+	draw_set_transform(feet.round(), 0.0, Vector2(k, k))
+	Vehicle.draw_vehicle(self, d, 1, Color(0, 0, 0, 0), 0.0, 0.0, 0.0)
+	draw_set_transform(Vector2.ZERO)
+	if grey:
+		draw_circle(c, rad, Color(0.35, 0.33, 0.32, 0.55))
+
+
+## The treasure, as a dark silhouette until it is found.
+func _treasure_pic(c: Vector2, rad: float, id: StringName) -> void:
+	var tex := SpriteArt.texture("treasures/%s.png" % id)
+	var found := Progress.has_treasure(id)
+	if tex == null:
+		draw_circle(c, rad * 0.5, Color("f4ecd8") if found else Color(0.2, 0.18, 0.22))
+		return
+	var ts := Vector2(tex.get_size())
+	var k := maxf(1.0, floorf(rad * 1.4 / maxf(ts.x, ts.y)))
+	var sz := ts * k
+	draw_texture_rect(tex, Rect2((c - sz * 0.5).round(), sz), false, Color.WHITE if found else Color(0.18, 0.16, 0.22, 0.9))
