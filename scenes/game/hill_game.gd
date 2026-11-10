@@ -30,6 +30,10 @@ var save: HillSave
 var hud: Control
 var book_layer: Control
 var players: Dictionary = {}       # int -> HillPlayer
+## Which residents have been met (saved as "residents"); the residents' behaviour reads it.
+var story := Story.new()
+## The residents up top (crew at the pile, the Caveman by his fire).
+var town: TownResidents
 var vehicles: Dictionary = {}      # StringName -> Vehicle (the parked node; out of the tree while driven)
 var drivers: Dictionary = {}       # StringName -> player driving it
 
@@ -47,6 +51,7 @@ func _ready() -> void:
 	hillville = _make(HILLVILLE_SCENES) as Hillville
 	underground = UNDERGROUND_SCENE.instantiate()
 	underground.world_seed = HillSave.saved_seed(Underground.DEFAULT_SEED) if load_saved else Underground.DEFAULT_SEED
+	underground.story = story
 	director.add_scene(HILLVILLE, hillville)
 	director.add_scene(UNDERGROUND, underground)
 	build = _make(BUILD_SCENES) as BuildController
@@ -84,6 +89,14 @@ func _ready() -> void:
 	else:
 		Progress.reset()
 		Inventory.clear()
+	if underground.residents != null:
+		underground.residents.sync_story()
+	if hillville != null:
+		town = TownResidents.new()
+		hillville.add_child(town)
+		# Behind the players, in front of the buildings.
+		hillville.move_child(town, hillville.players_root().get_index())
+		town.setup(self, hillville)
 	TimeOfDay.running = true
 	_spawn_vehicles()
 	_anchor = Node2D.new()
@@ -96,8 +109,11 @@ func _ready() -> void:
 			spawn(p)
 	_update_sleeper()
 	if Game.demo:
-		var runner := HillDemoRunner.new()
-		runner.game = self
+		var beat := HillBeatRunner.beat_arg(OS.get_cmdline_user_args() + OS.get_cmdline_args())
+		var runner: Node = HillBeatRunner.new() if beat != "" else HillDemoRunner.new()
+		runner.set("game", self)
+		if beat != "":
+			runner.set("beat", beat)
 		add_child(runner)
 
 

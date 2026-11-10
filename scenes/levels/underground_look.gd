@@ -205,10 +205,24 @@ func _residents() -> void:
 	warm.name = "BottomLight"
 
 
+## Switches a resident's sprite to another row of its sheet (manifest rows), e.g. "frozen" -> "idle".
+static func set_anim(s: SheetSprite, file: String, anim: String) -> void:
+	var rows: Dictionary = SheetSprite.entry(file).get("rows", {})
+	if s == null or not rows.has(anim):
+		return
+	var r: Dictionary = rows[anim]
+	s.row = int(r.get("row", 0))
+	s.frames = int(r.get("frames", 1))
+	s.fps = float(r.get("fps", 0))
+	if s.texture != null:
+		s.frame_coords = Vector2i(0, s.row)
+
+
 func _resident(id: StringName, file: String, anim: String, feet: Vector2, z := 0, face := 1) -> SheetSprite:
 	var s := SheetSprite.make(file, anim)
 	if s == null:
-		return null
+		# No sheet: an empty sprite still marks where the resident lives (their behaviour needs it).
+		s = SheetSprite.new()
 	s.name = String(id).capitalize()
 	s.position = feet
 	s.z_index = z
