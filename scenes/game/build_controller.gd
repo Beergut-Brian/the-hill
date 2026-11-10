@@ -292,8 +292,16 @@ func _process(_delta: float) -> void:
 func _update_ghost(p: int) -> void:
 	var g: Building = _s(p).ghost
 	var cell := ghost_cell(p)
-	g.position = Vector2(cell.x * PLOT, 0)
+	g.position = Vector2(cell.x * PLOT, -_lift_px(p))
 	g.ghost_ok = plot_clear(cell.x, g.data.footprint.x, g.index)
+
+
+## H-05: a Crane carries a moved building up on its hook (VehicleAbility.lift_px).
+func _lift_px(p: int) -> float:
+	var pn := _pn(p) as HillPlayer
+	if pn == null or pn.ability == null:
+		return 0.0
+	return pn.ability.lift_px()
 
 
 func _book_parent() -> Node:
