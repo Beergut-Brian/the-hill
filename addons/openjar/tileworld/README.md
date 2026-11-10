@@ -152,6 +152,9 @@ sheet with no drop within `flow_reach` does not move. It never enters a solid ti
 the shape or an unloaded chunk, and the count never grows. Only cells near a change are checked
 (removing a tile wakes the water within `flow_reach` of it), so a still lake costs nothing. `water_entered(cell)` fires when water first flows into a dug-out cell.
 
+`water_texture` (optional) draws water from a sheet of cell-sized frames: row 0 the surface (no
+water above), row 1 the body, two columns animated at 3 fps; without it, flat translucent quads.
+
 `step_water()` runs one tick by hand (`water_hz <= 0` leaves ticking to you). `drain_per_second`
 (default 0) removes surface cells. `buoyancy_at(pos)` is zero when dry and `-gravity_at(pos) * 1.6`
 in water; `FallingBody.floats` uses it.

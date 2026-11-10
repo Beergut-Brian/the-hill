@@ -45,6 +45,13 @@ var darkness_floor: float = 0.8:
 		darkness_floor = v
 		if _darkness:
 			_darkness.darkness_floor = v
+## Water art: cell-sized frames, row 0 surface, row 1 body, 2 columns animated (null: flat colour).
+var water_texture: Texture2D:
+	set(v):
+		water_texture = v
+		if _water:
+			_water.texture = v
+			_water.queue_redraw()
 ## The dim navy the dark leans toward.
 var darkness_night := Color(0.06, 0.07, 0.16):
 	set(v):
@@ -102,6 +109,7 @@ func setup(p_shape: WorldShape, p_generator: WorldGenerator, p_palette: Array[Ti
 		_tile_set = tile_set_override if tile_set_override else _build_tile_set()
 	if _water == null:
 		_water = WaterSim.new(self)
+		_water.texture = water_texture
 		add_child(_water)
 		_darkness = DarknessOverlay.new(self)
 		_darkness.darkness_floor = darkness_floor
