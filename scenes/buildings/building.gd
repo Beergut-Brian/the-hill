@@ -6,8 +6,9 @@ extends Node2D
 
 const PLOT := 48
 const OUTLINE := Color(0.09, 0.07, 0.07)
-const GHOST_OK := Color(0.55, 1.0, 0.55, 0.5)
-const GHOST_BAD := Color(1.0, 0.35, 0.35, 0.5)
+const GHOST_OK := Color("3cdc5a")
+const GHOST_BAD := Color("ff3b30")
+const GHOST_ALPHA := 0.6
 const UNFOLD_TIME := 0.45
 
 var data: BuildingData
@@ -19,8 +20,14 @@ var ghost := false:
 		_tint()
 var ghost_ok := true:
 	set(v):
-		ghost_ok = v
-		_tint()
+		if v != ghost_ok:
+			ghost_ok = v
+			_tint()
+## Sideways draw offset for the bad-plot shake (position belongs to the grid snap).
+var wobble := 0.0:
+	set(v):
+		wobble = v
+		queue_redraw()
 ## 0 closed .. 1 rolled up (Garage only).
 var door_open := 0.0:
 	set(v):
@@ -53,14 +60,22 @@ func _ready() -> void:
 
 
 func _tint() -> void:
-	modulate = (GHOST_OK if ghost_ok else GHOST_BAD) if ghost else Color.WHITE
+	modulate = Color(1, 1, 1, GHOST_ALPHA) if ghost else Color.WHITE
+	queue_redraw()
 
 
 func _draw() -> void:
 	if data == null:
 		return
 	var s := size_px()
+	draw_set_transform(Vector2(wobble, 0))
 	paint(self, data.id, Rect2(0, -s.y, s.x, s.y), door_open)
+	if ghost:
+		# Green when the plot is clear, red when not: a wash, a frame and a bar on the ground.
+		var c := GHOST_OK if ghost_ok else GHOST_BAD
+		draw_rect(Rect2(0, -s.y, s.x, s.y), Color(c, 0.3))
+		draw_rect(Rect2(2, -s.y + 2, s.x - 4, s.y - 4), c, false, 4.0)
+		draw_rect(Rect2(0, -3, s.x, 8), c)
 
 
 ## The "clunk": grows out of the ground with an overshoot, a cue and a dust puff.
@@ -94,12 +109,12 @@ func bump() -> void:
 ## A red flash + shake for a bad plot (ghost only).
 func flash_bad() -> void:
 	var t := create_tween()
-	modulate = Color(1.0, 0.1, 0.1, 0.85)
-	var x := position.x
-	t.tween_property(self, "position:x", x + 6, 0.04)
-	t.tween_property(self, "position:x", x - 6, 0.06)
-	t.tween_property(self, "position:x", x, 0.04)
-	t.parallel().tween_property(self, "modulate", GHOST_BAD, 0.25)
+	modulate = Color(1.0, 0.3, 0.3, 1.0)
+	t.tween_property(self, "wobble", 7.0, 0.04)
+	t.tween_property(self, "wobble", -7.0, 0.07)
+	t.tween_property(self, "wobble", 4.0, 0.06)
+	t.tween_property(self, "wobble", 0.0, 0.05)
+	t.parallel().tween_property(self, "modulate", Color(1, 1, 1, GHOST_ALPHA), 0.25)
 
 
 # --- drawing (shared with the build book) ------------------------------------------------------
