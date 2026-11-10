@@ -19,6 +19,10 @@ static func saved_seed(fallback: int) -> int:
 	return int(Save.get_value("seed", fallback))
 
 
+## Seconds since the save this run loaded was written (the gnome crew's "away"); -1 without one.
+var away_seconds := -1.0
+
+
 func gather() -> void:
 	game.note_scenes()
 	Save.set_value("seed", int(game.underground.world_seed))
@@ -34,6 +38,8 @@ func gather() -> void:
 	var st = game.get("story")
 	if st is Story:
 		Save.set_value("residents", st.to_save())
+		Save.set_value("resident_arcs", st.extras_to_save())
+	Save.set_value("gnome_stamp", int(Time.get_unix_time_from_system()))
 
 
 func save_now() -> void:
@@ -44,6 +50,8 @@ func save_now() -> void:
 
 ## Restores a reboot: tiles, the pile, run state, the town, then rebuilds the buildings.
 func apply() -> void:
+	var gs = Save.get_value("gnome_stamp")
+	away_seconds = Time.get_unix_time_from_system() - float(gs) if gs != null else -1.0
 	var w = Save.get_value("world")
 	if w is Dictionary:
 		game.underground.world.load_save(w)
@@ -69,6 +77,9 @@ func apply() -> void:
 	var rd = Save.get_value("residents")
 	if st is Story and rd is Dictionary:
 		st.load_save(rd)
+	var ad = Save.get_value("resident_arcs")
+	if st is Story and ad is Dictionary:
+		st.load_extras(ad)
 	var build: Node = game.build
 	if build != null and build.has_method("rebuild"):
 		build.rebuild()

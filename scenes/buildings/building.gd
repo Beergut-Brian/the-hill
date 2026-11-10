@@ -33,6 +33,12 @@ var wobble := 0.0:
 		wobble = v
 		queue_redraw()
 var _lights := 0.0
+## 0..1: how much of the building stands, from the ground up (a restored ruin rebuilds plank by
+## plank). 1 = all of it.
+var reveal := 1.0:
+	set(v):
+		reveal = clampf(v, 0.0, 1.0)
+		queue_redraw()
 var _glow: Node2D
 ## 0 closed .. 1 rolled up (Garage only).
 var door_open := 0.0:
@@ -113,6 +119,9 @@ func _draw() -> void:
 		paint_art(self, data.id, r, door_open, false, Color.WHITE.lerp(c, 0.65))
 		draw_rect(Rect2(0, -3, s.x, 8), c)
 		return
+	if reveal < 1.0 and art:
+		_paint_part(Rect2(0, -s.y, s.x, s.y))
+		return
 	paint(self, data.id, Rect2(0, -s.y, s.x, s.y), door_open)
 	if ghost:
 		# Green when the plot is clear, red when not: a wash, a frame and a bar on the ground.
@@ -121,6 +130,19 @@ func _draw() -> void:
 		draw_rect(Rect2(0, -3, s.x, 8), c)
 	elif art and _lights > 0.0:
 		paint_lit(self, data.id, Rect2(0, -s.y, s.x, s.y), door_open, _lights)
+
+
+## The bottom `reveal` of the sprite (whole planks: 6 px rows of the sheet).
+func _paint_part(r: Rect2) -> void:
+	var tex: Texture2D = SpriteArt.texture("buildings/%s.png" % data.id)
+	var src := _sheet_rect(data.id, tex, door_open)
+	var rows := ceili(src.size.y * reveal / 6.0) * 6.0
+	rows = minf(rows, src.size.y)
+	if rows <= 0.0:
+		return
+	var k := r.size.y / src.size.y
+	var part := Rect2(src.position.x, src.end.y - rows, src.size.x, rows)
+	draw_texture_rect_region(tex, Rect2(Vector2(r.position.x, r.end.y - rows * k).round(), Vector2(r.size.x, rows * k)), part)
 
 
 ## The "clunk": grows out of the ground with an overshoot, a cue and a dust puff.

@@ -36,6 +36,8 @@ var story := Story.new()
 var town: TownResidents
 ## Up top right of the Caveman's fire: every treasure found, by layer.
 var shelf: TreasureShelf
+## The four ruins and the buildings they become (restore, door lights, Lost & Found, the crew).
+var ruins: RuinSites
 var vehicles: Dictionary = {}      # StringName -> Vehicle (the parked node; out of the tree while driven)
 var drivers: Dictionary = {}       # StringName -> player driving it
 
@@ -107,6 +109,15 @@ func _ready() -> void:
 		hillville.add_child(shelf)
 		hillville.move_child(shelf, hillville.buildings_root().get_index())
 		shelf.setup(self)
+		ruins = RuinSites.new()
+		hillville.add_child(ruins)
+		hillville.move_child(ruins, hillville.buildings_root().get_index())
+		ruins.setup(self, hillville)
+		ruins.rebuilt.connect(_on_rebuilt)
+		_sync_museum()
+		story.changed.connect(_on_story_changed)
+		if load_saved and save.away_seconds >= 0.0:
+			ruins.crew_return(save.away_seconds)
 	TimeOfDay.running = true
 	_spawn_vehicles()
 	_anchor = Node2D.new()
@@ -120,11 +131,51 @@ func _ready() -> void:
 	_update_sleeper()
 	if Game.demo:
 		var beat := HillBeatRunner.beat_arg(OS.get_cmdline_user_args() + OS.get_cmdline_args())
-		var runner: Node = HillBeatRunner.new() if beat != "" else HillDemoRunner.new()
+		var runner: Node = HillDemoRunner.new()
+		if beat != "":
+			runner = ArcBeats.new() if ArcBeats.ARC_BEATS.has(beat) else HillBeatRunner.new()
 		runner.set("game", self)
 		if beat != "":
 			runner.set("beat", beat)
 		add_child(runner)
+
+
+## Restores a ruin whose resident is waiting: pays its cost from the pile, moves the resident to
+## RESTORED (Events.ruin_restored) and rebuilds it plank by plank. False (nothing spent) when the
+## resident is not waiting or the pile is short.
+func restore_ruin(ruin_id: StringName) -> bool:
+	var ruin := Progress.building_data(ruin_id)
+	if ruin == null or not ruin.is_ruin:
+		return false
+	if not Rules.can_restore(ruin, story.state(ruin.resident), Inventory.can_afford(ruin.cost)):
+		return false
+	Inventory.spend(ruin.cost)
+	if ruins != null:
+		ruins.play_restore(ruin.resident)
+	story.restore(ruin.resident)
+	if town != null:
+		town.on_restored(ruin.resident)
+	if save != null:
+		save.save_now()
+	return true
+
+
+func _on_rebuilt(resident: StringName) -> void:
+	if town != null:
+		town.on_rebuilt(resident)
+	if resident == Story.CAVEMAN:
+		_sync_museum()
+
+
+func _on_story_changed() -> void:
+	if ruins != null:
+		ruins.sync_story()
+
+
+## The Museum stands: the treasure shelf moves onto its dock by the pond (the Caveman's trophy shelf).
+func _sync_museum() -> void:
+	if shelf != null and ruins != null and story.restored(Story.CAVEMAN) and not ruins.is_rebuilding(Story.CAVEMAN):
+		shelf.museum_at(ruins.home_rect(Story.CAVEMAN))
 
 
 func _exit_tree() -> void:
