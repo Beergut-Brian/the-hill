@@ -464,7 +464,7 @@ func _draw_backdrop(ci: CanvasItem) -> void:
 	# The hill: a gentle mound around the shaft, the high ridge out to the Keep's peak.
 	_mound(ci, SHAFT_X + 300, 2600.0, 170.0, Color("9fd18b"))
 	_mound(ci, 4700, 2600.0, 230.0, Color("93c97f"))
-	_mound(ci, 7000, 1900.0, 360.0, Color("86bf73"))
+	_mound(ci, 7420, 2000.0, 380.0, Color("86bf73"))
 	_mound(ci, SHAFT_X, 1500.0, 110.0, Color("aedb98"))
 
 
@@ -484,9 +484,22 @@ func _draw_ground(ci: CanvasItem) -> void:
 	ci.draw_rect(Rect2(0, 0, WIDTH, 8), Color("4f9a3a"))
 	ci.draw_rect(Rect2(0, 0, WIDTH, 3), Color("7ccf52"))
 	# Pond: a dark basin with water over the edge.
-	ci.draw_rect(Rect2(POND.position.x + 6, 0, POND.size.x - 12, 16), Color("4a3420"))
-	ci.draw_rect(POND, Color(0.25, 0.55, 0.85, 0.85))
-	ci.draw_line(Vector2(POND.position.x + 10, -1), Vector2(POND.end.x - 10, -1), Color(1, 1, 1, 0.6), 2.0)
+	var basin := PackedVector2Array()
+	var water := PackedVector2Array()
+	for i in 25:
+		var u := float(i) / 24.0
+		var x := POND.position.x + u * POND.size.x
+		var d := sin(u * PI)
+		basin.append(Vector2(x, -3 + 34 * d))
+		water.append(Vector2(x, -3 + 30 * d))
+	basin.append(Vector2(POND.position.x, -3))
+	ci.draw_colored_polygon(basin, Color("4a3420"))
+	ci.draw_colored_polygon(water, Color(0.25, 0.55, 0.85))
+	ci.draw_rect(Rect2(POND.position.x + 4, -4, POND.size.x - 8, 4), Color(0.25, 0.55, 0.85))
+	for k in 3:
+		var wx := POND.position.x + 40 + k * 90
+		ci.draw_line(Vector2(wx, 5 + k * 3), Vector2(wx + 26, 5 + k * 3), Color(1, 1, 1, 0.5), 2.0)
+	ci.draw_line(Vector2(POND.position.x + 6, -3), Vector2(POND.end.x - 6, -3), Color(1, 1, 1, 0.7), 2.0)
 	# A faint tick per plot on cleared ground.
 	for cell in range(1, CELLS):
 		if cell_owner(cell) != &"" or cell_owner(cell - 1) != &"":
@@ -640,12 +653,12 @@ func _box(ci: CanvasItem, r: Rect2, col: Color) -> void:
 
 ## A dark door with an empty silhouette slot (the resident appears there once encountered).
 func _door(ci: CanvasItem, r: Rect2, id: StringName) -> void:
-	_box(ci, r, Color(0.12, 0.1, 0.1))
+	_box(ci, r, Color("4a3424"))
 	var c := r.get_center() + Vector2(0, r.size.y * 0.08)
 	var head := Vector2(c.x, r.position.y + r.size.y * 0.28)
 	var hr := r.size.x * 0.2
 	var body := Rect2(c.x - r.size.x * 0.3, head.y + hr * 0.9, r.size.x * 0.6, r.end.y - head.y - hr * 0.9 - 3)
-	var slot := Color(0.45, 0.42, 0.5)
+	var slot := Color(0.85, 0.78, 0.62)
 	if _silhouette.get(id, false):
 		ci.draw_circle(head, hr, Color(0.03, 0.03, 0.05))
 		ci.draw_rect(body, Color(0.03, 0.03, 0.05))
