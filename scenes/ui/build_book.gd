@@ -267,12 +267,25 @@ func _draw_needs(pic: Rect2, d: BuildingData, focused: bool, is_locked: bool) ->
 	if v == null:
 		return
 	var waits := v.needs_treasure != &"" and not Progress.has_treasure(v.needs_treasure)
+	_rays(c, rad, waits)
 	_bubble(c, rad, false)
 	_vehicle_pic(c, rad, v, waits)
 	if waits:
 		var tc := Vector2(pic.position.x + rad * 0.9, c.y)
 		_bubble(tc, rad * 0.8, true)
 		_treasure_pic(tc, rad * 0.8, v.needs_treasure)
+
+
+## "You get this": a turning gold burst behind the Garage's bubble (dim while it waits).
+func _rays(c: Vector2, rad: float, dim: bool) -> void:
+	var a0 := float(Time.get_ticks_msec()) * 0.0008
+	var col := Color("ffd23f", 0.35 if dim else 0.9)
+	for k in 10:
+		var a := a0 + k * TAU / 10.0
+		var pts := PackedVector2Array([c + Vector2.from_angle(a - 0.13) * rad * 0.9, c + Vector2.from_angle(a) * rad * 1.45,
+				c + Vector2.from_angle(a + 0.13) * rad * 0.9])
+		draw_colored_polygon(pts, col)
+	queue_redraw()
 
 
 ## A round picture bubble; `ask`: a gold ring (something to find or get first).
@@ -283,16 +296,29 @@ func _bubble(c: Vector2, rad: float, ask: bool) -> void:
 		draw_arc(c, rad - 2.0 * _k, 0.0, TAU, 32, Color("ffd23f"), maxf(2.0, 4.0 * _k))
 
 
+## How far a vehicle's tools reach past its body frame (right, up), for fitting it in a bubble.
+const TOOL_REACH := {&"front_loader": Vector2(14, 0), &"excavator": Vector2(30, 6), &"crane": Vector2(34, 44),
+		&"dump_truck": Vector2(0, 0), &"drill_rig": Vector2(0, 0)}
+
+
+func _pic_bounds(d: VehicleData) -> Rect2:
+	var fs := SpriteArt.frame_size("vehicles/%s.png" % d.id)
+	if fs == Vector2.ZERO:
+		fs = Vehicle.body_size(d) + Vector2(4, 4)
+	var ex: Vector2 = TOOL_REACH.get(d.id, Vector2.ZERO)
+	return Rect2(-fs.x * 0.5, -fs.y - ex.y, fs.x + ex.x, fs.y + ex.y)
+
+
 func vehicle_scale(d: VehicleData, rad: float) -> float:
-	var s := Vehicle.body_size(d)
-	return maxf(1.0, floorf(rad * 1.5 / maxf(s.x + 24.0, s.y + 20.0)))
+	var b := _pic_bounds(d)
+	return rad * 1.6 / maxf(b.size.x, b.size.y)
 
 
 func _vehicle_pic(c: Vector2, rad: float, d: VehicleData, grey: bool) -> void:
 	if d == null:
 		return
 	var k := vehicle_scale(d, rad)
-	var feet := c + Vector2(0, Vehicle.body_size(d).y * 0.5 * k)
+	var feet := c - _pic_bounds(d).get_center() * k
 	draw_set_transform(feet.round(), 0.0, Vector2(k, k))
 	Vehicle.draw_vehicle(self, d, 1, Color(0, 0, 0, 0), 0.0, 0.0, 0.0)
 	draw_set_transform(Vector2.ZERO)

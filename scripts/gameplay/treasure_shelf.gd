@@ -29,7 +29,7 @@ func setup(p_game: Node) -> void:
 	game = p_game
 	name = "TreasureShelf"
 	position = Vector2(X, 0)
-	z_index = -1
+	z_index = 0
 	texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	var u = game.get("underground") if game != null else null
 	if u != null and u.has_method("layers"):
