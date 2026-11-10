@@ -34,6 +34,10 @@ var players: Dictionary = {}       # int -> HillPlayer
 var story := Story.new()
 ## The residents up top (crew at the pile, the Caveman by his fire).
 var town: TownResidents
+## B-02: one cow per Barn, wandering its yard.
+var cows: BarnCows
+## V-07 / W-17: short camera kicks (big scoops, boulder landings, the snore).
+var kick: ScreenKick
 ## Up top right of the Caveman's fire: every treasure found, by layer.
 var shelf: TreasureShelf
 ## The four ruins and the buildings they become (restore, door lights, Lost & Found, the crew).
@@ -75,6 +79,9 @@ func _ready() -> void:
 	hud.name = "Hud"
 	hud.game = self
 	director.add_child(hud)
+	kick = ScreenKick.new()
+	kick.game = self
+	add_child(kick)
 	book_layer = Control.new()
 	book_layer.name = "BookLayer"
 	book_layer.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
@@ -102,6 +109,10 @@ func _ready() -> void:
 		# Behind the players, in front of the buildings.
 		hillville.move_child(town, hillville.players_root().get_index())
 		town.setup(self, hillville)
+		cows = BarnCows.new()
+		hillville.add_child(cows)
+		hillville.move_child(cows, hillville.players_root().get_index())
+		cows.setup(self, hillville)
 		shelf = TreasureShelf.new()
 		hillville.add_child(shelf)
 		hillville.move_child(shelf, hillville.buildings_root().get_index())
@@ -130,7 +141,7 @@ func _ready() -> void:
 		var beat := HillBeatRunner.beat_arg(OS.get_cmdline_user_args() + OS.get_cmdline_args())
 		var runner: Node = HillDemoRunner.new()
 		if beat != "":
-			runner = ArcBeats.new() if ArcBeats.ARC_BEATS.has(beat) else HillBeatRunner.new()
+			runner = PolishBeats.new() if PolishBeats.POLISH_BEATS.has(beat) else ArcBeats.new() if ArcBeats.ARC_BEATS.has(beat) else HillBeatRunner.new()
 		runner.set("game", self)
 		if beat != "":
 			runner.set("beat", beat)

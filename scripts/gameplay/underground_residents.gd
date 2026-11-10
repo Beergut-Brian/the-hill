@@ -31,6 +31,8 @@ extends Node2D
 signal mole_rescued(player: int)
 signal caveman_thawed()
 signal dragon_revealed()
+## W-17: a sleeping snore was felt by a player (loudness 0..1, 1 in the cavern).
+signal dragon_snored(loudness: float)
 ## The Mole took a shovel (and is about to give it straight back). Story already counted it.
 signal shovel_stolen(player: int)
 ## The Gnome Room's wall crumbled: the crew is free.
@@ -150,6 +152,11 @@ var _cave := {"state": &"frozen", "t": 0.0, "drip": 0.0, "hoot": 0.0}
 var _caveman_home := Vector2.ZERO
 var _dragon := {"state": &"asleep", "t": 0.0}
 var _dragon_scale := Vector2.ONE
+## W-17 snore: seconds to the next one, how far above the cavern it is still felt, and a count.
+const SNORE_EVERY := 5.0
+const SNORE_REACH := 40.0 * 16.0
+var snores := 0
+var _snore_t := 2.0
 var _dragon_rest := 0.0               # grace after the first meeting's yawn
 var _linger := 0.0
 var _pieces: Array = []               # [{src: Rect2, pos: Vector2, t, rise: bool, gone: bool, cue}]
@@ -871,6 +878,7 @@ func _tick_dragon(ps: Array[HillPlayer], delta: float) -> void:
 		return
 	match _dragon.state:
 		&"asleep":
+			_tick_snore(ps, delta)
 			var cav := HillGenerator.CAVERN
 			var st := u.story
 			if not st.dragon_met():
@@ -905,6 +913,34 @@ func _tick_dragon(ps: Array[HillPlayer], delta: float) -> void:
 			_tick_wake(delta)
 		&"leaving":
 			_tick_pieces(delta)
+
+
+## W-17: while she sleeps, a slow snore every SNORE_EVERY seconds: a smoke puff from her nose and a
+## gentle sway of the view for anyone in the cavern, fainter up through the Crystal layer, none
+## above. Never during the first meeting (S6 keeps the reveal shake-free).
+## TODO(audio): a periodic `dragon_snore` call waits for the cue in assets/audio/CUES.md
+## (PLAN-STATUS W-17); `dragon_snored` is the hook for it.
+func _tick_snore(ps: Array[HillPlayer], delta: float) -> void:
+	_snore_t -= delta
+	if _snore_t > 0.0:
+		return
+	_snore_t = SNORE_EVERY
+	var top := HillGenerator.CAVERN.position.y * 16.0
+	var loudest := 0.0
+	for pl in ps:
+		var at := _local(pl)
+		var k := 0.0
+		if at.y > top:
+			k = 1.0
+		elif at.y > top - SNORE_REACH:
+			k = 0.35 * (1.0 - (top - at.y) / SNORE_REACH)
+		if k > 0.0:
+			ScreenKick.kick(pl.player, 0.6 + 1.4 * k, 0.8, true)
+			loudest = maxf(loudest, k)
+	if loudest > 0.0:
+		snores += 1
+		_rings.append({"pos": dragon.position + DRAGON_MOUTH * dragon.scale, "t": 0.0})
+		dragon_snored.emit(loudest)
 
 
 func _tick_reveal(delta: float) -> void:

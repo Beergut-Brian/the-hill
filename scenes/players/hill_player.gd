@@ -17,6 +17,8 @@ signal honked()
 const WIDTH := 12.0
 const HEIGHT := 28.0
 const WALK := 200.0
+## V-07: a scoop clearing this many tiles or more is "big" and kicks the view.
+const BIG_SCOOP := 3
 const JUMP := 300.0          # about 46 px: clears 2 tiles
 const GRAVITY := 980.0       # up top only; underground asks the world
 const DIG_EVERY := 0.14
@@ -373,6 +375,9 @@ func _scoop() -> int:
 	var n := 0
 	if hv != null and hv.has_method("scoop"):
 		n = hv.scoop(global_position, facing, area, player)
+	if n >= BIG_SCOOP:
+		# V-07: a big scoop (a tree, or a vehicle's wide bucket) thumps the view a little.
+		ScreenKick.kick(player, 1.5 + 0.25 * mini(n, 6), 0.22)
 	if n <= 0:
 		Audio.play("swing")
 		swung.emit(Vector2i.ZERO)
