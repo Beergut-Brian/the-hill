@@ -12,3 +12,4 @@ addons/gdUnit4/
 # local secrets
 .env
 reports/
+.scratch/
