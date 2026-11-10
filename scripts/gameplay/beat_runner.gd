@@ -19,13 +19,18 @@
 ##   drill   P1 starts the Drill Rig in Topsoil: it drills 5 wide straight down on its own.
 ##   treasure P1 digs into the bottle caps by the Topsoil landing: the reveal pops them up and into
 ##           the bag; then up top they pop onto the Treasure Shelf.
+##   book    Up top with two vehicles: the build book on the Garage card (its picture bubble shows
+##           the Crane it gives next), then on the Water Tower (locked: a Crane bubble that bounces);
+##           then with the Crane the Garage card shows the Drill Rig and the Giant Tooth it waits for.
+##   shelf   Most treasures found, a Water Tower built: P1 walks up to the Treasure Shelf.
+##   lineup  All five vehicles in a row up top, P1 in the Dump Truck, P2 in the Crane.
 class_name HillBeatRunner
 extends Node
 
 const P1 := 0
 const P2 := 1
 const IDLE := {"move": Vector2.ZERO, "dig": false, "jump": false, "book": false, "horn": false}
-const BEATS := ["bonk", "float", "rescue", "cheer", "thaw", "reveal", "crystal", "garage", "truck", "crane", "drill", "treasure"]
+const BEATS := ["bonk", "float", "rescue", "cheer", "thaw", "reveal", "crystal", "garage", "truck", "crane", "drill", "treasure", "book", "shelf", "lineup"]
 ## Seconds after the game starts before the stage is set (the wipe card clears).
 const START := 1.0
 
@@ -80,6 +85,9 @@ func _physics_process(delta: float) -> void:
 		"crane": _crane()
 		"drill": _drill()
 		"treasure": _treasure()
+		"book": _book()
+		"shelf": _shelf()
+		"lineup": _lineup()
 
 
 func _next(what: String) -> void:
@@ -479,4 +487,94 @@ func _treasure() -> void:
 				_next("at the shelf")
 		4:
 			if _since() > 2.0:
+				_next("done")
+
+
+func _book() -> void:
+	var b: BuildController = game.build
+	match _stage:
+		0:
+			Progress.find_treasure(&"buried_car", P1)
+			Progress.add_building(&"garage", Vector2i(26, 0))
+			for v in [&"excavator", &"dump_truck"]:
+				if not Progress.has_vehicle(v):
+					Progress.vehicles.append(v)
+			b.rebuild()
+			Inventory.add(&"clay", 25)
+			Inventory.add(&"stone", 12)
+			Inventory.add(&"dirt", 30)
+			game.place_player(P1, HillGame.HILLVILLE, Vector2(33 * 48, 0))
+			b.book_pressed(P1)
+			_next("stage: book open")
+		1:
+			var book := b.book_of(P1) as BuildBook
+			if book != null and _since() > 0.6 and book.focused_id() != &"garage":
+				_step_book(book)
+			elif book != null and book.focused_id() == &"garage" and _since() > 0.6:
+				_next("on the Garage card")
+		2:
+			var book := b.book_of(P1) as BuildBook
+			if _since() > 2.5 and book != null:
+				if book.focused_id() != &"water_tower":
+					_step_book(book)
+				else:
+					b.book_input(P1, Vector2.ZERO, true, false)
+					_next("picked the locked Water Tower")
+		3:
+			if _since() > 2.0:
+				# The Crane comes: the next Garage gives the Drill Rig, which waits for the tooth.
+				Progress.vehicles.append(&"crane")
+				b.book_pressed(P1)
+				b.book_pressed(P1)
+				var book := b.book_of(P1) as BuildBook
+				book.focus = book.card_ids().find(&"garage")
+				_next("crane owned: Garage card shows the Drill Rig and the tooth")
+		4:
+			if _since() > 2.5:
+				_next("done")
+
+
+func _step_book(book: BuildBook) -> void:
+	book.focus = posmod(book.focus + 1, book.rows.size() + book.locked.size())
+	book.queue_redraw()
+	Audio.play("ui_move")
+
+
+func _shelf() -> void:
+	match _stage:
+		0:
+			for id in [&"buried_car", &"bottle_caps", &"boot", &"bathtub", &"fossil", &"giant_tooth", &"dino_skeleton", &"pirate_chest", &"dragon_egg"]:
+				Progress.find_treasure(id, P1)
+			Progress.add_building(&"water_tower", Vector2i(52, 0))
+			game.build.rebuild()
+			game.place_player(P1, HillGame.HILLVILLE, Vector2(TreasureShelf.X - 260.0, 0))
+			if game.player_node(P2) != null:
+				game.place_player(P2, HillGame.HILLVILLE, Vector2(TreasureShelf.X - 300.0, 0))
+			_next("stage: nine treasures found")
+		1:
+			_hold(P1, Vector2(1, 0))
+			if game.player_node(P1).global_position.x > TreasureShelf.X - 70.0:
+				_next("at the shelf")
+		2:
+			if _since() > 3.0:
+				_next("done")
+
+
+func _lineup() -> void:
+	match _stage:
+		0:
+			var x := Hillville.SHAFT_X - 560.0
+			var loader: Vehicle = game.vehicles.get(HillGame.LOADER)
+			if loader != null:
+				loader.position.x = x
+			_ride(P1, &"dump_truck", HillGame.HILLVILLE, Vector2(x + 110.0, 0))
+			_ride(P2, &"crane", HillGame.HILLVILLE, Vector2(x + 210.0, 0))
+			for id in [&"excavator", &"drill_rig"]:
+				if not Progress.has_vehicle(id):
+					Progress.vehicles.append(id)
+			game.park_new(&"excavator", Vector2(x - 90.0, 0))
+			game.park_new(&"drill_rig", Vector2(x + 320.0, 0))
+			_next("stage: lineup")
+		1:
+			if _since() > 3.0:
 				_next("done")
