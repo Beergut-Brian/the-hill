@@ -13,13 +13,19 @@
 ##           then up top he waits by his fire.
 ##   reveal  P1 walks into the Bottom cavern: the Dragon yawns smoke rings and goes back to sleep.
 ##   crystal P1 stands in the Crystal layer (the darkness check with headlamps).
+##   garage  Up top with the Excavator owned: P1 builds a second Garage; the Dump Truck rolls out.
+##   truck   P1 drives the Dump Truck with a full bed to the pile, reverses (beep), tips it all out.
+##   crane   P1 in the Crane beside a Clay boulder: the hook drops, lifts it and hauls it out.
+##   drill   P1 starts the Drill Rig in Topsoil: it drills 5 wide straight down on its own.
+##   treasure P1 digs into the bottle caps by the Topsoil landing: the reveal pops them up and into
+##           the bag; then up top they pop onto the Treasure Shelf.
 class_name HillBeatRunner
 extends Node
 
 const P1 := 0
 const P2 := 1
 const IDLE := {"move": Vector2.ZERO, "dig": false, "jump": false, "book": false, "horn": false}
-const BEATS := ["bonk", "float", "rescue", "cheer", "thaw", "reveal", "crystal"]
+const BEATS := ["bonk", "float", "rescue", "cheer", "thaw", "reveal", "crystal", "garage", "truck", "crane", "drill", "treasure"]
 ## Seconds after the game starts before the stage is set (the wipe card clears).
 const START := 1.0
 
@@ -69,6 +75,11 @@ func _physics_process(delta: float) -> void:
 		"thaw": _thaw()
 		"reveal": _reveal()
 		"crystal": _crystal()
+		"garage": _garage()
+		"truck": _truck()
+		"crane": _crane()
+		"drill": _drill()
+		"treasure": _treasure()
 
 
 func _next(what: String) -> void:
@@ -294,3 +305,178 @@ func _crystal() -> void:
 		_next("stage: Crystal landing")
 	elif _stage == 1 and _since() > 3.0:
 		_next("done")
+
+
+# --- vehicles and treasures ----------------------------------------------------------------------
+
+## Unlocks `id` (if needed), parks it at `pos` in `scene` and puts player p in its seat.
+func _ride(p: int, id: StringName, scene: StringName, pos: Vector2) -> HillPlayer:
+	var node: HillPlayer = game.player_node(p)
+	if node == null:
+		return null
+	if node.vehicle != null:
+		game.hop_out(node, true)
+	if not Progress.has_vehicle(id):
+		Progress.vehicles.append(id)
+	var v: Vehicle = game.vehicles.get(id)
+	if v != null and v.is_inside_tree():
+		v.get_parent().remove_child(v)
+		game.vehicles.erase(id)
+		v.queue_free()
+	game.park_new(id, pos, scene)
+	game.place_player(p, scene, pos)
+	node.velocity = Vector2.ZERO
+	game.hop_in(node)
+	return node
+
+
+func _garage() -> void:
+	match _stage:
+		0:
+			Progress.find_treasure(&"buried_car", P1)
+			Progress.add_building(&"garage", Vector2i(26, 0))
+			if not Progress.has_vehicle(&"excavator"):
+				Progress.vehicles.append(&"excavator")
+			game.build.rebuild()
+			Inventory.add(&"clay", 40)
+			Inventory.add(&"stone", 20)
+			game.place_player(P1, HillGame.HILLVILLE, Vector2(32 * 48 + 10, 0))
+			game.player_node(P1).facing = 1
+			if game.player_node(P2) != null:
+				game.place_player(P2, HillGame.HILLVILLE, Vector2(31 * 48, 0))
+			Events.vehicle_unlocked.connect(func(id: StringName) -> void: log_event("unlocked %s" % id), CONNECT_ONE_SHOT)
+			_next("stage: yard, one Garage built, blocks for another")
+		1:
+			if _since() > 0.8:
+				game.build._pick(P1, &"garage")
+				_next("ghost")
+		2:
+			if _since() > 0.8:
+				game.build._drop(P1)
+				_next("garage 2 placed")
+		3:
+			if _since() > 4.5:
+				_next("done")
+
+
+func _truck() -> void:
+	match _stage:
+		0:
+			var loader: Vehicle = game.vehicles.get(HillGame.LOADER)
+			if loader != null:
+				loader.position.x -= 360.0   # out of the truck's way
+			var node := _ride(P1, &"dump_truck", HillGame.HILLVILLE, Vector2(Hillville.PILE_X - 300.0, 0))
+			for i in node.capacity():
+				node.backpack[[&"dirt", &"clay", &"stone"][i % 3]] = int(node.backpack.get([&"dirt", &"clay", &"stone"][i % 3], 0)) + 1
+			node.facing = 1
+			if game.player_node(P2) != null:
+				game.place_player(P2, HillGame.HILLVILLE, Vector2(Hillville.PILE_X - 420.0, 0))
+			node.ability.tipped.connect(func(n: int) -> void: log_event("tipped %d blocks" % n), CONNECT_ONE_SHOT)
+			_next("stage: full truck, %d blocks" % node.backpack_count())
+		1:
+			_hold(P1, Vector2(1, 0))
+			if game.player_node(P1).global_position.x > Hillville.PILE_X - 130.0:
+				_next("at the pile")
+		2:
+			_hold(P1, Vector2(-1, 0))
+			if _since() > 0.8:
+				_next("reversed")
+		3:
+			_hold(P1, Vector2.ZERO, _since() < 0.2)
+			if _since() > 3.0:
+				_next("done")
+
+
+func _crane() -> void:
+	var u := _ug()
+	match _stage:
+		0:
+			# The Clay boulder nearest the shaft; a room beside it, the Crane on the room's floor.
+			var li := _layer(&"clay")
+			var best := -1
+			var bd := 1 << 20
+			for i in u.generator.boulder_spots.size():
+				var r: Rect2i = u.generator.boulder_spots[i]
+				if u.generator.layer_of_depth(r.position.y) == li and _near_shaft(r) < bd:
+					bd = _near_shaft(r)
+					best = i
+			var r: Rect2i = u.generator.boulder_spots[best]
+			var room := Rect2i(r.position.x - 7, r.end.y - 4, 7, 4)
+			var w := u.world
+			for y in range(room.position.y, room.end.y):
+				for x in range(room.position.x, room.end.x):
+					w.set_tile(Vector2i(x, y), 0)
+			var feet := Vector2((room.position.x + 3) * 16.0, room.end.y * 16.0 - 1.0)
+			var node := _ride(P1, &"crane", HillGame.UNDERGROUND, feet)
+			node.facing = 1
+			_place(P2, feet + Vector2(-50, 0))
+			node.ability.hauled.connect(func(i: int) -> void: log_event("hauled boulder %d" % i), CONNECT_ONE_SHOT)
+			_next("stage: Crane beside boulder %d" % best)
+		1:
+			if _since() > 0.8:
+				_hold(P1, Vector2.ZERO, true)
+				_next("hook")
+		2:
+			if _since() > 3.0:
+				_next("done")
+
+
+func _drill() -> void:
+	var u := _ug()
+	match _stage:
+		0:
+			Progress.find_treasure(&"giant_tooth", P1)
+			var room := Rect2i(60, 14, 8, 4)
+			var w := u.world
+			for y in range(room.position.y, room.end.y):
+				for x in range(room.position.x, room.end.x):
+					w.set_tile(Vector2i(x, y), 0)
+			var feet := Vector2(64 * 16.0, room.end.y * 16.0 - 1.0)
+			var node := _ride(P1, &"drill_rig", HillGame.UNDERGROUND, feet)
+			_place(P2, feet + Vector2(-60, 0))
+			node.ability.drill_changed.connect(func(on: bool) -> void: log_event("drill %s" % ("on" if on else "off")))
+			_next("stage: Drill Rig in Topsoil")
+		1:
+			if _since() > 0.6:
+				_hold(P1, Vector2.ZERO, true)
+				_next("A: drill")
+		2:
+			if _since() > 6.0:
+				_hold(P1, Vector2.ZERO, true)
+				_next("A: stop at row %d" % int(game.player_node(P1).global_position.y / 16.0))
+		3:
+			if _since() > 1.5:
+				_next("done")
+
+
+func _treasure() -> void:
+	var u := _ug()
+	match _stage:
+		0:
+			var r: Rect2i = Rect2i()
+			for sp in u.generator.treasure_spots:
+				if sp.id == &"bottle_caps":
+					r = sp.rect
+			# A room left of the find, one cell of dirt between; P1 digs right into it.
+			var room := Rect2i(r.position.x - 8, r.end.y - 2, 5, 2)
+			_stage_players(room, Vector2i(room.end.x - 1, r.end.y - 1), Vector2i(room.position.x, r.end.y - 1))
+			u.treasure_dug.connect(func(id: StringName, _p: int) -> void: log_event("found %s" % id), CONNECT_ONE_SHOT)
+			_next("stage: beside the bottle caps")
+		1:
+			_hold(P1, Vector2(1, 0), true)
+			if Progress.has_treasure(&"bottle_caps"):
+				_next("reveal")
+		2:
+			if _since() > 2.6:
+				game.place_player(P1, HillGame.HILLVILLE, Vector2(TreasureShelf.X - 220.0, 0))
+				if game.player_node(P2) != null:
+					game.place_player(P2, HillGame.HILLVILLE, Vector2(TreasureShelf.X - 270.0, 0))
+				game.shelf.placed.connect(func(id: StringName) -> void: log_event("shelf %s" % id), CONNECT_ONE_SHOT)
+				_next("up top")
+		3:
+			_hold(P1, Vector2(1, 0))
+			if game.player_node(P1).global_position.x > TreasureShelf.X - 90.0:
+				_next("at the shelf")
+		4:
+			if _since() > 2.0:
+				_next("done")
