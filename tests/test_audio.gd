@@ -120,6 +120,9 @@ func test_music_files_are_in() -> void:
 
 func test_variants_rotate_without_repeats() -> void:
 	assert_int(Audio.variant_count("dig_dirt")).is_equal(3)
+	# start from an empty bag: an earlier test's leftover draws would make "one full bag" order-dependent
+	Audio._bags.clear()
+	Audio._last_pick.clear()
 	var seen := {}
 	var last := ""
 	for i in 12:
