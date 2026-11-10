@@ -84,6 +84,7 @@ func _ready() -> void:
 	else:
 		Progress.reset()
 		Inventory.clear()
+	TimeOfDay.running = true
 	_spawn_vehicles()
 	_anchor = Node2D.new()
 	_anchor.name = "Anchor"
@@ -101,6 +102,7 @@ func _ready() -> void:
 
 
 func _exit_tree() -> void:
+	TimeOfDay.running = false
 	if Events.tile_dug.is_connected(_on_tile_dug):
 		Events.tile_dug.disconnect(_on_tile_dug)
 	if Game.quit_requested.is_connected(autosave):
