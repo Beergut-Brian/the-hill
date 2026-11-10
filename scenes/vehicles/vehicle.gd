@@ -170,6 +170,12 @@ static func _draw_crane(ci: CanvasItem, file: String, f: Vector2, flip: bool, ai
 	var tip := root + Vector2(0, -30)
 	if bf < tips.size():
 		tip = root + (Vector2(tips[bf][0], tips[bf][1]) - SpriteArt.pivot(boom_file)) * f
+	if state.has("ball"):
+		_draw_ball(ci, tip, float(state.ball), int(state.get("face", -1 if flip else 1)))
+		return
+	if state.has("lift"):
+		_draw_lift(ci, tip, state.lift)
+		return
 	var hook := tip + Vector2(sin(t * 1.7) * 1.5, ROPE)
 	var carry := false
 	if state.has("hook"):
@@ -183,6 +189,27 @@ static func _draw_crane(ci: CanvasItem, file: String, f: Vector2, flip: bool, ai
 	if carry:
 		_draw_boulder(ci, hook + Vector2(0, 14))
 	SpriteArt.draw(ci, "vehicles/crane_hook.png", 0, 0, hook, flip)
+
+
+## H-05: up top the Crane's rope carries a wrecking ball; `a` is the swing (+ = toward `face`).
+static func _draw_ball(ci: CanvasItem, tip: Vector2, a: float, face: int) -> void:
+	var at := tip + Vector2(sin(a) * face, cos(a)) * VehicleAbility.BALL_ROPE
+	ci.draw_line(tip, at, Color(0.2, 0.18, 0.2), 1.5)
+	ci.draw_circle(at, 9.5, DARK)
+	ci.draw_circle(at, 8.0, Color("5d6670"))
+	ci.draw_circle(at + Vector2(-2.5, -2.5), 3.0, Color("8d97a3"))
+	ci.draw_rect(Rect2(at + Vector2(-2, -11), Vector2(4, 3)), DARK)
+
+
+## H-05: lifting a building: the boom telescopes up past the roof, the rope drops to the hook on it.
+static func _draw_lift(ci: CanvasItem, tip: Vector2, roof: Vector2) -> void:
+	var top := Vector2(roof.x, minf(roof.y - 22.0, tip.y - 10.0))
+	ci.draw_line(tip, top, DARK, 6.0)
+	ci.draw_line(tip, top, Color("f2c94c"), 3.5)
+	ci.draw_circle(top, 3.5, DARK)
+	ci.draw_line(top, roof, Color(0.2, 0.18, 0.2), 1.5)
+	ci.draw_rect(Rect2(roof + Vector2(-4, -5), Vector2(8, 6)), Color("c9ccd1"))
+	ci.draw_rect(Rect2(roof + Vector2(-4, -5), Vector2(8, 6)), DARK, false, 1.0)
 
 
 static func _draw_boulder(ci: CanvasItem, at: Vector2) -> void:

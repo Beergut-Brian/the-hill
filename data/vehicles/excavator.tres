@@ -12,4 +12,5 @@ clear_area = Vector2i(3, 2)
 speed = 100
 carry = 2.0
 needs_treasure = &"buried_car"
+ability = &"pond"
 sounds = {&"engine": &"excavator_engine", &"horn": &"excavator_horn", &"dig": &"excavator_dig"}
