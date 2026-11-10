@@ -10,7 +10,7 @@ config_version=5
 
 [application]
 
-config/name="Open Jar Game"
+config/name="The Hill"
 config/description="An Open Jar Games title. See GAME.md."
 config/version="0.0.1"
 run/main_scene="res://scenes/main.tscn"
