@@ -2,6 +2,21 @@
 class_name TestSmoke
 extends GdUnitTestSuite
 
+var _real_settings := ""
+
+
+func before() -> void:
+	# Its own settings file: nothing here may write into the real user://settings.json.
+	_real_settings = Save.settings_path
+	Save.settings_path = "user://test_settings_smoke.json"
+	Save.reload_settings()
+
+
+func after() -> void:
+	Save.wipe_settings()
+	Save.settings_path = _real_settings
+	Save.reload_settings()
+
 
 func test_main_scene_loads() -> void:
 	var scene := load("res://scenes/main.tscn") as PackedScene

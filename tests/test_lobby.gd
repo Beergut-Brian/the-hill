@@ -21,7 +21,7 @@ var _real_profile := ""
 func before() -> void:
 	_real_settings = Save.settings_path
 	_real_profile = Save.profile
-	Save.settings_path = "user://test_settings.json"
+	Save.settings_path = "user://test_settings_lobby.json"
 	Game.quit_exits = false
 	Game.quit_requested.connect(_on_quit)
 	Game.lobby_ready.connect(_on_lobby_ready)
@@ -328,11 +328,11 @@ func test_settings_solo_toggle_saves_and_readies_on_close() -> void:
 	assert_bool(lobby.counting).is_true()
 
 
-func test_saved_solo_turns_on_at_boot() -> void:
+func test_saved_solo_stays_off_at_boot() -> void:
 	Save.set_setting(SettingsPanel.SOLO, true)
 	_boot()
 	await await_idle_frame()
-	assert_bool(Players.solo).is_true()
+	assert_bool(Players.solo).is_false()
 
 
 # --- pause menu ----------------------------------------------------------------

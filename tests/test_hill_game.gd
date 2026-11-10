@@ -11,14 +11,22 @@ const Door := HillElevator.Door
 
 var _game: HillGame
 var _real_profile := ""
+var _real_settings := ""
 
 
 func before() -> void:
 	_real_profile = Save.profile
+	# Its own settings file: nothing here may write into the real user://settings.json.
+	_real_settings = Save.settings_path
+	Save.settings_path = "user://test_settings_hill_game.json"
+	Save.reload_settings()
 	Game.quit_exits = false
 
 
 func after() -> void:
+	Save.wipe_settings()
+	Save.settings_path = _real_settings
+	Save.reload_settings()
 	Save.flush()
 	Save.profile = _real_profile
 	Save._load()
