@@ -25,6 +25,13 @@ const GARAGE_CELL := 35
 ## P2 scoops only left of this after the Barn stands (so A never picks the Barn up).
 const SCOOP_LIMIT_X := 1470.0
 const STONE_WANT := 10
+## Seconds the open book and the held ghost stay on screen before A.
+const BUILD_DWELL := 0.7
+## P2 clears scrub between these after the Barn, then waits near the yard.
+const P2_SCOOP_FROM := 1150.0
+const P2_WAIT_X := 1460.0
+const EXCAVATOR_SCOOP_X := 1490.0
+const EXCAVATOR_PARK_X := 1700.0
 
 ## [timeout seconds]; P1's steps by name, in order (the trip loop jumps back).
 const STEPS := {
@@ -63,6 +70,9 @@ var _sub := 0
 var _p2_col := -1
 var _ex_seen := -1.0
 var _bsub := {P1: 0, P2: 0}
+var _sub_t := 0.0
+var _dwell := {P1: 0.0, P2: 0.0}   # time in the current build stage (book open / ghost held)
+var _dwell_stage := {P1: -1, P2: -1}
 
 
 func _ready() -> void:
@@ -243,18 +253,20 @@ func _drive_p1(p1: HillPlayer) -> bool:
 				_pulse(P1, "jump")
 			return game.drivers.get(&"excavator", -1) == P1
 		&"drive_excavator":
-			# A little spin: left past the Barn, then a scoop of scrub.
+			# A little spin: left to the scrub past the Barn, a scoop, then back to the Garage.
 			var x := _hv_x(p1)
-			if _sub == 0:
-				if _go_to(P1, p1, x, 1440.0):
-					_sub = 1
-				return false
-			var col := _nearest_scrub_col(x, 1500.0, -1)
-			if col >= 0 and absf(col * TILE + 8.0 - x) > 24.0:
-				_go_to(P1, p1, x, col * TILE + 8.0)
-			else:
-				_hold(P1, Vector2.ZERO, true)
-			return step_time > 8.0
+			match _sub:
+				0:
+					if _go_to(P1, p1, x, EXCAVATOR_SCOOP_X, -1):
+						_sub = 1
+						_sub_t = step_time
+				1:
+					_hold(P1, Vector2.ZERO, true)
+					if step_time - _sub_t > 1.5:
+						_sub = 2
+				2:
+					return _go_to(P1, p1, x, EXCAVATOR_PARK_X)
+			return false
 		&"idle":
 			if fmod(step_time, 6.0) < 0.05:
 				_pulse(P1, "horn")
@@ -285,8 +297,10 @@ func _drive_p2(p2: HillPlayer) -> void:
 				log_event("P2 timeout building the barn")
 				_p2_to(&"after_barn")
 		&"after_barn":
-			# Keeps clearing scrub well left of the Barn, a horn now and then.
-			_scoop_kind(p2, x, [Hillville.Scrub.ROCK, Hillville.Scrub.TREE, Hillville.Scrub.STUMP], SCOOP_LIMIT_X)
+			# Keeps clearing scrub just left of the Barn, then waits by the yard: a horn, a hop.
+			if not _scoop_kind(p2, x, [Hillville.Scrub.ROCK, Hillville.Scrub.TREE, Hillville.Scrub.STUMP], SCOOP_LIMIT_X, P2_SCOOP_FROM):
+				if _go_to(P2, p2, x, P2_WAIT_X, 1) and fmod(p2_time, 5.0) < 0.05:
+					_pulse(P2, "jump")
 			if fmod(p2_time, 7.0) < 0.05:
 				_pulse(P2, "horn")
 
@@ -298,23 +312,25 @@ func _p2_to(m: StringName) -> void:
 	log_event("P2 %s" % m)
 
 
-## Walks to the nearest scrub column of `kinds` left of `limit` and holds A until it is clear.
-func _scoop_kind(pl: HillPlayer, x: float, kinds: Array, limit: float) -> void:
+## Walks to the nearest scrub column of `kinds` in [from, limit) and holds A until it is clear;
+## false when there is none left there.
+func _scoop_kind(pl: HillPlayer, x: float, kinds: Array, limit: float, from := 0.0) -> bool:
 	var hv: Hillville = game.hillville
 	if _p2_col < 0 or hv.scrub_at(_p2_col) == 0:
 		_p2_col = -1
 		var best := INF
-		for c in int(limit / TILE):
+		for c in range(int(from / TILE), int(limit / TILE)):
 			if hv.scrub_at(c) > 0 and kinds.has(hv.scrub_kind(c)) and c * TILE + 8.0 < limit:
 				var dx := absf(c * TILE + 8.0 - x)
 				if dx < best:
 					best = dx
 					_p2_col = c
 		if _p2_col < 0:
-			return
+			return false
 	var cx := _p2_col * TILE + 8.0
 	if _go_to(P2, pl, x, cx):
 		_hold(P2, Vector2.ZERO, true)
+	return true
 
 
 # --- building through the book -----------------------------------------------------------------
@@ -336,10 +352,12 @@ func _build(p: int, pl: HillPlayer, id: StringName, cell: int, face: int) -> boo
 	var x := _hv_x(pl)
 	var feet := _feet_for(cell, d.footprint.x, face)
 	if build.has_ghost(p):
-		if _go_to(p, pl, x, feet, face):
+		# Show the ghost a moment before it drops.
+		if _go_to(p, pl, x, feet, face) and _dwelt(p, 2, BUILD_DWELL):
 			_pulse(p, "dig")
 		return false
 	if not build.captures(p):
+		_dwelt(p, 0, 0.0)
 		if not Inventory.can_afford(d.cost):
 			return false
 		if _go_to(p, pl, x, feet, face):
@@ -348,11 +366,22 @@ func _build(p: int, pl: HillPlayer, id: StringName, cell: int, face: int) -> boo
 	var book := build.book_of(p)
 	if book == null:
 		return false
+	if not _dwelt(p, 1, BUILD_DWELL):
+		return false
 	if book.focused_id() != id:
-		_held[p].move = Vector2.RIGHT if _frame % 6 < 3 else Vector2.ZERO
+		_held[p].move = Vector2.RIGHT if _frame % 10 < 5 else Vector2.ZERO
 		return false
 	_pulse(p, "dig")
 	return false
+
+
+## True once player p has been in build `stage` for `secs` (a new stage restarts the clock).
+func _dwelt(p: int, stage: int, secs: float) -> bool:
+	if _dwell_stage[p] != stage:
+		_dwell_stage[p] = stage
+		_dwell[p] = 0.0
+	_dwell[p] += get_physics_process_delta_time()
+	return _dwell[p] >= secs
 
 
 # --- helpers -----------------------------------------------------------------------------------
@@ -415,17 +444,6 @@ func _will_afford() -> bool:
 		if Inventory.count(b) + int(p1.backpack.get(b, 0)) < int(g.cost[b]):
 			return false
 	return true
-
-
-func _nearest_scrub_col(x: float, limit: float, _dir: int) -> int:
-	var hv: Hillville = game.hillville
-	var best := -1
-	var bd := INF
-	for c in int(limit / TILE):
-		if hv.scrub_at(c) > 0 and absf(c * TILE + 8.0 - x) < bd:
-			bd = absf(c * TILE + 8.0 - x)
-			best = c
-	return best
 
 
 ## Moves toward `target` x; true when there (and facing `face`, if given).
