@@ -352,6 +352,23 @@
    2
   ]
  },
+ "dragon_perch": {
+  "door": [
+   72,
+   118
+  ],
+  "file": "buildings/dragon_perch.png",
+  "frame": [
+   144,
+   144
+  ],
+  "lit": "buildings/dragon_perch_lit.png",
+  "pivot": [
+   0,
+   144
+  ],
+  "pivot_note": "bottom-left on the ground"
+ },
  "drill_rig": {
   "bit": [
    62,
@@ -850,6 +867,23 @@
    3
   ]
  },
+ "gnome_village": {
+  "door": [
+   46,
+   142
+  ],
+  "file": "buildings/gnome_village.png",
+  "frame": [
+   96,
+   144
+  ],
+  "lit": "buildings/gnome_village_lit.png",
+  "pivot": [
+   0,
+   144
+  ],
+  "pivot_note": "bottom-left on the ground"
+ },
  "grass": {
   "file": "surface/grass.png",
   "frame": [
@@ -977,6 +1011,23 @@
   ],
   "pivot_note": "bottom-left on the ground"
  },
+ "lost_and_found": {
+  "door": [
+   36,
+   94
+  ],
+  "file": "buildings/lost_and_found.png",
+  "frame": [
+   96,
+   96
+  ],
+  "lit": "buildings/lost_and_found_lit.png",
+  "pivot": [
+   0,
+   96
+  ],
+  "pivot_note": "bottom-left on the ground"
+ },
  "mole": {
   "file": "characters/mole.png",
   "frame": [
@@ -994,6 +1045,23 @@
     "row": 0
    }
   }
+ },
+ "museum": {
+  "door": [
+   48,
+   75
+  ],
+  "file": "buildings/museum.png",
+  "frame": [
+   96,
+   96
+  ],
+  "lit": "buildings/museum_lit.png",
+  "pivot": [
+   0,
+   96
+  ],
+  "pivot_note": "bottom-left on the ground"
  },
  "old_shed": {
   "door": [
