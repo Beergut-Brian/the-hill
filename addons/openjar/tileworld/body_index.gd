@@ -107,6 +107,23 @@ func sync_awake() -> void:
 		synced_last += 1
 
 
+## Bodies the physics engine woke by itself (a bump, a collision rebuild) bypass the cap, so once
+## per physics frame: when more than max_awake_bodies are awake, the fastest stay awake and the
+## rest go to sleep at the back of the wake queue, to be released in order like any other wake.
+func enforce_cap() -> void:
+	var awake := _awake_list()
+	var cap := maxi(world.max_awake_bodies, 0)
+	if awake.size() <= cap:
+		return
+	awake.sort_custom(func(a: FallingBody, b: FallingBody) -> bool:
+		return a.linear_velocity.length_squared() > b.linear_velocity.length_squared())
+	for i in range(cap, awake.size()):
+		var b: FallingBody = awake[i]
+		_sleep(b)
+		if not queue.has(b):
+			queue.append(b)
+
+
 func _awake_list() -> Array[FallingBody]:
 	var out: Array[FallingBody] = []
 	for b in bodies:

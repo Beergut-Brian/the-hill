@@ -128,8 +128,11 @@ walking up its parents.
 
 * It sleeps when at rest; the world indexes the cells under and beside it. It wakes only when one
   of those stops being solid (`dig` / `set_tile`), never on its own.
-* `max_awake_bodies` (default 60): past it, wake requests wait in a FIFO queue and are released as
-  other bodies fall asleep or are freed.
+* `max_awake_bodies` (default 60): a hard cap. Past it, wake requests wait in a FIFO queue and are
+  released as other bodies fall asleep or are freed. Bodies the physics engine wakes by itself (a
+  bump, a collision rebuild) are checked at the start of every physics tick: the fastest
+  `max_awake_bodies` stay awake, the rest go back to sleep at the back of the queue (so a body put
+  to sleep in mid-air falls again when its turn comes).
 * Frozen while its chunk is not loaded; it returns asleep, or awake if its support is gone or it
   was falling. `body_landed(body, speed)` fires on a hard landing.
 

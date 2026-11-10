@@ -691,3 +691,33 @@ func test_only_awake_bodies_are_synced_without_chunk_changes() -> void:
 	assert_int(w._bodies.synced_last).is_equal(7)
 	assert_bool(roller.freeze).is_false()
 
+
+func test_awake_cap_holds_when_bodies_wake_behind_the_index() -> void:
+	var w := _world(RectShape.new(128, 64, 32), 4)
+	_tracker(w, Vector2i(64, 20))
+	w.update_chunks()
+	var cap := 4
+	var bodies: Array[FallingBody] = []
+	for i in 12:
+		var c := Vector2i(6 + i * 9, 20)
+		w.set_tile(c, 0)
+		w.set_tile(c + Vector2i.UP, 0)
+		var b := FallingBody.new()
+		b.position = w.shape.center_of(c + Vector2i.UP)      # one cell up: a short fall
+		w.add_child(b)
+		bodies.append(b)
+	await _frames(1)
+	w.max_awake_bodies = cap
+	var most := 0
+	for i in 600:
+		await get_tree().physics_frame
+		most = maxi(most, w.awake_bodies())
+		if i == 200:
+			for b in bodies:
+				b.sleeping = false                           # the engine waking them, say
+	assert_int(most).is_less_equal(cap)
+	for b in bodies:
+		assert_bool(b.sleeping).is_true()
+		var cell := w.shape.cell_at(b.position)
+		assert_bool(w.is_solid(w.shape.below(cell))).is_true()
+	assert_array(w._bodies.queue).is_empty()

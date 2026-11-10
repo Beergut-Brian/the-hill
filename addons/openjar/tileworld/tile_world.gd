@@ -454,6 +454,23 @@ func load_save(data: Dictionary) -> void:
 
 # --- frame -------------------------------------------------------------------------------------
 
+func _enter_tree() -> void:
+	if not get_tree().physics_frame.is_connected(_on_physics_frame):
+		get_tree().physics_frame.connect(_on_physics_frame)
+
+
+func _exit_tree() -> void:
+	if get_tree().physics_frame.is_connected(_on_physics_frame):
+		get_tree().physics_frame.disconnect(_on_physics_frame)
+
+
+## Start of every physics tick, before any _physics_process: bodies the engine woke during the last
+## step go back under max_awake_bodies before game code can see them.
+func _on_physics_frame() -> void:
+	if _bodies and shape and can_process():
+		_bodies.enforce_cap()
+
+
 func _physics_process(delta: float) -> void:
 	if shape == null:
 		return

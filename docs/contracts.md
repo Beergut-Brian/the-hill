@@ -421,7 +421,7 @@ func load_save(data: Dictionary) -> void
 class_name FallingBody extends RigidBody2D    # boulders, treasures, prop pieces
 # Uses shape.gravity_at(position), never the project gravity. Sleeps when resting on a solid tile;
 # wakes when a tile it rests on is removed (dig or set_tile), never on its own. Frozen while its
-# chunk is not loaded. When more than max_awake_bodies want to be awake, the rest wait their turn.
+# chunk is not loaded. Never more than max_awake_bodies awake (also when physics wakes them); the rest wait their turn.
 
 class_name BreakableProp extends Node2D       # a multi-tile prop: the car, the gnome room's wall
 @export var footprint: Vector2i               # tiles
