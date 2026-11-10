@@ -7,7 +7,7 @@ class_name HillSave
 extends Node
 
 const AUTOSAVE_EVERY := 60.0
-const PROGRESS_KEYS := ["treasures", "vehicles", "buildings", "players"]
+const PROGRESS_KEYS := ["treasures", "vehicles", "buildings", "players", "hauled"]
 
 ## HillGame (untyped so this script stands alone).
 var game: Node
