@@ -320,6 +320,67 @@ def card(P):
     return im
 
 
+def scene_rules(P):
+    """Reference sheet for pixel-rules.md: the two players at 1x, 2x and 6x, the ramp, the vehicle face."""
+    bgc = hp.hx("#26262e")
+    im = Image.new("RGBA", (W, H), A(bgc))
+    d = ImageDraw.Draw(im)
+    R = P["ramps"]
+    hp.text(im, 6, 4, "THE HILL  PIXEL RULES  (shown in palette " + P["name"].upper() + ")", WHITE, size=10)
+    # big: 6x, on the stone wall and on sky
+    for i, (spr, bg) in enumerate(((hp.jeff(P), P["back"]["stone"][0]), (hp.chuck(P), P["c"]["sky2"]))):
+        x = 8 + i * 170
+        d.rectangle([x, 24, x + 161, 221], fill=A(bg))
+        im.alpha_composite(spr.resize((spr.width * 6, spr.height * 6), Image.NEAREST), (x + 6 + i * 20, 28))
+    hp.text(im, 8, 224, "JEFF  P1  green hat + wing tips", WHITE)
+    hp.text(im, 178, 224, "CHUCK  P2  red hat + swirl", WHITE)
+    # real size and 2x on every layer wall
+    hp.text(im, 8, 240, "real size (32 px) on each layer's tunnel wall, and at 2x", hp.hx("#c8c8d4"))
+    for i, k in enumerate(hp.LAYERS[:6]):
+        x = 8 + i * 56
+        d.rectangle([x, 252, x + 53, 286], fill=A(P["back"][k][0]))
+        im.alpha_composite(hp.jeff(P, shovel=False), (x + 3, 253))
+        im.alpha_composite(hp.chuck(P), (x + 29, 253))
+    for i, spr in enumerate((hp.jeff(P), hp.chuck(P))):
+        d.rectangle([8 + i * 60, 290, 62 + i * 60, 356], fill=A(P["ramps"]["top"][2] if i == 0 else P["back"]["crys"][0]))
+        im.alpha_composite(spr.resize((spr.width * 2, spr.height * 2), Image.NEAREST), (10 + i * 62, 291))
+    # ramp rule
+    hp.text(im, 350, 24, "4-shade ramp: deep, low, MID, high. Hue-shifted.", WHITE)
+    for row, k in enumerate(("top", "stone", "veh", "p1", "p2", "costume")):
+        for i, c in enumerate(R[k]):
+            d.rectangle([350 + i * 26, 36 + row * 14, 350 + i * 26 + 24, 36 + row * 14 + 11], fill=A(c))
+        hp.text(im, 458, 37 + row * 14, k, hp.hx("#c8c8d4"))
+    d.rectangle([500, 36, 524, 117], fill=A(P["outline"]))
+    hp.text(im, 528, 37, "outline", hp.hx("#c8c8d4"))
+    hp.text(im, 528, 50, "(tinted, never", hp.hx("#c8c8d4"))
+    hp.text(im, 528, 60, "pure black)", hp.hx("#c8c8d4"))
+    # light direction
+    d.rectangle([350, 128, 468, 176], fill=A(P["c"]["sky2"]))
+    im.alpha_composite(hp.boulder(P), (358, 140))
+    im.alpha_composite(hp.rock(P), (392, 152))
+    im.alpha_composite(hp.treasure(P, "cap"), (428, 136))
+    im.alpha_composite(hp.treasure(P, "gem"), (446, 152))
+    d.line([352, 130, 362, 140], fill=A(P["c"]["sun"]))
+    d.line([352, 130, 357, 130], fill=A(P["c"]["sun"]))
+    d.line([352, 130, 352, 135], fill=A(P["c"]["sun"]))
+    hp.text(im, 474, 130, "light from top-left:", WHITE)
+    hp.text(im, 474, 142, "high spot up-left, low", hp.hx("#c8c8d4"))
+    hp.text(im, 474, 152, "crescent down-right,", hp.hx("#c8c8d4"))
+    hp.text(im, 474, 162, "1 px outline all round", hp.hx("#c8c8d4"))
+    # vehicle face
+    d.rectangle([350, 186, 632, 296], fill=A(P["c"]["sky2"]))
+    d.rectangle([350, 284, 632, 296], fill=A(R["top"][2]))
+    put(im, hp.loader(P), 356, 284)
+    put(im, hp.loader(P, stripe=hp.GREEN, driver=hp.jeff(P, shovel=False)), 450, 284)
+    put(im, hp.loader(P, stripe=hp.RED, driver=hp.chuck(P)), 540, 284)
+    hp.text(im, 350, 300, "vehicle face: headlight eyes + bumper smile on the hood.", WHITE)
+    hp.text(im, 350, 312, "empty: cream stripe. driven: the player's colour.", hp.hx("#c8c8d4"))
+    hp.text(im, 350, 328, "tiles: no outline, lit edges. sprites: 1 px outline.", hp.hx("#c8c8d4"))
+    for i, k in enumerate(hp.LAYERS):
+        im.alpha_composite(hp.tile(P, k, i + 3, 2), (350 + i * 18, 340))
+    return im
+
+
 def up(im, clear=True):
     big = im.resize((W * SCALE, H * SCALE), Image.NEAREST).convert("RGB")
     hp.flush(big, SCALE, clear=clear)
@@ -398,6 +459,7 @@ def main():
             hp.flush(grid, 1, i * W, j * H)
         rows, worst, tres = checks(P)
         print(P["name"], "worst dE %.0f" % worst, "trespass:", tres, "closest layers: %.0f %s/%s" % separation(P))
+    up(scene_rules(pals[0])).save(os.path.join(OUT, "pixel-rules.png"))
     d = ImageDraw.Draw(grid)
     for x in (W, 2 * W):
         d.line([x, 0, x, H * 3], fill=(255, 255, 255), width=2)
