@@ -210,7 +210,11 @@ func test_walking_into_a_cow_makes_her_hop() -> void:
 	var c: Dictionary = _game.cows.cows[0]
 	c.heart = 0.0
 	_game.place_player(P1, HillGame.HILLVILLE, Vector2(float(c.x), 0))
-	await _physics(3)
+	# poll rather than assume a frame count: CI runs slower than the lane machine
+	for i in 30:
+		await _physics(1)
+		if float(_game.cows.cows[0].heart) > 0.0:
+			break
 	assert_float(float(_game.cows.cows[0].heart)).is_greater(0.0)
 
 
