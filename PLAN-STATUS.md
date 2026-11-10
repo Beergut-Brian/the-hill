@@ -175,7 +175,7 @@ X out of scope, Q open questions, F build phases.
 | P-03 | S5 | Plays whoever was picked; other characters get a sheet built at runtime | built | tests/test_hill_chooser.gd::test_a_pixel_form_only_character_gets_a_built_sheet, ::test_swapped_picks_swap_the_bodies | |
 | P-04 | S1 | Drop-in: P2 asleep in the Loader's bucket; a button press tips him out | built | tests/test_hill_game.gd::test_p2_sleeps_in_the_bucket_then_drops_in_and_plays | |
 | P-05 | S2 | The library gains a 2D pixel format for Jeff, Chuck and the four residents | built | assets/sprites/characters/{jeff,chuck,mole,foreman,caveman,dragon}.png | |
-| P-06 | S1 | Personalities: Jeff names every rock; Chuck narrates his driving | missing | none | No voice barks (S5) |
+| P-06 | S1 | Personalities: Jeff names every rock; Chuck narrates his driving | missing | none | No voice barks (S5). On branch `feature/audio-pass` (6141537), **not on dev** at 76db260 (checked 2026-11-10, polish-2): hill_audio.gd `_on_tile_dug` (placeholder voices) → would be partial |
 
 ## Systems, camera, tech
 
@@ -234,21 +234,21 @@ one plays the **synth placeholder beep** (tests/test_proto.gd::test_audio_synth_
 
 | ID | Source | Item | Status | Proof | Notes |
 | --- | --- | --- | --- | --- | --- |
-| A-01 | CLAUDE.md | Sound on every action | partial | tests/test_proto.gd::test_audio_synth_beep_for_missing_cues | Every action makes a sound, but they are all placeholder beeps |
-| A-02 | S1 Audio | `dig_<block>`: crumble, squelch, crack, crunch, chime | partial | scenes/levels/underground.gd (`Audio.play(cue)` per block) | synth only |
-| A-03 | S1 Audio | `scoop`, `tip`: hydraulic whine, rattle | partial | cues `scoop`, `bucket_tip` | synth only |
-| A-04 | S1 Audio | `engine_<vehicle>`: looped, pitched by speed, one per vehicle | missing | none (no engine cue in code) | |
-| A-05 | S1 Audio | `horn_<vehicle>`: one per vehicle; Dump Truck reverse beep | partial | cue `horn`; tests/test_vehicles_treasures.gd::test_dump_truck_reverses_with_a_beep_before_it_turns_round | One horn for all vehicles; synth only |
-| A-06 | S1 Audio | `treasure`: sparkle and ding, bigger for rarer | partial | cues `treasure`, `treasure_reveal`, `treasure_pickup` | synth only; not by rarity |
-| A-07 | S1 Audio | `fall`, `bonk` | partial | cues `fall`, `bonk` | synth only |
-| A-08 | S1 Audio | `flood`: gurgle, giggle | partial | cues `flood`, `splash`, `float_up` | synth only |
-| A-09 | S1 Audio | `elevator`: clang, rattle, ding | partial | cues `elevator`, `cage_door` | synth only |
-| A-10 | S1 Audio | `build_place`, `build_move` | partial | cues `build_place`, `build_unfold`, `build_pickup` | synth only |
-| A-11 | S1 Audio | `tree_fall`, `rock_crack` | partial | cues `tree_fall`, `rock_crack`, `stump_pop` | synth only |
-| A-12 | S1 Audio | `gnome_whistle`: whistle, marching feet | partial | cues `whistle`, `crew_march` | synth only |
-| A-13 | S1 Audio | `dragon_snore` louder by depth | partial | cue `dragon_snore` | synth only; no volume by depth (W-17) |
-| A-14 | S1 Audio | Music: sunny up-top theme; the same theme slowed underground with a layer per zone; cavern choir | missing | assets/audio/music/ is empty | |
-| A-15 | S1 Audio | Barks: Mole "oh dear", Foreman mutters, Dragon rumbles, Jeff names rocks, Chuck narrates | missing | none | |
+| A-01 | CLAUDE.md | Sound on every action | partial | tests/test_proto.gd::test_audio_synth_beep_for_missing_cues | Every action makes a sound, but they are all placeholder beeps. On branch `feature/audio-pass` (6141537), **not on dev** at 76db260 (checked 2026-11-10, polish-2): tests/test_audio.gd::test_every_cue_resolves_to_a_file |
+| A-02 | S1 Audio | `dig_<block>`: crumble, squelch, crack, crunch, chime | partial | scenes/levels/underground.gd (`Audio.play(cue)` per block) | synth only. On branch `feature/audio-pass` (6141537), **not on dev** at 76db260 (checked 2026-11-10, polish-2): assets/audio/sfx/dig_*.ogg; ::test_variants_rotate_without_repeats |
+| A-03 | S1 Audio | `scoop`, `tip`: hydraulic whine, rattle | partial | cues `scoop`, `bucket_tip` | synth only. On branch `feature/audio-pass` (6141537), **not on dev** at 76db260 (checked 2026-11-10, polish-2): sfx/scoop_1-2, bucket_tip, dump_truck_tip |
+| A-04 | S1 Audio | `engine_<vehicle>`: looped, pitched by speed, one per vehicle | missing | none (no engine cue in code) | On branch `feature/audio-pass` (6141537), **not on dev** at 76db260 (checked 2026-11-10, polish-2): sfx/*_engine.wav; ::test_engine_pitch_follows_speed |
+| A-05 | S1 Audio | `horn_<vehicle>`: one per vehicle; Dump Truck reverse beep | partial | cue `horn`; tests/test_vehicles_treasures.gd::test_dump_truck_reverses_with_a_beep_before_it_turns_round | One horn for all vehicles; synth only. On branch `feature/audio-pass` (6141537), **not on dev** at 76db260 (checked 2026-11-10, polish-2): sfx/*_horn.ogg, dump_truck_reverse.ogg; ::test_every_vehicle_has_its_own_engine_and_horn |
+| A-06 | S1 Audio | `treasure`: sparkle and ding, bigger for rarer | partial | cues `treasure`, `treasure_reveal`, `treasure_pickup` | synth only; not by rarity. On branch `feature/audio-pass` (6141537), **not on dev** at 76db260 (checked 2026-11-10, polish-2): HillAudio.treasure_cue; ::test_treasures_get_bigger_with_depth |
+| A-07 | S1 Audio | `fall`, `bonk` | partial | cues `fall`, `bonk` | synth only. On branch `feature/audio-pass` (6141537), **not on dev** at 76db260 (checked 2026-11-10, polish-2): sfx/fall_1-3, bonk_1-2 |
+| A-08 | S1 Audio | `flood`: gurgle, giggle | partial | cues `flood`, `splash`, `float_up` | synth only. On branch `feature/audio-pass` (6141537), **not on dev** at 76db260 (checked 2026-11-10, polish-2): sfx/flood, float_up, splash_1-2 |
+| A-09 | S1 Audio | `elevator`: clang, rattle, ding | partial | cues `elevator`, `cage_door` | synth only. On branch `feature/audio-pass` (6141537), **not on dev** at 76db260 (checked 2026-11-10, polish-2): sfx/elevator, cage_door, elevator_clank, elevator_ding |
+| A-10 | S1 Audio | `build_place`, `build_move` | partial | cues `build_place`, `build_unfold`, `build_pickup` | synth only. On branch `feature/audio-pass` (6141537), **not on dev** at 76db260 (checked 2026-11-10, polish-2): sfx/build_place, build_pickup, build_unfold |
+| A-11 | S1 Audio | `tree_fall`, `rock_crack` | partial | cues `tree_fall`, `rock_crack`, `stump_pop` | synth only. On branch `feature/audio-pass` (6141537), **not on dev** at 76db260 (checked 2026-11-10, polish-2): sfx/tree_fall, rock_crack_1-2, stump_pop |
+| A-12 | S1 Audio | `gnome_whistle`: whistle, marching feet | partial | cues `whistle`, `crew_march` | synth only. On branch `feature/audio-pass` (6141537), **not on dev** at 76db260 (checked 2026-11-10, polish-2): sfx/whistle_1-3, crew_march, march_step |
+| A-13 | S1 Audio | `dragon_snore` louder by depth | partial | cue `dragon_snore` | synth only; no volume by depth (W-17). On branch `feature/audio-pass` (6141537), **not on dev** at 76db260 (checked 2026-11-10, polish-2): hill_audio.gd `_snore`; ::test_snore_gets_louder_with_depth |
+| A-14 | S1 Audio | Music: sunny up-top theme; the same theme slowed underground with a layer per zone; cavern choir | missing | assets/audio/music/ is empty | On branch `feature/audio-pass` (6141537), **not on dev** at 76db260 (checked 2026-11-10, polish-2): assets/audio/music/*; ::test_music_crossfades_up_down_and_cavern |
+| A-15 | S1 Audio | Barks: Mole "oh dear", Foreman mutters, Dragon rumbles, Jeff names rocks, Chuck narrates | missing | none | On branch `feature/audio-pass` (6141537), **not on dev** at 76db260 (checked 2026-11-10, polish-2): bark hooks + rate caps (placeholder voices) → would be partial |
 
 ## Kid-design checks (S1, on top of docs/kid-design.md)
 
