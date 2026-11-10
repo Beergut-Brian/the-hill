@@ -1,7 +1,9 @@
 ## Hillville, the side-view surface: flat ground (top at y = 0) from 0 to WIDTH, scrub to scoop
 ## (trees, rocks, stumps), four ruins with a silhouette slot on the door, the mine shaft head-frame
 ## with its cage, and the shaft pile (the shared Inventory as a heap of block squares).
-## Flat-colour placeholder art drawn in _draw(). Scrub never collides.
+## Sandbox art (assets/sprites): a sky from TimeOfDay, parallax rows, a baked ground, sprite
+## scrub, ruins, head-frame and pile. World layers take TimeOfDay.world_tint(); players do not.
+## Scrub never collides.
 class_name Hillville
 extends Node2D
 
@@ -39,11 +41,17 @@ const ZONES := [
 ]
 const POND := Rect2(104 * 48, -3, 6 * 48, 17)
 const PILE_X := 41 * 48 + 4.0
-const PILE_BASE := 12
-const PILE_ROWS := 8
+const PILE_BASE := 6
+const PILE_ROWS := 6
+const ICON_COL := {&"dirt": 0, &"clay": 1, &"stone": 2, &"ice": 3, &"crystal": 4, &"edgestone": 5, &"strangestone": 6}
 const BLOCK_ORDER := [&"dirt", &"clay", &"stone", &"ice", &"crystal", &"strangestone", &"edgestone"]
 const BLOCK_DIR := "res://data/blocks/"
-const OUTLINE := Color(0.09, 0.07, 0.07)
+const OUTLINE := Color(0.23, 0.16, 0.27)
+const CREAM := Color("f4e8c8")
+const GROUND_ROWS := 10
+const REST_CAM := Vector2(SHAFT_X, -95.0)   # where the parallax anchors line up with the world
+const CLOUD_RANGE := Vector2(700.0, 4800.0)
+const WARM := Color(1.0, 0.78, 0.45)
 
 var cage_flash := 0.0:
 	set(v):
@@ -62,7 +70,6 @@ var _silhouette := {}                 # ruin id -> true once its resident was en
 var _fx: Array = []
 var _cells_kind := {}                 # cell -> zone/ruin StringName
 
-var _back: _Layer
 var _ruins: _Layer
 var _shaft: _Layer
 var _pile: _Layer
@@ -71,6 +78,21 @@ var _ground: _Layer
 var _fx_layer: _Layer
 var _buildings: Node2D
 var _players: Node2D
+var _pond: _Layer
+var _lights: Node2D
+var _sky: _Layer
+var _sun: Sprite2D
+var _moon: Sprite2D
+var _stars: Sprite2D
+var _clouds: Array[Sprite2D] = []
+var _rows: Array[Sprite2D] = []
+var _head_lit: Sprite2D
+var _head_glow: Sprite2D
+var _door_glows := {}                 # ruin id -> Sprite2D
+var _ground_tex: Texture2D
+var _water_frame := 0
+var _water_t := 0.0
+var _sky_t := 1.0
 
 static var _block_colors := {}
 
@@ -82,6 +104,14 @@ class _Layer extends Node2D:
 		fn.call(self)
 
 
+## Calls fn(delta) every frame (cloud drift, the sky refresh, pond waves).
+class _Ticker extends Node:
+	var fn: Callable
+
+	func _process(delta: float) -> void:
+		fn.call(delta)
+
+
 func _init() -> void:
 	name = "Hillville"
 	_generate()
@@ -90,6 +120,8 @@ func _init() -> void:
 
 func _ready() -> void:
 	Events.inventory_changed.connect(_on_inventory_changed)
+	TimeOfDay.phase_changed.connect(_on_phase_changed)
+	_apply_time()
 
 
 ## Children exist from construction, so players_root() / buildings_root() work before _ready.
@@ -111,12 +143,15 @@ func _build_nodes() -> void:
 		wall.position = Vector2(-16.0 if side < 0 else WIDTH + 16.0, -1000)
 		ground.add_child(wall)
 	add_child(ground)
-	_back = _layer("Backdrop", _draw_backdrop)
+	_build_backdrop()
 	_ruins = _layer("Ruins", _draw_ruins)
 	_shaft = _layer("Shaft", _draw_head_frame)
 	_pile = _layer("Pile", _draw_pile)
 	_scrub = _layer("Scrub", _draw_scrub)
 	_ground = _layer("GroundArt", _draw_ground)
+	_ground_tex = HillvilleArt.bake_ground(COLS, GROUND_ROWS, _carved)
+	_pond = _layer("Pond", _draw_pond)
+	_build_lights()
 	_buildings = Node2D.new()
 	_buildings.name = "Buildings"
 	add_child(_buildings)
@@ -124,12 +159,19 @@ func _build_nodes() -> void:
 	_players.name = "Players"
 	add_child(_players)
 	_fx_layer = _layer("Fx", _draw_fx)
+	var tick := _Ticker.new()
+	tick.name = "Clock"
+	tick.fn = _tick
+	add_child(tick)
+	_apply_time()
 	set_process(false)
 
 
 func _exit_tree() -> void:
 	if Events.inventory_changed.is_connected(_on_inventory_changed):
 		Events.inventory_changed.disconnect(_on_inventory_changed)
+	if TimeOfDay.phase_changed.is_connected(_on_phase_changed):
+		TimeOfDay.phase_changed.disconnect(_on_phase_changed)
 
 
 func _layer(n: String, f: Callable) -> _Layer:
@@ -306,7 +348,7 @@ func show_silhouette(ruin_id: StringName, shown := true) -> void:
 
 
 ## A dust puff (Hillville-local), used by scoops and buildings.
-func puff(at: Vector2, color := Color(0.85, 0.78, 0.65), n := 10) -> void:
+func puff(at: Vector2, color := CREAM, n := 10) -> void:
 	for i in n:
 		var a := randf_range(PI * 1.05, PI * 1.95)
 		_fx.append({"k": "p", "pos": at + Vector2(randf_range(-10, 10), -2), "vel": Vector2.from_angle(a) * randf_range(30, 110),
@@ -377,7 +419,7 @@ func _put(c: int, kind: int, h: int) -> void:
 
 
 func _redraw_all() -> void:
-	for l in [_back, _ruins, _shaft, _pile, _scrub, _ground]:
+	for l in [_ruins, _shaft, _pile, _scrub, _ground, _pond]:
 		if l != null:
 			l.queue_redraw()
 
@@ -396,12 +438,12 @@ func _scrub_fx(c: int, kind: int, n: int, top: float, dir: int) -> void:
 			for i in 8:
 				_fx.append({"k": "p", "pos": Vector2(cx, top + 6), "vel": Vector2(randf_range(-90, 90), randf_range(-170, -60)),
 						"life": 0.0, "max": 0.6, "col": Color("8d97a3"), "r": randf_range(2.5, 4.5), "g": 520.0, "sq": true})
-			puff(Vector2(cx, 0), Color(0.8, 0.8, 0.82), 6)
+			puff(Vector2(cx, 0), Color("e6e2d4"), 6)
 		_:
 			Audio.play("stump_pop")
 			_fx.append({"k": "p", "pos": Vector2(cx, -8), "vel": Vector2(dir * 40, -260), "life": 0.0, "max": 0.7,
 					"col": Color("8a5a2b"), "r": 7.0, "g": 700.0, "sq": true})
-			puff(Vector2(cx, 0), Color(0.7, 0.55, 0.38), 8)
+			puff(Vector2(cx, 0), Color("e0c89a"), 8)
 
 
 func _wake_fx() -> void:
@@ -417,7 +459,7 @@ func _process(delta: float) -> void:
 			f.pos += f.vel * delta
 		elif f.k == "tree" and not f.landed and f.life >= 0.45:
 			f.landed = true
-			puff(f.pos + Vector2(f.dir * f.h * 0.8, 0), Color(0.6, 0.75, 0.45), 10)
+			puff(f.pos + Vector2(f.dir * f.h * 0.8, 0), Color("b8e0a0"), 10)
 		if f.life < f.max:
 			keep.append(f)
 	_fx = keep
@@ -444,145 +486,295 @@ func _draw_fx(ci: CanvasItem) -> void:
 			# Falling part: trunk from the cut up, crown on top if it was there.
 			var base: Vector2 = f.pos
 			ci.draw_set_transform(base, ang)
-			ci.draw_rect(Rect2(-4, -f.h, 8, f.h), Color(Color("8a5a2b"), a))
-			if f.crown:
-				ci.draw_circle(Vector2(0, -f.h + 4), 15, Color(Color("2f8a3a"), a))
-				ci.draw_circle(Vector2(-5, -f.h + 1), 10, Color(Color("4fb04a"), a))
+			var tt := HillvilleArt.tex("props/tree.png")
+			if tt != null:
+				var fr := HillvilleArt.frame("tree", Vector2(32, 64))
+				var tiles := clampi(roundi(f.h / float(TILE)), 1, 4)
+				ci.draw_texture_rect_region(tt, Rect2(-fr.x * 0.5, -fr.y, fr.x, fr.y),
+						Rect2((4 - tiles) * fr.x, (0 if f.crown else 1) * fr.y, fr.x, fr.y), Color(1, 1, 1, a))
 			ci.draw_set_transform(Vector2.ZERO, 0.0)
 
 
 # --- drawing -----------------------------------------------------------------------------------
 
-func _draw_backdrop(ci: CanvasItem) -> void:
-	ci.draw_rect(Rect2(0, SKY_TOP, WIDTH, -SKY_TOP), Color("8fd3f4"))
-	ci.draw_rect(Rect2(0, -260.0, WIDTH, 260.0), Color("b5e3f7"))
-	for i in 14:
-		var cx := 300.0 + i * 560.0 + (i * 137) % 200
-		var cy := -420.0 + (i * 71) % 160
-		for k in 3:
-			ci.draw_circle(Vector2(cx + k * 34, cy - (k % 2) * 14), 30, Color(1, 1, 1, 0.85))
-	# The hill: a gentle mound around the shaft, the high ridge out to the Keep's peak.
-	_mound(ci, SHAFT_X + 300, 2600.0, 170.0, Color("9fd18b"))
-	_mound(ci, 4700, 2600.0, 230.0, Color("93c97f"))
-	_mound(ci, 7420, 2000.0, 380.0, Color("86bf73"))
-	_mound(ci, SHAFT_X, 1500.0, 110.0, Color("aedb98"))
+func _carved(c: int, _r: int) -> bool:
+	var sc := int(SHAFT_X / TILE)
+	return c == sc - 1 or c == sc
 
 
-func _mound(ci: CanvasItem, cx: float, w: float, h: float, col: Color) -> void:
-	var pts := PackedVector2Array()
-	var n := 40
-	for i in n + 1:
-		var u := float(i) / n
-		pts.append(Vector2(cx - w * 0.5 + u * w, -h * pow(sin(u * PI), 1.6)))
-	pts.append(Vector2(cx + w * 0.5, 4))
-	pts.append(Vector2(cx - w * 0.5, 4))
-	ci.draw_colored_polygon(pts, col)
+func _pin(sp: Sprite2D, pos: Vector2) -> void:
+	sp.position = pos
+	(sp.material as ShaderMaterial).set_shader_parameter("anchor", REST_CAM - pos)
+
+
+func _sprite(n: String, tx: Texture2D, factor: Vector2, pos: Vector2) -> Sprite2D:
+	var sp := Sprite2D.new()
+	sp.name = n
+	sp.texture = tx
+	sp.centered = false
+	sp.material = HillvilleArt.parallax_material(factor)
+	_pin(sp, pos)
+	return sp
+
+
+func _build_backdrop() -> void:
+	var back := Node2D.new()
+	back.name = "Backdrop"
+	add_child(back)
+	_sky = _Layer.new()
+	_sky.name = "Sky"
+	_sky.fn = _draw_sky
+	back.add_child(_sky)
+	var sheet := "surface/sky_bits.png"
+	var star_r := HillvilleArt.region("sky_bits", "stars")
+	var stars_tex := HillvilleArt.cut(sheet, Rect2i(star_r))
+	if stars_tex != null:
+		_stars = _sprite("Stars", stars_tex, Vector2(0.03, 0.05), Vector2(SHAFT_X - 1600, -420))
+		_stars.region_enabled = true
+		_stars.region_rect = Rect2(0, 0, 3200, 320)
+		_stars.texture_repeat = CanvasItem.TEXTURE_REPEAT_ENABLED
+		back.add_child(_stars)
+	var sheet_tex := HillvilleArt.tex(sheet)
+	if sheet_tex != null:
+		for k in ["sun", "moon"]:
+			var r := HillvilleArt.region("sky_bits", k)
+			var at := AtlasTexture.new()
+			at.atlas = sheet_tex
+			at.region = r
+			var sp := _sprite(k.capitalize(), at, Vector2(0.02, 0.3), Vector2.ZERO)
+			sp.offset = -r.size * 0.5
+			sp.centered = false
+			back.add_child(sp)
+			if k == "sun":
+				_sun = sp
+			else:
+				_moon = sp
+		for i in 7:
+			var r := HillvilleArt.region("sky_bits", "cloud%d" % (i % 3))
+			var at := AtlasTexture.new()
+			at.atlas = sheet_tex
+			at.region = r
+			var x := CLOUD_RANGE.x + (CLOUD_RANGE.y - CLOUD_RANGE.x) * (float(i) + 0.5) / 7.0
+			var sp := _sprite("Cloud%d" % i, at, Vector2(0.25, 0.6), Vector2(x, -330.0 + (i * 53) % 170))
+			sp.scale = Vector2(1.5, 1.5) if i % 2 == 0 else Vector2(1, 1)
+			back.add_child(sp)
+			_clouds.append(sp)
+	# Far mountains, hills, tree line: each its own repeating strip.
+	var strip := HillvilleArt.frame("parallax_hillville", Vector2(512, 96))
+	var spec := [
+		["Mountains", 0, Vector2(0.2, 0.5), -14.0],
+		["Hills", 1, Vector2(0.4, 0.65), -6.0],
+		["Trees", 2, Vector2(0.6, 0.8), 6.0],
+	]
+	for e in spec:
+		var tx := HillvilleArt.cut("parallax/hillville.png", Rect2i(0, int(e[1]) * int(strip.y), int(strip.x), int(strip.y)))
+		if tx == null:
+			continue
+		var sp := _sprite(e[0], tx, e[2], Vector2(-1000, float(e[3]) - strip.y))
+		sp.region_enabled = true
+		sp.region_rect = Rect2(0, 0, 8000, strip.y)
+		sp.texture_repeat = CanvasItem.TEXTURE_REPEAT_ENABLED
+		back.add_child(sp)
+		_rows.append(sp)
+
+
+func _build_lights() -> void:
+	_lights = Node2D.new()
+	_lights.name = "Lights"
+	add_child(_lights)
+	var hf := HillvilleArt.entry("headframe")
+	var fr := HillvilleArt.frame("headframe", Vector2(96, 124))
+	var pv := HillvilleArt.point("headframe", "pivot", Vector2(48, 124))
+	var org := Vector2(SHAFT_X, 0) - pv
+	var lit_path: String = str(hf.get("lit", ""))
+	if lit_path != "" and HillvilleArt.tex(lit_path) != null:
+		_head_lit = Sprite2D.new()
+		_head_lit.name = "HeadFrameLit"
+		_head_lit.texture = HillvilleArt.tex(lit_path)
+		_head_lit.centered = false
+		_head_lit.position = org
+		_lights.add_child(_head_lit)
+	var glow := HillvilleArt.tex("fx/glow.png")
+	if glow != null:
+		_head_glow = _glow("LanternGlow", glow, org + HillvilleArt.point("headframe", "lantern", fr * 0.5), 3.0)
+		for r in RUINS:
+			var door := HillvilleArt.point(String(r.id), "door")
+			var win := HillvilleArt.tex("fx/window.png")
+			if door != Vector2.ZERO and win != null:
+				var rect := ruin_rect(r.id)
+				var origin := Vector2(rect.position.x, rect.end.y) - Vector2(0, HillvilleArt.frame(String(r.id)).y)
+				_door_glows[r.id] = _glow("DoorGlow_" + String(r.id), win, origin + door, 2.0)
+
+
+func _glow(n: String, tx: Texture2D, at: Vector2, k: float) -> Sprite2D:
+	var sp := Sprite2D.new()
+	sp.name = n
+	sp.texture = tx
+	sp.material = HillvilleArt.additive()
+	sp.position = at
+	sp.scale = Vector2(k, k)
+	sp.modulate = Color(WARM, 0.0)
+	_lights.add_child(sp)
+	return sp
+
+
+func _on_phase_changed(_p: StringName) -> void:
+	_apply_time()
+
+
+func _tick(delta: float) -> void:
+	var drift := 5.0 * delta
+	for c in _clouds:
+		c.position.x += drift
+		if c.position.x > CLOUD_RANGE.y:
+			c.position.x -= CLOUD_RANGE.y - CLOUD_RANGE.x
+		(c.material as ShaderMaterial).set_shader_parameter("anchor", REST_CAM - c.position)
+	_sky_t += delta
+	if _sky_t >= 0.25:
+		_sky_t = 0.0
+		_apply_time()
+	_water_t += delta
+	if _water_t >= 0.33:
+		_water_t = 0.0
+		_water_frame = 1 - _water_frame
+		if _pond != null:
+			_pond.queue_redraw()
+
+
+## Sky, sun/moon, stars, the world tint and the lamps for the current TimeOfDay.
+func _apply_time() -> void:
+	if _sky == null:
+		return
+	var tint := TimeOfDay.world_tint()
+	var lights := TimeOfDay.lights()
+	_sky.queue_redraw()
+	for n in [_ruins, _shaft, _pile, _scrub, _ground, _pond, _buildings, _fx_layer]:
+		if n != null:
+			n.modulate = tint
+	for sp in _rows:
+		sp.modulate = tint
+	for sp in _clouds:
+		sp.modulate = tint.lerp(Color.WHITE, 0.3)
+	var t := TimeOfDay.time
+	if _stars != null:
+		_stars.modulate = Color(1, 1, 1, clampf((lights - 0.4) / 0.6, 0.0, 1.0))
+	if _sun != null:
+		var u := clampf(t / 0.66, 0.0, 1.0)
+		_pin(_sun, Vector2(SHAFT_X + lerpf(-210.0, 210.0, u), -30.0 - 210.0 * pow(sin(u * PI), 0.8)))
+		_sun.visible = t < 0.68
+		_sun.modulate = Color(1, 1, 1, clampf((0.68 - t) / 0.12, 0.0, 1.0))
+	if _moon != null:
+		var mt := t if t >= 0.5 else t + 1.0
+		var mu := clampf((mt - 0.64) / 0.42, 0.0, 1.0)
+		_pin(_moon, Vector2(SHAFT_X + lerpf(-210.0, 210.0, mu), -30.0 - 190.0 * pow(sin(mu * PI), 0.8)))
+		_moon.modulate = Color(1, 1, 1, clampf((lights - 0.5) / 0.5, 0.0, 1.0))
+	if _head_lit != null:
+		_head_lit.modulate = Color(1, 1, 1, lights)
+	if _head_glow != null:
+		_head_glow.modulate = Color(WARM, 0.55 * lights)
+	for id in _door_glows:
+		var sp: Sprite2D = _door_glows[id]
+		sp.modulate = Color(WARM, (0.9 if _silhouette.get(id, false) else 0.4) * lights)
+
+
+func _draw_sky(ci: CanvasItem) -> void:
+	var top := TimeOfDay.sky_top()
+	var hor := TimeOfDay.sky_horizon()
+	var x0 := -800.0
+	var w := WIDTH + 1600.0
+	var n := 12
+	var h := -SKY_TOP / n
+	for i in n:
+		var u := (float(i) + 0.5) / n
+		ci.draw_rect(Rect2(x0, SKY_TOP + i * h, w, h + 1.0), top.lerp(hor, pow(u, 1.3)))
+	var b := TimeOfDay.band()
+	if b.a > 0.01:
+		for k in 4:
+			ci.draw_rect(Rect2(x0, -200.0 + k * 50.0, w, 51.0), Color(b, b.a * 0.18 * (k + 1)))
 
 
 func _draw_ground(ci: CanvasItem) -> void:
-	ci.draw_rect(Rect2(0, 0, WIDTH, GROUND_DEPTH), Color("6b4a2b"))
-	ci.draw_rect(Rect2(0, 0, WIDTH, 8), Color("4f9a3a"))
-	ci.draw_rect(Rect2(0, 0, WIDTH, 3), Color("7ccf52"))
-	# Pond: a dark basin with water over the edge.
-	var basin := PackedVector2Array()
-	var water := PackedVector2Array()
-	for i in 25:
-		var u := float(i) / 24.0
-		var x := POND.position.x + u * POND.size.x
-		var d := sin(u * PI)
-		basin.append(Vector2(x, -3 + 34 * d))
-		water.append(Vector2(x, -3 + 30 * d))
-	basin.append(Vector2(POND.position.x, -3))
-	ci.draw_colored_polygon(basin, Color("4a3420"))
-	ci.draw_colored_polygon(water, Color(0.25, 0.55, 0.85))
-	ci.draw_rect(Rect2(POND.position.x + 4, -4, POND.size.x - 8, 4), Color(0.25, 0.55, 0.85))
-	for k in 3:
-		var wx := POND.position.x + 40 + k * 90
-		ci.draw_line(Vector2(wx, 5 + k * 3), Vector2(wx + 26, 5 + k * 3), Color(1, 1, 1, 0.5), 2.0)
-	ci.draw_line(Vector2(POND.position.x + 6, -3), Vector2(POND.end.x - 6, -3), Color(1, 1, 1, 0.7), 2.0)
-	# A faint tick per plot on cleared ground.
-	for cell in range(1, CELLS):
-		if cell_owner(cell) != &"" or cell_owner(cell - 1) != &"":
-			continue
-		var c := cell * 3
-		if _h[c] == 0 and _h[c - 1] == 0:
-			ci.draw_line(Vector2(cell * PLOT, 1), Vector2(cell * PLOT, 6), Color(0.2, 0.4, 0.15, 0.5), 2.0)
+	if _ground_tex != null:
+		ci.draw_texture(_ground_tex, Vector2.ZERO)
+	else:
+		ci.draw_rect(Rect2(0, 0, WIDTH, GROUND_DEPTH), Color("8b5a2b"))
+		ci.draw_rect(Rect2(0, 0, WIDTH, 4), Color("5aa84a"))
+
+
+## The pond: A water over the dirt (shallow at the edges, deeper in the middle).
+func _draw_pond(ci: CanvasItem) -> void:
+	var wt := HillvilleArt.tex("tiles/water.png")
+	if wt == null:
+		ci.draw_rect(Rect2(POND.position.x, -3, POND.size.x, 17), Color(0.25, 0.55, 0.85, 0.8))
+		return
+	var c0 := int(POND.position.x / TILE)
+	var c1 := int(POND.end.x / TILE)
+	var cab := ruin_rect(&"flooded_cabin")
+	for c in range(c0, c1):
+		var x := c * TILE
+		var f := (c / 2 + _water_frame) % 2
+		var in_cabin := x >= cab.position.x and x < cab.end.x
+		var mid := c >= c0 + 3 and c < c1 - 3
+		if in_cabin:
+			ci.draw_texture_rect_region(wt, Rect2(x, -14, TILE, TILE), Rect2(f * TILE, 0, TILE, TILE))
+			for y in [2.0, 18.0]:
+				ci.draw_texture_rect_region(wt, Rect2(x, y, TILE, TILE), Rect2(f * TILE, TILE, TILE, TILE))
+		else:
+			ci.draw_texture_rect_region(wt, Rect2(x, -4, TILE, TILE), Rect2(f * TILE, 0, TILE, TILE))
+			if mid:
+				ci.draw_texture_rect_region(wt, Rect2(x, 12, TILE, TILE), Rect2(f * TILE, TILE, TILE, TILE))
 
 
 func _draw_scrub(ci: CanvasItem) -> void:
+	var tree := HillvilleArt.tex("props/tree.png")
+	var rock := HillvilleArt.tex("props/rock.png")
+	var stump := HillvilleArt.tex("props/stump.png")
+	var tf := HillvilleArt.frame("tree", Vector2(32, 64))
+	var small := HillvilleArt.region("rock", "small")
+	var wide := HillvilleArt.region("rock", "wide")
 	for c in COLS:
 		var h := _h[c]
 		if h == 0:
 			continue
 		var x := c * TILE
-		var top := -h * TILE
 		match _kind[c]:
 			Scrub.TREE:
-				if h == _h0[c]:
-					var trunk := Rect2(x + 4, top + 18, 8, h * TILE - 18)
-					ci.draw_rect(trunk.grow(1.5), OUTLINE)
-					ci.draw_rect(trunk, Color("8a5a2b"))
-					var cc := Vector2(x + 8, top + 12)
-					ci.draw_circle(cc, 16.5, OUTLINE)
-					ci.draw_circle(cc, 15, Color("2f8a3a"))
-					ci.draw_circle(cc + Vector2(-5, -4), 9, Color("4fb04a"))
-				else:
-					var trunk := Rect2(x + 4, top, 8, h * TILE)
-					ci.draw_rect(trunk.grow(1.5), OUTLINE)
-					ci.draw_rect(trunk, Color("8a5a2b"))
-					ci.draw_rect(Rect2(x + 4, top, 8, 3), Color("e2c08a"))
+				if tree != null:
+					var frame_i := clampi(4 - h, 0, 3)
+					var row := 0 if h == _h0[c] else 1
+					ci.draw_texture_rect_region(tree, Rect2(x + TILE * 0.5 - tf.x * 0.5, -tf.y, tf.x, tf.y),
+							Rect2(frame_i * tf.x, row * tf.y, tf.x, tf.y))
 			Scrub.ROCK:
+				if rock == null:
+					continue
 				var left_join := c > 0 and _wide[c - 1] == 1 and _h[c - 1] > 0
 				var right_join := _wide[c] == 1 and c + 1 < COLS and _h[c + 1] > 0
-				var r := Rect2(x + (0 if left_join else 1), top + 2, TILE - (0 if left_join else 1) - (0 if right_join else 1), h * TILE - 2)
-				var sb := StyleBoxFlat.new()
-				sb.bg_color = Color("8d97a3")
-				sb.border_color = OUTLINE
-				sb.set_border_width_all(2)
-				sb.corner_radius_top_left = 0 if left_join else 6
-				sb.corner_radius_bottom_left = 0 if left_join else 2
-				sb.corner_radius_top_right = 0 if right_join else 6
-				sb.corner_radius_bottom_right = 0 if right_join else 2
 				if left_join:
-					sb.border_width_left = 0
-				if right_join:
-					sb.border_width_right = 0
-				ci.draw_style_box(sb, r)
-				ci.draw_rect(Rect2(r.position.x + 3, r.position.y + 3, 4, 3), Color("b8c0ca"))
-				ci.draw_line(Vector2(x + 10, top + 5), Vector2(x + 7, top + 11), Color("5d6670"), 1.5)
+					continue   # drawn with its left half
+				for k in h:
+					if right_join:
+						ci.draw_texture_rect_region(rock, Rect2(x, -(k + 1) * TILE, wide.size.x, wide.size.y), wide)
+					else:
+						ci.draw_texture_rect_region(rock, Rect2(x, -(k + 1) * TILE, small.size.x, small.size.y), small)
 			_:
-				var r := Rect2(x + 2, -11, 12, 11)
-				ci.draw_rect(r.grow(1.5), OUTLINE)
-				ci.draw_rect(r, Color("8a5a2b"))
-				ci.draw_rect(Rect2(x + 2, -11, 12, 3), Color("e2c08a"))
-				ci.draw_circle(Vector2(x + 8, -10), 1.5, Color("8a5a2b"))
+				if stump != null:
+					ci.draw_texture(stump, Vector2(x, -TILE))
 
 
 func _draw_head_frame(ci: CanvasItem) -> void:
-	var o := Vector2(SHAFT_X, 0)
-	var timber := Color("8a5a2b")
-	var dark := Color(0.07, 0.06, 0.09)
-	ci.draw_rect(Rect2(o + Vector2(-20, 0), Vector2(40, 10)), dark)
-	for s in [-1.0, 1.0]:
-		ci.draw_line(o + Vector2(32 * s, 0), o + Vector2(8 * s, -104), dark, 8.0)
-		ci.draw_line(o + Vector2(32 * s, 0), o + Vector2(8 * s, -104), timber, 5.0)
-	for y: float in [-44.0, -76.0]:
-		var half := 32.0 - (-y / 104.0) * 24.0
-		ci.draw_line(o + Vector2(-half, y), o + Vector2(half, y), dark, 7.0)
-		ci.draw_line(o + Vector2(-half, y), o + Vector2(half, y), timber, 4.0)
-	ci.draw_circle(o + Vector2(0, -108), 15, dark)
-	ci.draw_circle(o + Vector2(0, -108), 12, Color("c9c9c9"))
-	ci.draw_circle(o + Vector2(0, -108), 4, dark)
-	ci.draw_line(o + Vector2(0, -108), o + Vector2(0, -38), dark, 2.0)
-	ci.draw_rect(Rect2(o + Vector2(-17, -37), Vector2(34, 37)), dark)
-	ci.draw_rect(Rect2(o + Vector2(-14, -34), Vector2(28, 34)), Color(0.16, 0.14, 0.18).lerp(Color("f2c94c"), cage_flash))
-	for bx in [-9.0, -3.0, 3.0, 9.0]:
-		ci.draw_line(o + Vector2(bx, -34), o + Vector2(bx, -34 + 34 * cage_flash), Color("c9c9c9"), 2.0)
-	ci.draw_rect(Rect2(o + Vector2(-17, -40), Vector2(34, 4)), Color("f2c94c"))
+	var tx := HillvilleArt.tex("buildings/headframe.png")
+	var pv := HillvilleArt.point("headframe", "pivot", Vector2(48, 124))
+	var org := Vector2(SHAFT_X, 0) - pv
+	if tx != null:
+		ci.draw_texture(tx, org)
+	var cg: Array = HillvilleArt.entry("headframe").get("cage", [31, 85, 34, 39])
+	if cage_flash > 0.0:
+		ci.draw_rect(Rect2(org + Vector2(cg[0], cg[1]), Vector2(cg[2], cg[3])), Color("f2c94c", clampf(cage_flash, 0.0, 1.0) * 0.75))
 
 
-## The shared pile as a heap of block squares (capped), colour by block.
+## The shared pile as a heap of block icons (capped), one icon per block id.
 func _draw_pile(ci: CanvasItem) -> void:
+	var icons := HillvilleArt.tex("icons/blocks.png")
 	var counts: Array = []
 	var total := 0
 	for b in BLOCK_ORDER:
@@ -601,34 +793,35 @@ func _draw_pile(ci: CanvasItem) -> void:
 		if total > cap:
 			n = maxi(1, roundi(float(n) * cap / total))
 		for i in n:
-			squares.append(block_color(e[0]))
+			squares.append(e[0])
 	squares.resize(mini(squares.size(), cap))
-	var s := 8.0
 	var i := 0
 	for r in PILE_ROWS:
 		var w := PILE_BASE - r
-		var x0 := PILE_X + r * s * 0.5
+		var x0 := PILE_X + r * TILE * 0.5
 		for k in w:
 			if i >= squares.size():
 				return
-			var rect := Rect2(x0 + k * s, -(r + 1) * s, s, s)
-			ci.draw_rect(rect, squares[i])
-			ci.draw_rect(rect, OUTLINE, false, 1.0)
+			var rect := Rect2(x0 + k * TILE, -(r + 1) * TILE, TILE, TILE)
+			if icons != null:
+				var col: int = ICON_COL.get(squares[i], 0)
+				ci.draw_texture_rect_region(icons, rect, Rect2(col * TILE, 0, TILE, TILE))
+			else:
+				ci.draw_rect(rect, block_color(squares[i]))
 			i += 1
 
 
 func _draw_ruins(ci: CanvasItem) -> void:
 	for r in RUINS:
 		var rect := ruin_rect(r.id)
-		match r.id:
-			&"old_shed":
-				_ruin_shed(ci, rect, r.id)
-			&"crooked_watchtower":
-				_ruin_tower(ci, rect, r.id)
-			&"flooded_cabin":
-				_ruin_cabin(ci, rect, r.id)
-			&"ruined_keep":
-				_ruin_keep(ci, rect, r.id)
+		var tx := HillvilleArt.tex("buildings/%s.png" % r.id)
+		var fr := HillvilleArt.frame(String(r.id))
+		var origin := Vector2(rect.position.x, rect.end.y - fr.y)
+		if tx != null:
+			ci.draw_texture(tx, origin)
+		var door := HillvilleArt.point(String(r.id), "door")
+		if door != Vector2.ZERO:
+			_silhouette_slot(ci, origin + door, r.id)
 	# The gate by the Old Shed and a rusty fence.
 	var rust := Color("9b5a3c")
 	for x in [8.0, 40.0, 72.0]:
@@ -639,98 +832,12 @@ func _draw_ruins(ci: CanvasItem) -> void:
 		ci.draw_line(Vector2(8, y), Vector2(72, y + 3), rust, 2.0)
 
 
-func _poly(ci: CanvasItem, pts: PackedVector2Array, col: Color) -> void:
-	ci.draw_colored_polygon(pts, col)
-	var loop := pts.duplicate()
-	loop.append(pts[0])
-	ci.draw_polyline(loop, OUTLINE, 3.0)
-
-
-func _box(ci: CanvasItem, r: Rect2, col: Color) -> void:
-	ci.draw_rect(r, col)
-	ci.draw_rect(r, OUTLINE, false, 3.0)
-
-
-## A dark door with an empty silhouette slot (the resident appears there once encountered).
-func _door(ci: CanvasItem, r: Rect2, id: StringName) -> void:
-	_box(ci, r, Color("4a3424"))
-	var c := r.get_center() + Vector2(0, r.size.y * 0.08)
-	var head := Vector2(c.x, r.position.y + r.size.y * 0.28)
-	var hr := r.size.x * 0.2
-	var body := Rect2(c.x - r.size.x * 0.3, head.y + hr * 0.9, r.size.x * 0.6, r.end.y - head.y - hr * 0.9 - 3)
-	var slot := Color(0.85, 0.78, 0.62)
+## The empty silhouette slot in a door (the resident's dark shape once they were met).
+func _silhouette_slot(ci: CanvasItem, door: Vector2, id: StringName) -> void:
+	var head := door + Vector2(0, -9)
+	var body := Rect2(door.x - 6, door.y - 3, 12, 14)
 	if _silhouette.get(id, false):
-		ci.draw_circle(head, hr, Color(0.03, 0.03, 0.05))
-		ci.draw_rect(body, Color(0.03, 0.03, 0.05))
-	ci.draw_arc(head, hr, 0, TAU, 20, slot, 2.0)
-	ci.draw_rect(body, slot, false, 2.0)
-
-
-func _ruin_shed(ci: CanvasItem, r: Rect2, id: StringName) -> void:
-	var plank := Color("8b7a66")
-	var x := r.position.x
-	var w := r.size.x
-	_poly(ci, PackedVector2Array([Vector2(x + 6, 0), Vector2(x + 10, -54), Vector2(x + w - 10, -44), Vector2(x + w - 4, 0)]), plank)
-	for i in 4:
-		var px := x + 18 + i * 18
-		ci.draw_line(Vector2(px, -4), Vector2(px + 2, -46 + i * 2), Color("6d5e4e"), 2.0)
-	_door(ci, Rect2(x + w * 0.36, -40, 28, 40), id)
-	# The collapsed roof, slid down one side.
-	_poly(ci, PackedVector2Array([Vector2(x - 4, -40), Vector2(x + w * 0.55, -74), Vector2(x + w + 6, -30), Vector2(x + w, -22), Vector2(x + w * 0.55, -62), Vector2(x + 2, -32)]), Color("5f6b58"))
-	ci.draw_rect(Rect2(x + w - 18, -10, 22, 10), plank)
-
-
-func _ruin_tower(ci: CanvasItem, r: Rect2, id: StringName) -> void:
-	var x := r.position.x
-	var w := r.size.x
-	var lean := 22.0
-	var top := -r.size.y + 14
-	var stone := Color("a39e93")
-	_poly(ci, PackedVector2Array([Vector2(x + 14, 0), Vector2(x + 14 + lean, top), Vector2(x + w - 14 + lean, top), Vector2(x + w - 14, 0)]), stone)
-	for k in 5:
-		var y := -18.0 - k * 22.0
-		var off := lean * (-y / -top)
-		ci.draw_line(Vector2(x + 16 + off, y), Vector2(x + w - 16 + off, y), Color("7d786e"), 2.0)
-	# Broken platform and a crooked little roof.
-	_poly(ci, PackedVector2Array([Vector2(x + 2 + lean, top), Vector2(x + w + 4 + lean, top - 4), Vector2(x + w + lean, top + 8), Vector2(x + 4 + lean, top + 10)]), Color("8a5a2b"))
-	_poly(ci, PackedVector2Array([Vector2(x + 12 + lean, top - 4), Vector2(x + w * 0.45 + lean + 6, top - 40), Vector2(x + w - 26 + lean, top - 6)]), Color("6b4a3a"))
-	_door(ci, Rect2(x + w * 0.5 - 14, -42, 28, 42), id)
-	_box(ci, Rect2(x + w * 0.5 - 6 + lean * 0.6, -100, 12, 16), Color(0.12, 0.1, 0.1))
-
-
-func _ruin_cabin(ci: CanvasItem, r: Rect2, id: StringName) -> void:
-	var x := r.position.x
-	var w := r.size.x
-	var logc := Color("8a5a2b")
-	# Sunk and tilted: the left side sits lower in the pond.
-	_poly(ci, PackedVector2Array([Vector2(x + 6, 12), Vector2(x + 4, -50), Vector2(x + w - 4, -60), Vector2(x + w - 6, 8)]), logc)
-	for k in 4:
-		var y := -6.0 - k * 13.0
-		ci.draw_line(Vector2(x + 6, y + 2), Vector2(x + w - 6, y - 3), Color("6b4220"), 2.0)
-	_poly(ci, PackedVector2Array([Vector2(x - 6, -48), Vector2(x + w * 0.5, -88), Vector2(x + w + 4, -62), Vector2(x + w * 0.5 + 6, -70)]), Color("5b3a26"))
-	_door(ci, Rect2(x + w * 0.38, -44, 28, 48), id)
-	# Water over the bottom of the cabin.
-	ci.draw_rect(Rect2(x - 8, -3, w + 16, 17), Color(0.25, 0.55, 0.85, 0.8))
-	ci.draw_line(Vector2(x - 4, -1), Vector2(x + w + 4, -1), Color(1, 1, 1, 0.6), 2.0)
-
-
-func _ruin_keep(ci: CanvasItem, r: Rect2, id: StringName) -> void:
-	var x := r.position.x
-	var w := r.size.x
-	var stone := Color("9a9aa6")
-	# The rocky peak it stands on.
-	_poly(ci, PackedVector2Array([Vector2(x - 44, 0), Vector2(x - 20, -24), Vector2(x + w * 0.5, -30), Vector2(x + w + 24, -22), Vector2(x + w + 50, 0)]), Color("7b746a"))
-	var base := -26.0
-	var top := base - r.size.y + 10
-	_box(ci, Rect2(x + 8, top, w - 16, base - top), stone)
-	# Broken battlements, one tower stub taller.
-	for k in 5:
-		if k == 3:
-			continue
-		_box(ci, Rect2(x + 10 + k * 26, top - 14, 18, 16), stone)
-	_box(ci, Rect2(x + 4, top - 44, 34, 46), stone)
-	_poly(ci, PackedVector2Array([Vector2(x + w - 40, top), Vector2(x + w - 8, top + 24), Vector2(x + w - 8, top)]), Color("8fd3f4"))
-	for k in 3:
-		ci.draw_line(Vector2(x + 12, top + 30 + k * 30), Vector2(x + w - 12, top + 30 + k * 30), Color("7c7c88"), 2.0)
-	_box(ci, Rect2(x + 16, top - 30, 10, 14), Color(0.12, 0.1, 0.1))
-	_door(ci, Rect2(x + w * 0.5 - 20, base - 56, 40, 56), id)
+		ci.draw_circle(head, 5.0, Color(0.05, 0.04, 0.08))
+		ci.draw_rect(body, Color(0.05, 0.04, 0.08))
+	ci.draw_arc(head, 5.0, 0, TAU, 14, CREAM, 1.0)
+	ci.draw_rect(body, CREAM, false, 1.0)

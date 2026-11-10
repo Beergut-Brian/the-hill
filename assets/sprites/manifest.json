@@ -1,0 +1,900 @@
+{
+ "barn": {
+  "file": "buildings/barn.png",
+  "frame": [
+   96,
+   96
+  ],
+  "lit": "buildings/barn_lit.png",
+  "pivot": [
+   0,
+   96
+  ],
+  "pivot_note": "bottom-left on the ground"
+ },
+ "block_icons": {
+  "column": "id - 1",
+  "file": "icons/blocks.png",
+  "frame": [
+   16,
+   16
+  ],
+  "ids": {
+   "1": "dirt",
+   "2": "clay",
+   "3": "stone",
+   "4": "ice",
+   "5": "crystal",
+   "6": "edgestone",
+   "7": "strangestone"
+  }
+ },
+ "boulder": {
+  "file": "props/boulder.png",
+  "frame": [
+   26,
+   26
+  ],
+  "pivot": [
+   13,
+   13
+  ],
+  "rows": {
+   "roll": {
+    "fps": 8,
+    "frames": 4,
+    "row": 0
+   }
+  }
+ },
+ "buried_car": {
+  "file": "treasures/buried_car.png",
+  "frame": [
+   48,
+   32
+  ],
+  "tiles": [
+   3,
+   2
+  ]
+ },
+ "caveman": {
+  "file": "characters/caveman.png",
+  "frame": [
+   40,
+   32
+  ],
+  "pivot": [
+   20,
+   32
+  ],
+  "rows": {
+   "frozen": {
+    "fps": 0,
+    "frames": 1,
+    "row": 1
+   },
+   "idle": {
+    "fps": 2,
+    "frames": 2,
+    "row": 0
+   }
+  }
+ },
+ "chuck": {
+  "facing": "right",
+  "file": "characters/chuck.png",
+  "frame": [
+   32,
+   32
+  ],
+  "hand": [
+   23,
+   22
+  ],
+  "note": "ride = head and shoulders at the frame top; dig hit frame holds 2 ticks",
+  "pivot": [
+   16,
+   32
+  ],
+  "rows": {
+   "air": {
+    "fps": 0,
+    "frames": 2,
+    "names": [
+     "jump",
+     "fall"
+    ],
+    "row": 2
+   },
+   "dig_down": {
+    "fps": 10,
+    "frames": 3,
+    "hold": {
+     "1": 2
+    },
+    "row": 4
+   },
+   "dig_side": {
+    "fps": 10,
+    "frames": 3,
+    "hold": {
+     "1": 2
+    },
+    "row": 3
+   },
+   "idle": {
+    "fps": 2,
+    "frames": 2,
+    "row": 0
+   },
+   "ride": {
+    "fps": 0,
+    "frames": 1,
+    "row": 5
+   },
+   "sleep": {
+    "fps": 2,
+    "frames": 2,
+    "row": 6
+   },
+   "walk": {
+    "fps": 8,
+    "frames": 4,
+    "row": 1
+   }
+  }
+ },
+ "crooked_watchtower": {
+  "door": [
+   48,
+   128
+  ],
+  "file": "buildings/crooked_watchtower.png",
+  "frame": [
+   96,
+   144
+  ],
+  "pivot": [
+   0,
+   144
+  ]
+ },
+ "dragon": {
+  "file": "characters/dragon.png",
+  "frame": [
+   160,
+   72
+  ],
+  "pivot": [
+   80,
+   72
+  ],
+  "rows": {
+   "asleep": {
+    "fps": 1,
+    "frames": 2,
+    "row": 0
+   }
+  }
+ },
+ "excavator": {
+  "arm": [
+   37,
+   19
+  ],
+  "box": [
+   40,
+   40
+  ],
+  "columns": {
+   "drive": [
+    2,
+    3
+   ],
+   "idle": [
+    0,
+    1
+   ]
+  },
+  "file": "vehicles/excavator.png",
+  "frame": [
+   56,
+   44
+  ],
+  "head": [
+   18,
+   38
+  ],
+  "nose_lamp": [
+   46,
+   22
+  ],
+  "note": "drive frames move the track treads; the arm is its own sprite with its pivot on `arm`",
+  "pivot": [
+   28,
+   44
+  ],
+  "roof_lamp": [
+   25,
+   1
+  ],
+  "rows": {
+   "cream": {
+    "fps": 2,
+    "frames": 4,
+    "row": 0
+   },
+   "green": {
+    "fps": 2,
+    "frames": 4,
+    "row": 1
+   },
+   "red": {
+    "fps": 2,
+    "frames": 4,
+    "row": 2
+   }
+  }
+ },
+ "excavator_arm": {
+  "file": "vehicles/excavator_arm.png",
+  "frame": [
+   56,
+   60
+  ],
+  "pivot": [
+   8,
+   30
+  ],
+  "rows": {
+   "tool": {
+    "fps": 0,
+    "frames": 3,
+    "names": [
+     "rest",
+     "mid",
+     "full"
+    ],
+    "row": 0
+   }
+  }
+ },
+ "finds": {
+  "file": "treasures/finds.png",
+  "frame": [
+   16,
+   16
+  ],
+  "names": [
+   "bottle_cap",
+   "boot",
+   "bike",
+   "fossil",
+   "bone",
+   "gem"
+  ]
+ },
+ "flooded_cabin": {
+  "door": [
+   45,
+   72
+  ],
+  "file": "buildings/flooded_cabin.png",
+  "frame": [
+   96,
+   96
+  ],
+  "pivot": [
+   0,
+   96
+  ],
+  "waterline": 82
+ },
+ "foreman": {
+  "file": "characters/foreman.png",
+  "frame": [
+   40,
+   32
+  ],
+  "pivot": [
+   20,
+   32
+  ],
+  "rows": {
+   "idle": {
+    "fps": 2,
+    "frames": 2,
+    "row": 0
+   }
+  }
+ },
+ "front_loader": {
+  "box": [
+   28,
+   26
+  ],
+  "bucket": [
+   43,
+   22
+  ],
+  "columns": {
+   "drive": [
+    2,
+    3
+   ],
+   "idle": [
+    0,
+    1
+   ]
+  },
+  "file": "vehicles/front_loader.png",
+  "frame": [
+   48,
+   34
+  ],
+  "head": [
+   14,
+   38
+  ],
+  "nose_lamp": [
+   39,
+   16
+  ],
+  "note": "rows = stripe/roof colour: cream empty, green P1, red P2. Draw the driver's ride frame with its pivot on `head`, behind the body; the glass is see-through.",
+  "pivot": [
+   20,
+   34
+  ],
+  "roof_lamp": [
+   20,
+   1
+  ],
+  "rows": {
+   "cream": {
+    "fps": 2,
+    "frames": 4,
+    "row": 0
+   },
+   "green": {
+    "fps": 2,
+    "frames": 4,
+    "row": 1
+   },
+   "red": {
+    "fps": 2,
+    "frames": 4,
+    "row": 2
+   }
+  }
+ },
+ "front_loader_bucket": {
+  "file": "vehicles/front_loader_bucket.png",
+  "frame": [
+   40,
+   40
+  ],
+  "pivot": [
+   20,
+   20
+  ],
+  "rows": {
+   "tool": {
+    "fps": 0,
+    "frames": 3,
+    "names": [
+     "rest",
+     "mid",
+     "full"
+    ],
+    "row": 0
+   }
+  }
+ },
+ "fx": {
+  "cone": {
+   "file": "fx/cone.png",
+   "frame": [
+    128,
+    64
+   ],
+   "pivot": [
+    0,
+    32
+   ]
+  },
+  "glow": {
+   "file": "fx/glow.png",
+   "frame": [
+    64,
+    64
+   ],
+   "pivot": [
+    32,
+    32
+   ]
+  },
+  "note": "soft sprites for additive light only (pixel-rules exception)",
+  "window": {
+   "file": "fx/window.png",
+   "frame": [
+    16,
+    16
+   ],
+   "pivot": [
+    8,
+    8
+   ]
+  }
+ },
+ "garage": {
+  "file": "buildings/garage.png",
+  "frame": [
+   144,
+   96
+  ],
+  "lit": "buildings/garage_lit.png",
+  "pivot": [
+   0,
+   96
+  ],
+  "rows": {
+   "door": {
+    "fps": 0,
+    "frames": 3,
+    "names": [
+     "shut",
+     "half",
+     "open"
+    ],
+    "row": 0
+   }
+  }
+ },
+ "giant_tooth": {
+  "file": "treasures/giant_tooth.png",
+  "frame": [
+   32,
+   32
+  ],
+  "tiles": [
+   2,
+   2
+  ]
+ },
+ "gnome_room": {
+  "door": [
+   47,
+   28
+  ],
+  "file": "treasures/gnome_room.png",
+  "frame": [
+   64,
+   48
+  ],
+  "lamp": [
+   24,
+   17
+  ],
+  "tiles": [
+   4,
+   3
+  ]
+ },
+ "grass": {
+  "file": "surface/grass.png",
+  "frame": [
+   16,
+   16
+  ],
+  "frames": 4,
+  "note": "drawn over the top row of the ground; transparent below the grass"
+ },
+ "headframe": {
+  "cage": [
+   31,
+   85,
+   34,
+   39
+  ],
+  "cage_note": "cage = [x, y, w, h]",
+  "file": "buildings/headframe.png",
+  "frame": [
+   96,
+   124
+  ],
+  "lantern": [
+   70,
+   60
+  ],
+  "lit": "buildings/headframe_lit.png",
+  "pivot": [
+   48,
+   124
+  ],
+  "pivot_note": "shaft centre on the ground",
+  "wheel": [
+   48,
+   16
+  ]
+ },
+ "house": {
+  "file": "buildings/house.png",
+  "frame": [
+   96,
+   96
+  ],
+  "lit": "buildings/house_lit.png",
+  "pivot": [
+   0,
+   96
+  ],
+  "pivot_note": "bottom-left on the ground"
+ },
+ "jeff": {
+  "facing": "right",
+  "file": "characters/jeff.png",
+  "frame": [
+   32,
+   32
+  ],
+  "hand": [
+   23,
+   22
+  ],
+  "note": "ride = head and shoulders at the frame top; dig hit frame holds 2 ticks",
+  "pivot": [
+   16,
+   32
+  ],
+  "rows": {
+   "air": {
+    "fps": 0,
+    "frames": 2,
+    "names": [
+     "jump",
+     "fall"
+    ],
+    "row": 2
+   },
+   "dig_down": {
+    "fps": 10,
+    "frames": 3,
+    "hold": {
+     "1": 2
+    },
+    "row": 4
+   },
+   "dig_side": {
+    "fps": 10,
+    "frames": 3,
+    "hold": {
+     "1": 2
+    },
+    "row": 3
+   },
+   "idle": {
+    "fps": 2,
+    "frames": 2,
+    "row": 0
+   },
+   "ride": {
+    "fps": 0,
+    "frames": 1,
+    "row": 5
+   },
+   "sleep": {
+    "fps": 2,
+    "frames": 2,
+    "row": 6
+   },
+   "walk": {
+    "fps": 8,
+    "frames": 4,
+    "row": 1
+   }
+  }
+ },
+ "lighthouse": {
+  "file": "buildings/lighthouse.png",
+  "frame": [
+   48,
+   144
+  ],
+  "lit": "buildings/lighthouse_lit.png",
+  "pivot": [
+   0,
+   144
+  ],
+  "pivot_note": "bottom-left on the ground"
+ },
+ "mole": {
+  "file": "characters/mole.png",
+  "frame": [
+   40,
+   32
+  ],
+  "pivot": [
+   20,
+   32
+  ],
+  "rows": {
+   "idle": {
+    "fps": 2,
+    "frames": 2,
+    "row": 0
+   }
+  }
+ },
+ "old_shed": {
+  "door": [
+   43,
+   76
+  ],
+  "file": "buildings/old_shed.png",
+  "frame": [
+   96,
+   96
+  ],
+  "pivot": [
+   0,
+   96
+  ]
+ },
+ "parallax_hillville": {
+  "file": "parallax/hillville.png",
+  "rows": {
+   "hills": {
+    "row": 1
+   },
+   "mountains": {
+    "row": 0
+   },
+   "trees": {
+    "row": 2
+   }
+  },
+  "strip": [
+   512,
+   96
+  ],
+  "tileable": "horizontal"
+ },
+ "parallax_underground": {
+  "far": {
+   "x": 0
+  },
+  "file": "parallax/underground.png",
+  "near": {
+   "x": 256
+  },
+  "rows": {
+   "bottom": {
+    "row": 5
+   },
+   "clay": {
+    "row": 1
+   },
+   "crystal": {
+    "row": 4
+   },
+   "ice": {
+    "row": 3
+   },
+   "stone": {
+    "row": 2
+   },
+   "topsoil": {
+    "row": 0
+   }
+  },
+  "strip": [
+   256,
+   128
+  ],
+  "tileable": "horizontal"
+ },
+ "rock": {
+  "file": "props/rock.png",
+  "pivot": "bottom-centre of each region",
+  "regions": {
+   "small": [
+    0,
+    0,
+    16,
+    16
+   ],
+   "wide": [
+    16,
+    0,
+    32,
+    16
+   ]
+  }
+ },
+ "ruined_keep": {
+  "door": [
+   72,
+   100
+  ],
+  "file": "buildings/ruined_keep.png",
+  "frame": [
+   144,
+   144
+  ],
+  "pivot": [
+   0,
+   144
+  ]
+ },
+ "sky_bits": {
+  "file": "surface/sky_bits.png",
+  "note": "regions are [x, y, w, h]; stars tile horizontally and vertically",
+  "regions": {
+   "cloud0": [
+    64,
+    2,
+    48,
+    18
+   ],
+   "cloud1": [
+    116,
+    2,
+    40,
+    18
+   ],
+   "cloud2": [
+    160,
+    2,
+    64,
+    18
+   ],
+   "moon": [
+    32,
+    0,
+    24,
+    24
+   ],
+   "stars": [
+    0,
+    32,
+    128,
+    64
+   ],
+   "sun": [
+    0,
+    0,
+    32,
+    32
+   ]
+  }
+ },
+ "sparkle": {
+  "file": "treasures/sparkle.png",
+  "frame": [
+   9,
+   9
+  ],
+  "pivot": [
+   4,
+   4
+  ],
+  "rows": {
+   "sparkle": {
+    "fps": 8,
+    "frames": 4,
+    "row": 0
+   }
+  }
+ },
+ "stump": {
+  "file": "props/stump.png",
+  "frame": [
+   16,
+   16
+  ],
+  "pivot": [
+   8,
+   16
+  ]
+ },
+ "terrain": {
+  "column": "(id - 1) * 4 + variant",
+  "file": "tiles/terrain.png",
+  "frame": [
+   16,
+   16
+  ],
+  "ids": {
+   "1": "dirt",
+   "2": "clay",
+   "3": "stone",
+   "4": "ice",
+   "5": "crystal",
+   "6": "edgestone",
+   "7": "strangestone"
+  },
+  "row": "open mask: 1 up, 2 right, 4 down, 8 left",
+  "variants": 4
+ },
+ "tree": {
+  "file": "props/tree.png",
+  "frame": [
+   32,
+   64
+  ],
+  "note": "tree = whole tree that tall; trunk = what is left after the crown is scooped",
+  "pivot": [
+   16,
+   64
+  ],
+  "rows": {
+   "tree": {
+    "fps": 0,
+    "frames": 4,
+    "row": 0,
+    "tiles": [
+     4,
+     3,
+     2,
+     1
+    ]
+   },
+   "trunk": {
+    "fps": 0,
+    "frames": 4,
+    "row": 1,
+    "tiles": [
+     4,
+     3,
+     2,
+     1
+    ]
+   }
+  }
+ },
+ "walls": {
+  "column": "layer * 4 + variant",
+  "file": "tiles/walls.png",
+  "frame": [
+   16,
+   16
+  ],
+  "layers": {
+   "0": "topsoil",
+   "1": "clay",
+   "2": "stone",
+   "3": "ice",
+   "4": "crystal",
+   "5": "bottom"
+  },
+  "rows": {
+   "ceiling": {
+    "row": 1
+   },
+   "plain": {
+    "row": 0
+   }
+  },
+  "variants": 4
+ },
+ "water": {
+  "file": "tiles/water.png",
+  "frame": [
+   16,
+   16
+  ],
+  "rows": {
+   "body": {
+    "fps": 3,
+    "frames": 2,
+    "row": 1
+   },
+   "surface": {
+    "fps": 3,
+    "frames": 2,
+    "row": 0
+   }
+  }
+ }
+}

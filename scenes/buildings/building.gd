@@ -10,6 +10,10 @@ const GHOST_OK := Color("3cdc5a")
 const GHOST_BAD := Color("ff3b30")
 const GHOST_ALPHA := 0.6
 const UNFOLD_TIME := 0.45
+const ART_ROOT := "res://assets/sprites/buildings/"
+const LIT_ROOT := ART_ROOT
+
+static var _windows: Dictionary = {}
 
 var data: BuildingData
 ## Progress.buildings index while placed; -1 for a new ghost.
@@ -28,6 +32,8 @@ var wobble := 0.0:
 	set(v):
 		wobble = v
 		queue_redraw()
+var _lights := 0.0
+var _glow: Node2D
 ## 0 closed .. 1 rolled up (Garage only).
 var door_open := 0.0:
 	set(v):
@@ -57,6 +63,36 @@ func door_position() -> Vector2:
 
 func _ready() -> void:
 	_tint()
+	if data != null and has_art(data.id) and SpriteArt.has("buildings/%s_lit.png" % data.id):
+		_glow = Node2D.new()
+		_glow.name = "WindowGlow"
+		var mat := CanvasItemMaterial.new()
+		mat.blend_mode = CanvasItemMaterial.BLEND_MODE_ADD
+		_glow.material = mat
+		_glow.draw.connect(_draw_windows)
+		add_child(_glow)
+
+
+func _process(_delta: float) -> void:
+	var l := current_lights() if not ghost else 0.0
+	if not is_equal_approx(l, _lights):
+		_lights = l
+		queue_redraw()
+		if _glow:
+			_glow.queue_redraw()
+
+
+## TimeOfDay.lights() (0 when the autoload is not there).
+static func current_lights() -> float:
+	var tod: Node = Engine.get_main_loop().root.get_node_or_null(^"TimeOfDay") if Engine.get_main_loop() is SceneTree else null
+	return float(tod.call("lights")) if tod != null and tod.has_method("lights") else 0.0
+
+
+func _draw_windows() -> void:
+	if ghost or _lights <= 0.02 or data == null:
+		return
+	var s := size_px()
+	paint_glow(_glow, data.id, Rect2(0, -s.y, s.x, s.y), door_open, _lights)
 
 
 func _tint() -> void:
@@ -69,13 +105,22 @@ func _draw() -> void:
 		return
 	var s := size_px()
 	draw_set_transform(Vector2(wobble, 0))
+	var c := GHOST_OK if ghost_ok else GHOST_BAD
+	var art := has_art(data.id)
+	if ghost and art:
+		# The sprite itself, green when the plot is clear and red when not, plus a bar on the ground.
+		var r := Rect2(0, -s.y, s.x, s.y)
+		paint_art(self, data.id, r, door_open, false, Color.WHITE.lerp(c, 0.65))
+		draw_rect(Rect2(0, -3, s.x, 8), c)
+		return
 	paint(self, data.id, Rect2(0, -s.y, s.x, s.y), door_open)
 	if ghost:
 		# Green when the plot is clear, red when not: a wash, a frame and a bar on the ground.
-		var c := GHOST_OK if ghost_ok else GHOST_BAD
 		draw_rect(Rect2(0, -s.y, s.x, s.y), Color(c, 0.3))
 		draw_rect(Rect2(2, -s.y + 2, s.x - 4, s.y - 4), c, false, 4.0)
 		draw_rect(Rect2(0, -3, s.x, 8), c)
+	elif art and _lights > 0.0:
+		paint_lit(self, data.id, Rect2(0, -s.y, s.x, s.y), door_open, _lights)
 
 
 ## The "clunk": grows out of the ground with an overshoot, a cue and a dust puff.
@@ -141,6 +186,9 @@ static func _poly(ci: CanvasItem, pts: PackedVector2Array, col: Color, grey: boo
 ## Draws building `id` filling rect `r` (its footprint; the ground is r.end.y). Used by Building
 ## and by the build book's cards. door: 0..1 (Garage roll-up). grey: the "can't afford" look.
 static func paint(ci: CanvasItem, id: StringName, r: Rect2, door := 0.0, grey := false) -> void:
+	if has_art(id):
+		paint_art(ci, id, r, door, grey)
+		return
 	var w := r.size.x
 	var h := r.size.y
 	var lw := clampf(w / 40.0, 1.5, 3.0)
@@ -193,3 +241,85 @@ static func paint(ci: CanvasItem, id: StringName, r: Rect2, door := 0.0, grey :=
 			_poly(ci, roof, Color("6fcf97"), grey, lw)
 			_box(ci, body, Color("bdb2a6"), grey, lw)
 			_box(ci, Rect2(x0 + w * 0.4, gy - h * 0.4, w * 0.2, h * 0.4), Color("8a5a2b"), grey, lw)
+
+
+# --- sprites -----------------------------------------------------------------------------------
+
+static func has_art(id: StringName) -> bool:
+	return SpriteArt.has("buildings/%s.png" % id)
+
+
+## The Garage door frame (0 shut, 1 half, 2 open) for a door value 0..1.
+static func door_frame(door: float) -> int:
+	return 0 if door < 0.25 else (1 if door < 0.75 else 2)
+
+
+static func _sheet_rect(id: StringName, tex: Texture2D, door: float) -> Rect2:
+	var fs := SheetSprite.frame_size("buildings/%s.png" % id)
+	var frames := maxi(1, tex.get_width() / fs.x)
+	var f := door_frame(door) if frames > 1 else 0
+	return Rect2(f * fs.x, 0, fs.x, fs.y)
+
+
+## The building's sprite filling `r` (its footprint; exactly footprint size on the ground).
+static func paint_art(ci: CanvasItem, id: StringName, r: Rect2, door := 0.0, grey := false, mod := Color.WHITE) -> void:
+	var tex: Texture2D = SpriteArt.texture("buildings/%s.png" % id)
+	if grey:
+		mod = Color(0.55, 0.53, 0.52, 1.0)
+	ci.draw_texture_rect_region(tex, Rect2(r.position.round(), r.size), _sheet_rect(id, tex, door), mod)
+
+
+## The lit-windows overlay faded in by `amount` (0..1).
+static func paint_lit(ci: CanvasItem, id: StringName, r: Rect2, door: float, amount: float) -> void:
+	var tex: Texture2D = SpriteArt.texture("buildings/%s_lit.png" % id)
+	if tex == null:
+		return
+	ci.draw_texture_rect_region(tex, Rect2(r.position.round(), r.size), _sheet_rect(id, tex, door), Color(1, 1, 1, amount))
+
+
+## Soft additive window glows: one fx/window.png per lit window (clusters of the _lit pixels).
+static func paint_glow(ci: CanvasItem, id: StringName, r: Rect2, door: float, amount: float) -> void:
+	var tex: Texture2D = SpriteArt.texture("buildings/%s_lit.png" % id)
+	var soft: Texture2D = SpriteArt.texture("fx/window.png")
+	if tex == null or soft == null:
+		return
+	var f := _sheet_rect(id, tex, door)
+	for b: Rect2 in window_boxes(id, tex, f):
+		var c := r.position + b.get_center()
+		var sz := b.size + Vector2(10, 10)
+		ci.draw_texture_rect(soft, Rect2((c - sz * 0.5).round(), sz), false, Color(1, 0.85, 0.5, 0.55 * amount))
+
+
+## Bounding boxes of the lit pixel clusters in one frame of a _lit sheet (cached).
+static func window_boxes(id: StringName, tex: Texture2D, frame: Rect2) -> Array:
+	var key := "%s:%d" % [id, int(frame.position.x)]
+	if _windows.has(key):
+		return _windows[key]
+	var img := tex.get_image()
+	var seen := {}
+	var out: Array = []
+	for y in range(int(frame.position.y), int(frame.end.y)):
+		for x in range(int(frame.position.x), int(frame.end.x)):
+			var p := Vector2i(x, y)
+			if seen.has(p) or img.get_pixelv(p).a < 0.3:
+				continue
+			var lo := p
+			var hi := p
+			var stack: Array[Vector2i] = [p]
+			seen[p] = true
+			while not stack.is_empty():
+				var q: Vector2i = stack.pop_back()
+				lo = Vector2i(mini(lo.x, q.x), mini(lo.y, q.y))
+				hi = Vector2i(maxi(hi.x, q.x), maxi(hi.y, q.y))
+				for o in [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]:
+					var n: Vector2i = q + o
+					if n.x < frame.position.x or n.y < frame.position.y or n.x >= frame.end.x or n.y >= frame.end.y:
+						continue
+					if not seen.has(n) and img.get_pixelv(n).a >= 0.3:
+						seen[n] = true
+						stack.append(n)
+			var box := Rect2(Vector2(lo) - frame.position, Vector2(hi - lo + Vector2i.ONE))
+			if box.size.x * box.size.y >= 4.0:
+				out.append(box)
+	_windows[key] = out
+	return out

@@ -84,6 +84,7 @@ func _ready() -> void:
 	else:
 		Progress.reset()
 		Inventory.clear()
+	TimeOfDay.running = true
 	_spawn_vehicles()
 	_anchor = Node2D.new()
 	_anchor.name = "Anchor"
@@ -101,6 +102,7 @@ func _ready() -> void:
 
 
 func _exit_tree() -> void:
+	TimeOfDay.running = false
 	if Events.tile_dug.is_connected(_on_tile_dug):
 		Events.tile_dug.disconnect(_on_tile_dug)
 	if Game.quit_requested.is_connected(autosave):
@@ -289,12 +291,14 @@ func _enter(p: int, scene: StringName) -> void:
 		node.world = underground.world
 		underground.world.track(node)
 		underground.world.add_light(node, LIGHT_RADIUS)
+		VehicleLamp.attach(node, underground.world)
 		underground.world.update_chunks()
 		Progress.visit_layer(p, underground.layer_index_at(node.position))
 	else:
 		node.world = null
 		underground.world.untrack(node)
 		underground.world.remove_light(node)
+		VehicleLamp.detach(node)
 
 
 func _on_player_joined(p: int, _device: int) -> void:

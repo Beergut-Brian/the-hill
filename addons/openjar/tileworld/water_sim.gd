@@ -9,7 +9,9 @@
 ## So poured water runs out into a flat sheet, and a sheet with no drop within reach lies still.
 ## Moves only into loaded, in-shape, non-solid, dry cells: the count never grows. Only cells near a
 ## change are checked (the active set; a removed tile wakes water within flow_reach), so a still
-## lake costs nothing. Draws translucent quads (z above tiles).
+## lake costs nothing. Draws translucent quads (z above tiles), or `texture` when set: a sheet of
+## cell-sized frames, row 0 the surface (no water above), row 1 the body, `texture_frames` columns
+## animated at `texture_fps`.
 extends Node2D
 
 const NEIGHBOURS: Array[Vector2i] = [Vector2i.LEFT, Vector2i.RIGHT, Vector2i.UP, Vector2i.DOWN]
@@ -18,6 +20,12 @@ const ENTER_COOLDOWN := 0.5
 var world: TileWorld
 var live: Dictionary[Vector2i, bool] = {}
 var color := Color(0.25, 0.55, 1.0, 0.55)
+## Optional art (see the header); null draws flat `color` quads.
+var texture: Texture2D
+var texture_frames := 2
+var texture_fps := 3.0
+var _anim_t := 0.0
+var _anim_frame := 0
 
 var _active: Dictionary[Vector2i, bool] = {}
 var _blocked: Dictionary[Vector2i, bool] = {}
@@ -287,8 +295,27 @@ func _drain(dt: float) -> void:
 		_drain_acc = 0.0
 
 
+func _process(delta: float) -> void:
+	if texture == null or texture_fps <= 0.0 or live.is_empty():
+		return
+	_anim_t += delta
+	var f := int(_anim_t * texture_fps) % maxi(texture_frames, 1)
+	if f != _anim_frame:
+		_anim_frame = f
+		queue_redraw()
+
+
 func _draw() -> void:
 	var cs := float(world.shape.cell_size) if world.shape else 16.0
 	var size := Vector2(cs, cs)
+	if texture == null:
+		for c in live:
+			draw_rect(Rect2(Vector2(c) * cs, size), color)
+		return
+	var fw := texture.get_width() / float(maxi(texture_frames, 1))
+	var fh := texture.get_height() / 2.0
+	var shape := world.shape
 	for c in live:
-		draw_rect(Rect2(Vector2(c) * cs, size), color)
+		var up: Vector2i = c * 2 - shape.below(c)
+		var row := 1 if live.has(up) else 0
+		draw_texture_rect_region(texture, Rect2(Vector2(c) * cs, size), Rect2(_anim_frame * fw, row * fh, fw, fh))

@@ -7,6 +7,8 @@
 ## Whole frames with a real renderer (software GPU here, so it measures the rasteriser too):
 ##   godot-render --path . --resolution 1920x1080 res://addons/openjar/tileworld/demo/stress.tscn -- --shape=disk
 ## Args: --seconds=60 --seed=1234 --shape=rect|disk --bodies=60 --out=<path> (default user://tileworld_stress.json)
+##   --tile-art=<script path>: a TileArt script (new() with no args) so the run covers the art path,
+##   e.g. res://addons/openjar/tileworld/demo/demo_tile_art.gd
 extends Node2D
 
 const WARMUP := 2.0
@@ -20,6 +22,7 @@ var world_seed := 1234
 var disk := false
 var bodies_target := 60
 var out_path := "user://tileworld_stress.json"
+var tile_art_path := ""
 
 var world: TileWorld
 var cam: Camera2D
@@ -64,6 +67,8 @@ func _ready() -> void:
 			bodies_target = int(a.get_slice("=", 1))
 		elif a.begins_with("--out="):
 			out_path = a.get_slice("=", 1)
+		elif a.begins_with("--tile-art="):
+			tile_art_path = a.get_slice("=", 1)
 	rng.seed = world_seed
 	for y in range(-1, 2):
 		for x in range(-1, 2):
@@ -82,6 +87,8 @@ func _ready() -> void:
 	world = TileWorld.new()
 	world.chunk_radius = 1
 	world.max_awake_bodies = bodies_target
+	if tile_art_path != "":
+		world.tile_art = (load(tile_art_path) as GDScript).new()
 	world.setup(shape, gen, _palette(), world_seed)
 	add_child(world)
 	if disk:
@@ -311,14 +318,27 @@ static func _stats(a: Array[float], keys: Array[String]) -> Dictionary:
 	return out
 
 
+## Rebuilds every loaded chunk once (free, then load) and times the loads: the chunk build cost.
+func _chunk_build_ms() -> Array[float]:
+	var out: Array[float] = []
+	for k in world.loaded_chunks():
+		world._free_chunk(k)
+		var t0 := Time.get_ticks_usec()
+		world._load_chunk(k)
+		out.append((Time.get_ticks_usec() - t0) / 1000.0)
+	return out
+
+
 func _finish() -> void:
 	finished = true
+	var build_ms := _chunk_build_ms()
 	var total_ms := 0.0
 	for v in frame_ms:
 		total_ms += v
 	var res := get_viewport().get_visible_rect().size
 	var result := {
 		"shape": "disk" if disk else "rect",
+		"tile_art": tile_art_path,
 		"seed": world_seed,
 		"seconds": seconds,
 		"bodies_target": bodies_target,
@@ -337,6 +357,7 @@ func _finish() -> void:
 		"bodies_alive": alive.size(),
 		"tiles_dug": tiles_dug,
 		"chunk_loads": chunk_loads,
+		"chunk_build_ms": _stats(build_ms, ["avg", "p50", "max"]),
 		"loaded_chunks": _stats(chunk_samples, ["avg", "max"]),
 		"water_cells_max": water_max,
 	}

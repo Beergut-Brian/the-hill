@@ -29,6 +29,7 @@ func gather() -> void:
 	var hv: Node = game.hillville
 	if hv != null and hv.has_method("to_save"):
 		Save.set_value("hillville", hv.to_save())
+	Save.set_value("time_of_day", TimeOfDay.to_save())
 
 
 func save_now() -> void:
@@ -57,6 +58,9 @@ func apply() -> void:
 	var hd = Save.get_value("hillville")
 	if hv != null and hv.has_method("load_save") and hd is Dictionary:
 		hv.load_save(hd)
+	var td = Save.get_value("time_of_day")
+	if td is Dictionary:
+		TimeOfDay.load_save(td)
 	var build: Node = game.build
 	if build != null and build.has_method("rebuild"):
 		build.rebuild()

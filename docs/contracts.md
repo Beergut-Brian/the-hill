@@ -275,6 +275,32 @@ func to_save() -> Dictionary             # {"treasures", "vehicles", "buildings"
 func load_save(data: Dictionary) -> void
 ```
 
+### `TimeOfDay` (`scripts/autoload/TimeOfDay.gd`): the surface clock (Art lane, 2026-11-10)
+
+One clock for Hillville's day/night cycle (Kaden: A = day, B = dusk, C = night). It is a tint and
+light curve over the same art, never extra art sets. The curve and the cycle length live in
+`data/time_of_day.tres` (`TimeOfDayData`, `scripts/data/time_of_day_data.gd`): `cycle_seconds`
+(720 = 12 min) and keyframes `{t, sky_top, sky_horizon, band, tint, lights}`. **Underground ignores
+it.** Players, their HUD and treasure sparkles are never tinted.
+
+```gdscript
+signal phase_changed(phase: StringName)  # &"day" | &"dusk" | &"night" | &"dawn"
+var time: float                          # 0..1 through one cycle; 0.0 = morning, about 0.62 dusk, 0.70..0.95 night
+var running: bool = false                # HillGame turns it on; menus, tests and the lobby leave it off
+func set_time(t: float) -> void          # jumps, emits phase_changed when the phase changes
+func phase() -> StringName
+func sky_top() -> Color
+func sky_horizon() -> Color
+func band() -> Color                     # warm horizon band; alpha = strength (0 by day)
+func world_tint() -> Color               # multiply for surface world art (1,1,1 at midday; 0.50,0.55,0.85 at night)
+func lights() -> float                   # 0 = lamps off .. 1 = full night lamps (windows, lanterns, vehicle lamps up top)
+func to_save() -> Dictionary             # {"time": float}
+func load_save(data: Dictionary) -> void
+```
+
+Boot flag `--time=day|dusk|night|dawn|<0..1>` sets the clock at start and freezes it (for shots).
+Save key `"time_of_day"`.
+
 ### Elevator rules (producer calls, 2026-11-10)
 
 - Step into a cage (up top, or any landing underground) and the door starts to close: it waits
@@ -406,7 +432,7 @@ never idling. A pile appears at the shaft with the march clip; never a number.
 `"world"` (`TileWorld.to_save()`), `"inventory"`, `"treasures"` (found ids), `"buildings"`
 (`[{id, cell:[x,y]}]`), `"vehicles"` (unlocked ids), `"players"` (`[{deepest, scene}]`),
 `"gnome_stamp"`, `"residents"` (`{id: ResidentState.to_save()}`), `"seed"`, and `"hillville"`
-(`Hillville.to_save()`: which scrub is cleared). `"treasures"`, `"vehicles"`, `"buildings"`
+(`Hillville.to_save()`: which scrub is cleared), `"time_of_day"` (`TimeOfDay.to_save()`). `"treasures"`, `"vehicles"`, `"buildings"`
 and `"players"` are `Progress.to_save()`'s keys. Placed buildings are rebuilt from `"buildings"`.
 
 ## Module: TileWorld (`addons/openjar/tileworld/`)
@@ -476,7 +502,7 @@ var drain_per_second: float = 0.0             # cells removed per second from op
 @export var flow_reach: int = 8               # cells water looks along a level line for a drop
 func set_darkness(bands: Array) -> void       # [{from: int, to: int, darkness: float, tint: Color}] by depth_of
 func darkness_at(depth: int) -> float
-func add_light(node: Node2D, radius_px: float) -> void    # a headlamp: a hole in the dark that follows node
+func add_light(node: Node2D, radius_px: float, strength: float = 1.0) -> void    # a headlamp: a hole in the dark that follows node
 func remove_light(node: Node2D) -> void
 func to_save() -> Dictionary                  # {"seed", "edits": [x, y, id, ...], "water": [x, y, on, ...]}: only differences from the base
 func load_save(data: Dictionary) -> void
@@ -490,6 +516,32 @@ class_name BreakableProp extends Node2D       # a multi-tile prop: the car, the 
 @export var footprint: Vector2i               # tiles
 @export var support_needed: float = 0.5       # breaks when less than this share of the cells under it is solid
 # On breaking: one FallingBody piece per footprint cell, prop_broke, then the prop frees itself.
+```
+
+#### Tile art and the light pass (Art lane, 2026-11-10)
+
+Additive; with neither set, a TileWorld looks and behaves exactly as before.
+
+```gdscript
+var tile_art: TileArt      # set before setup(); null = the generated flat-colour TileSet
+class_name TileArt extends RefCounted
+func tile_set() -> TileSet                                           # source 0: solid tiles (collision), source 1: back walls (no collision)
+func solid_coords(cell: Vector2i, id: int, open: int) -> Vector2i     # open: neighbour bits 1 up, 2 right, 4 down, 8 left are not solid
+func wall_coords(cell: Vector2i, base_id: int, ceiling: bool) -> Vector2i   # an air cell; (-1, -1) = no wall (shows the backdrop)
+```
+
+TileWorld redraws a cell and its four neighbours on every `set_tile`/`dig`. A dug cell (base solid,
+now air) gets a back wall; a cell that was air in the base world (caves, the Bottom cavern)
+returns what `wall_coords` says (The Hill: none, so the parallax backdrop shows through).
+
+Light pass: `set_darkness` and `darkness_at` keep their meaning (0 daylight .. 1 darkest). The
+overlay never draws pure black: darkness 1 renders as `darkness_floor` (default 0.8) of the band
+tint mixed toward `darkness_night` (a dim navy). Light is worked out per cell and blended softly
+from cell to cell; light reaching into solid ground falls off faster than through open space.
+
+```gdscript
+var darkness_floor: float = 0.8
+func add_light(node: Node2D, radius_px: float, strength: float = 1.0) -> void   # up to 32; the nearest to tracked nodes win
 ```
 
 Rules worth knowing: only chunks within `chunk_radius` of a tracked node have `TileMapLayer`

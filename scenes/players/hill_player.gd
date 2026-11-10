@@ -65,6 +65,7 @@ func _ready() -> void:
 	_shape = CollisionShape2D.new()
 	add_child(_shape)
 	_apply_shape()
+	VehicleGlow.attach(self)
 
 
 func _apply_shape() -> void:
@@ -431,50 +432,43 @@ static func _add_unique(arr: Array[Vector2i], c: Vector2i) -> void:
 # --- drawing -----------------------------------------------------------------------------------
 
 func _draw() -> void:
-	var sx := 1.0 + _squash * 0.2
-	var sy := 1.0 - _squash * 0.2
-	draw_set_transform(Vector2(0, ride_offset), 0.0, Vector2(sx, sy))
+	draw_set_transform(Vector2(0, ride_offset))
 	var c: Color = Players.COLOR.get(player, Color.WHITE)
 	if vehicle != null:
-		Vehicle.draw_vehicle(self, vehicle, facing, c, _swing * 0.6, _aim)
+		var moving := absf(velocity.x) > 10.0 and is_on_floor()
+		Vehicle.draw_vehicle(self, vehicle, facing, c, _swing * 0.6, _aim, _t, moving, player)
 		var sleeper: int = game.sleeper_in(vehicle.id) if game != null and game.has_method("sleeper_in") else -1
 		if sleeper >= 0:
 			Vehicle.draw_sleeper(self, vehicle, facing, sleeper, 0.0, _t)
 	else:
 		_draw_body(c)
-	draw_set_transform(Vector2(0, ride_offset))
 	_draw_effects()
 	draw_set_transform(Vector2.ZERO)
 
 
+## Which animation of Jeff / Chuck to show, and its frame (manifest rows).
+func _pose() -> Array:
+	var file := "characters/%s.png" % SpriteArt.char_of(player)
+	if _swing > 0.0:
+		var n := int(SpriteArt.row(file, "dig_side").get("frames", 3))
+		var f := clampi(int((1.0 - _swing) * n), 0, n - 1)
+		return ["dig_down" if _aim > 0.3 else "dig_side", f]
+	var vy := velocity.dot(up_direction)
+	if not is_on_floor() and absf(vy) > 20.0:
+		return ["air", 0 if vy > 0.0 else 1]
+	if absf(velocity.x) > 10.0:
+		return ["walk", SpriteArt.frame_at(file, "walk", _t)]
+	return ["idle", SpriteArt.frame_at(file, "idle", _t)]
+
+
 func _draw_body(c: Color) -> void:
-	var r := WIDTH * 0.5
-	var top := -HEIGHT + r
-	var bot := -r
-	# Backpack on the back, rounder when full.
+	# Backpack on the back, rounder when full (drawn first: behind Jeff / Chuck).
 	var full := is_full() and backpack_count() > 0
-	var bag := Rect2(-facing * (r + 3) - 3, top + 6, 6, 10)
+	var bag := Rect2(-facing * 8 - 3, -22, 6, 10)
 	draw_rect(bag.grow(1), DARK)
 	draw_rect(bag, Color("a47148").lightened(0.2 if full else 0.0))
-	draw_rect(Rect2(-r - 1, top, WIDTH + 2, bot - top), DARK)
-	draw_circle(Vector2(0, top), r + 1, DARK)
-	draw_circle(Vector2(0, bot), r + 1, DARK)
-	draw_rect(Rect2(-r, top, WIDTH, bot - top), c)
-	draw_circle(Vector2(0, top), r, c)
-	draw_circle(Vector2(0, bot), r, c)
-	var ex := 1.0 * facing
-	draw_rect(Rect2(ex - 4, top - 1, 2, 3), DARK)
-	draw_rect(Rect2(ex + 2, top - 1, 2, 3), DARK)
-	# Hard hat.
-	draw_rect(Rect2(-r - 1, top - r - 1, WIDTH + 2, 4), DARK)
-	draw_rect(Rect2(-r + 1, top - r - 3, WIDTH - 2, 4), HAT)
-	draw_rect(Rect2(-r - 1 + facing * 2, top - r + 0.5, WIDTH + 2, 2), HAT)
-	if _swing > 0.0:
-		var a := lerpf(-1.2, 0.6, 1.0 - _swing) * facing
-		var hand := Vector2(r * facing, -HEIGHT * 0.45)
-		var tip := hand + Vector2(cos(a) * 9.0 * facing, sin(a) * 9.0)
-		draw_line(hand, tip, DARK, 2.0)
-		draw_rect(Rect2(tip - Vector2(2, 2), Vector2(4, 4)), Color(0.85, 0.85, 0.9))
+	var pose := _pose()
+	SpriteArt.draw_char(self, SpriteArt.char_of(player), pose[0], _t, Vector2.ZERO, facing < 0, Color.WHITE, pose[1])
 
 
 func _draw_effects() -> void:

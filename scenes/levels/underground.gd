@@ -3,6 +3,8 @@
 ## boulders, the seeded treasure props, darkness bands from LayerData and the water gush.
 ## Wires the world's signals to Events, Audio and particle bursts. HillGame owns the players and
 ## adds them under the "Players" child (the director does that); HillGame gives them headlamps.
+## The art (HillTileArt tiles and walls, UndergroundLook: parallax, water, props, lamps, residents)
+## is visuals only and falls back to the flat look when the sheets are missing.
 class_name Underground
 extends Node2D
 
@@ -41,6 +43,7 @@ var flash_layer := 0
 
 var _layers: Array = []
 var _cages: Node2D
+var look: UndergroundLook
 var _gush := {"t": -1.0, "acc": 0.0, "done": false, "cells": []}
 
 
@@ -63,6 +66,8 @@ func _ready() -> void:
 	world = TileWorld.new()
 	world.name = "World"
 	world.add_to_group(&"tile_world")
+	if HillTileArt.available():
+		world.tile_art = HillTileArt.new(generator, world.collision_layer)
 	world.setup(shape, generator, palette, world_seed)
 	add_child(world)
 	var bands: Array = []
@@ -82,6 +87,9 @@ func _ready() -> void:
 	_cages.z_index = 2
 	_cages.draw.connect(_draw_cages)
 	add_child(_cages)
+	look = UndergroundLook.new()
+	add_child(look)
+	look.build(self)
 	players_root = Node2D.new()
 	players_root.name = "Players"
 	add_child(players_root)
@@ -312,6 +320,9 @@ func _draw_backdrop(back: Node2D) -> void:
 
 
 func _draw_cages() -> void:
+	if look:
+		look.draw_cages(_cages)
+		return
 	var bar := Color("c9c9c9")
 	var gold := Color("f2c94c")
 	var x0 := HillGenerator.SHAFT_X * 16.0
