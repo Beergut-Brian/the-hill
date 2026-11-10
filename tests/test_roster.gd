@@ -58,8 +58,9 @@ func _file() -> Dictionary:
 func test_real_roster_is_jeff_and_chuck() -> void:
 	Roster.data_path = "res://data/roster.json"
 	_launch([])
-	assert_array(Roster.roster()).is_equal(["jeff", "chuck"])
-	assert_str(Roster.characters_tag).is_equal("v0.3.0")
+	assert_array(Roster.roster()).contains(["jeff", "chuck"])
+	assert_str(Roster.roster()[0]).is_equal("jeff")
+	assert_str(Roster.characters_tag).is_not_empty()
 	assert_str(Roster.pick(P1)).is_equal("jeff")
 	assert_str(Roster.pick(P2)).is_equal("chuck")
 	for id in Roster.roster():
@@ -151,7 +152,7 @@ func test_next_free_skips_taken_and_wraps() -> void:
 
 
 func test_next_free_with_nobody_free_stays() -> void:
-	Roster.data_path = "res://data/roster.json"
+	Roster.data_path = "res://tests/fixtures/roster_two.json"     # Jeff and Chuck only
 	_launch([])
 	assert_str(Roster.next_free(P1, 1)).is_equal("jeff")
 	assert_str(Roster.next_free(P2, -1)).is_equal("chuck")

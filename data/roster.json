@@ -1,9 +1,13 @@
 {
 	"source": "openjar-characters",
-	"characters_tag": "v0.3.0",
+	"characters_tag": "v0.4.0",
 	"roster": [
 		"jeff",
-		"chuck"
+		"chuck",
+		"astro_ana",
+		"coach_whistle",
+		"ribbit",
+		"zorp"
 	],
 	"defaults": {
 		"P1": "jeff",
@@ -29,6 +33,38 @@
 			"voice": "",
 			"barks": [],
 			"default_for": 2
+		},
+		"astro_ana": {
+			"name": "Astro Ana",
+			"glb": "res://assets/characters/astro_ana/astro_ana.glb",
+			"pixel": "res://assets/characters/astro_ana/pixel.png",
+			"voice": "",
+			"barks": [],
+			"default_for": 0
+		},
+		"coach_whistle": {
+			"name": "Coach Whistle",
+			"glb": "res://assets/characters/coach_whistle/coach_whistle.glb",
+			"pixel": "res://assets/characters/coach_whistle/pixel.png",
+			"voice": "",
+			"barks": [],
+			"default_for": 0
+		},
+		"ribbit": {
+			"name": "Ribbit",
+			"glb": "res://assets/characters/ribbit/ribbit.glb",
+			"pixel": "res://assets/characters/ribbit/pixel.png",
+			"voice": "",
+			"barks": [],
+			"default_for": 0
+		},
+		"zorp": {
+			"name": "Zorp",
+			"glb": "res://assets/characters/zorp/zorp.glb",
+			"pixel": "res://assets/characters/zorp/pixel.png",
+			"voice": "",
+			"barks": [],
+			"default_for": 0
 		}
 	}
 }
