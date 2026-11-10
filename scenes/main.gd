@@ -1,15 +1,16 @@
-## Boot scene: lobby (start screen and main menu), drop-in players, round loop, pause menu.
-## Replace the Arena node with this game's level scene; keep the node names other lanes use.
-## A pad that joins mid-game waits on its spawn (see-through) and plays from the next round.
-## --proto / --proto-auto: the Arena is replaced by the Phase 1 prototype and the lobby is skipped.
+## Boot scene: the lobby (start screen and main menu), then The Hill (HillGame) under Main, before
+## UI, so pause and the Debug overlay stay on top. The lobby is customised here, in code: title,
+## accent and the Jeff / Chuck placeholder figures. Restart (back to the lobby) saves and frees
+## the game. --demo skips the lobby (Game.demo) and plays with both players virtual.
+## --proto / --proto-auto boot the Phase 1 prototype instead and skip the lobby.
 extends Node2D
 
-@onready var spawns: Node2D = $Arena/Spawns
-@onready var players_root: Node2D = $Arena/Players
-
-const PLAYER_SCENE := preload("res://scenes/players/player.tscn")
 const PROTO_SCENE := "res://scenes/proto/foundation_proto.tscn"
-var _players := {}
+const LobbyFigure := preload("res://scenes/ui/lobby_figure.gd")
+const ACCENT := Color("f2b134")
+
+## The running HillGame, or null in the lobby.
+var game: HillGame
 var _proto: Node
 
 
@@ -27,12 +28,14 @@ func _ready() -> void:
 	if mode != &"":
 		_boot_proto(mode == &"auto")
 		return
-	Players.player_joined.connect(_on_player_joined)
-	Players.player_left.connect(_on_player_left)
+	_customise_lobby()
 	Game.lobby_ready.connect(_on_lobby_ready)
-	Game.back_to_lobby.connect(_clear_players)
+	Game.back_to_lobby.connect(_clear_game)
 	Game.round_started.connect(_on_round_started)
 	if Game.demo:
+		# The demo plays from a wiped save in a throwaway profile, never the kid's.
+		Save.profile = "demo"
+		Save.wipe()
 		(func() -> void:
 			Players.join_virtual(Players.P1)
 			Players.join_virtual(Players.P2)
@@ -41,49 +44,60 @@ func _ready() -> void:
 		Game.to_lobby()
 
 
+func _customise_lobby() -> void:
+	UiStyle.accent = ACCENT
+	var lobby := get_node_or_null(^"UI/Lobby")
+	if lobby == null:
+		return
+	lobby.title_text = "The Hill"
+	for p in [Players.P1, Players.P2]:
+		var spot := lobby.get_node_or_null("Spots/P%d" % (p + 1))
+		var old: Control = spot.get_node_or_null(^"Character") if spot else null
+		if old == null:
+			continue
+		var fig := LobbyFigure.new()
+		fig.player = p
+		fig.position = old.position
+		fig.size = old.size
+		fig.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		var at := old.get_index()
+		spot.remove_child(old)
+		old.free()
+		fig.name = "Character"
+		spot.add_child(fig)
+		spot.move_child(fig, at)
+		fig.set_joined(spot.get("joined") == true)
+
+
 func _on_lobby_ready(players: Array) -> void:
-	for p in players:
-		_spawn(p)
+	_start_game(players)
 
 
 func _on_round_started(_round: int) -> void:
-	for p in Players.active_players():
-		_spawn(p)
-		_players[p].waiting = false
+	if game == null:
+		_start_game([])
 
 
-func _on_player_joined(player: int, _device: int) -> void:
-	if Game.state != Game.State.LOBBY:
-		_spawn(player, true)
-
-
-func _on_player_left(player: int) -> void:
-	if _players.has(player):
-		_players[player].queue_free()
-		_players.erase(player)
-
-
-func _clear_players() -> void:
-	for p in _players.values():
-		p.queue_free()
-	_players.clear()
-
-
-func _spawn(player: int, waiting := false) -> void:
-	if _players.has(player):
+func _start_game(players: Array) -> void:
+	if game != null:
 		return
-	var p := PLAYER_SCENE.instantiate()
-	p.player = player
-	p.waiting = waiting
-	p.global_position = spawns.get_child(player).global_position
-	players_root.add_child(p)
-	_players[player] = p
+	game = HillGame.new()
+	game.start_players = players.duplicate()
+	add_child(game)
+	move_child(game, $UI.get_index())
 
 
-## Swaps the Arena for the prototype (before UI, so pause and the Debug overlay keep working) and
-## plays straight away. Restart from the pause menu rebuilds it instead of showing the lobby.
+func _clear_game() -> void:
+	if game == null:
+		return
+	game.autosave()
+	game.queue_free()
+	game = null
+
+
+## Boots the prototype (before UI, so pause and the Debug overlay keep working) and plays straight
+## away. Restart from the pause menu rebuilds it instead of showing the lobby.
 func _boot_proto(auto: bool) -> void:
-	$Arena.free()
 	_proto = (load(PROTO_SCENE) as PackedScene).instantiate()
 	_proto.auto = auto
 	add_child(_proto)

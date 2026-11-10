@@ -1,0 +1,244 @@
+## The elevator, exactly the contract's "Elevator rules": stepping into a cage (up top, or any
+## landing underground) starts the door; it waits DOOR_WAIT so the other player can hop in (A
+## skips the wait); everyone in that cage when it closes rides together; stepping out before it
+## closes leaves the ride. The ride is RIDE_TIME (lock, sink / rise, cage flash, `elevator` cue).
+## Down lands at the deepest layer any rider has visited, at that layer's landing; up empties the
+## riders' backpacks into Inventory (`pile_dump`) and lands at hillville.arrival(). A cage re-arms
+## for a player only once they have stepped out of it. Every ride autosaves.
+## The rules live in Door (who rides, when) and destination() (where to): no scene needed.
+class_name HillElevator
+extends Node
+
+signal door_started(cage: StringName, player: int)
+signal ride_started(riders: Array, from: StringName)
+signal ride_finished(riders: Array, to: StringName)
+
+const DOOR_WAIT := 1.0
+const RIDE_TIME := 0.6
+const SINK_PX := 18.0
+const HILLVILLE := &"hillville"
+const UNDERGROUND := &"underground"
+
+
+## The door rules, fed once a physics frame. `inside`: player -> the cage key their feet are in
+## (&"" = none); `skip`: player -> A pressed this frame. Returns the rides that closed this
+## frame: [{cage: StringName, riders: Array[int]}].
+class Door:
+	var waiting := {}      # cage -> {t: float, riders: Array}
+	var must_exit := {}    # player -> true until they step out of a cage
+	var busy := {}         # player -> true while riding
+	var _started: Array = []   # who stepped in on the last step: [[cage, player], ...]
+
+	func step(inside: Dictionary, skip: Dictionary, delta: float) -> Array:
+		for p in inside:
+			if inside[p] == &"":
+				must_exit.erase(p)
+		for key in waiting.keys():
+			var w: Dictionary = waiting[key]
+			w.riders = w.riders.filter(func(p: int) -> bool: return inside.get(p, &"") == key and not busy.has(p))
+			if w.riders.is_empty():
+				waiting.erase(key)
+		var started: Array = []
+		for p in inside:
+			var key: StringName = inside[p]
+			if key == &"" or must_exit.has(p) or busy.has(p):
+				continue
+			if not waiting.has(key):
+				waiting[key] = {"t": -delta, "riders": []}
+			if not waiting[key].riders.has(p):
+				waiting[key].riders.append(p)
+				started.append([key, p])
+		_started = started
+		var closed: Array = []
+		for key in waiting.keys():
+			var w: Dictionary = waiting[key]
+			w.t += delta
+			var go: bool = w.t >= DOOR_WAIT - 0.0001
+			for p in w.riders:
+				if skip.get(p, false):
+					go = true
+			if go:
+				var riders: Array = w.riders.duplicate()
+				riders.sort()
+				closed.append({"cage": key, "riders": riders})
+				waiting.erase(key)
+				for p in riders:
+					busy[p] = true
+		return closed
+
+	## Who stepped in on the last step: [[cage, player], ...].
+	func just_entered() -> Array:
+		return _started
+
+	## The ride is over: the riders must step out before that cage takes them again.
+	func arrived(riders: Array) -> void:
+		for p in riders:
+			busy.erase(p)
+			must_exit[p] = true
+
+	func forget(p: int) -> void:
+		busy.erase(p)
+		must_exit.erase(p)
+		for key in waiting.keys():
+			waiting[key].riders.erase(p)
+			if waiting[key].riders.is_empty():
+				waiting.erase(key)
+
+	## 0..1 of the door wait for a cage (0 when nobody waits).
+	func progress(key: StringName) -> float:
+		if not waiting.has(key):
+			return 0.0
+		return clampf(waiting[key].t / DOOR_WAIT, 0.0, 1.0)
+
+
+## Where a ride from `from` goes. Down: the deepest layer any rider visited. Up: Hillville.
+static func destination(from: StringName, riders: Array, deepest: Dictionary) -> Dictionary:
+	if from == HILLVILLE:
+		var d := 0
+		for p in riders:
+			d = maxi(d, int(deepest.get(p, 0)))
+		return {"scene": UNDERGROUND, "layer": d}
+	return {"scene": HILLVILLE, "layer": -1}
+
+
+static func cage_key(scene: StringName, layer: int) -> StringName:
+	return HILLVILLE if scene == HILLVILLE else StringName("u%d" % layer)
+
+
+## HillGame (untyped so this script stands alone).
+var game: Node
+var door := Door.new()
+var _rides: Array = []   # {riders, from, cage, t, to}
+
+
+func is_riding(player: int) -> bool:
+	return door.busy.has(player)
+
+
+func forget(player: int) -> void:
+	door.forget(player)
+	for r in _rides:
+		r.riders.erase(player)
+
+
+## The cage key the player's feet are in, or &"".
+func cage_of(player: int) -> StringName:
+	var node: Node2D = game.player_node(player)
+	if node == null:
+		return &""
+	var scene: StringName = game.director.scene_of(player)
+	if scene == HILLVILLE:
+		var hv: Node = game.hillville
+		if hv != null and hv.has_method("cage_zone") and (hv.cage_zone() as Rect2).has_point(node.global_position):
+			return HILLVILLE
+	elif scene == UNDERGROUND:
+		var i: int = game.underground.cage_zone_at(node.global_position)
+		if i >= 0:
+			return cage_key(UNDERGROUND, i)
+	return &""
+
+
+func check(delta: float) -> void:
+	var inside := {}
+	var skip := {}
+	for p: int in game.players:
+		if door.busy.has(p):
+			continue
+		inside[p] = cage_of(p)
+		skip[p] = bool(game.players[p].get("a_press_frame"))
+	for r in door.step(inside, skip, delta):
+		_start(r.cage, r.riders)
+	for e in door.just_entered():
+		Audio.play("cage_door")
+		door_started.emit(e[0], e[1])
+	_animate_doors()
+	for r in _rides.duplicate():
+		_advance(r, delta)
+
+
+func _animate_doors() -> void:
+	var hv: Node = game.hillville
+	var hv_wait := door.progress(HILLVILLE)
+	if hv != null and "cage_flash" in hv and not _cage_busy(HILLVILLE):
+		hv.cage_flash = hv_wait * 0.35
+	var ug: Node = game.underground
+	for i in ug.layers().size():
+		var key := cage_key(UNDERGROUND, i)
+		if door.waiting.has(key) and not _cage_busy(key):
+			ug.flash_layer = i
+			ug.cage_flash = door.progress(key) * 0.35
+
+
+func _cage_busy(key: StringName) -> bool:
+	for r in _rides:
+		if r.cage == key:
+			return true
+	return false
+
+
+func _start(cage: StringName, riders: Array) -> void:
+	var from := HILLVILLE if cage == HILLVILLE else UNDERGROUND
+	var to := destination(from, riders, Progress.deepest)
+	for p in riders:
+		var node: Node = game.player_node(p)
+		if node != null:
+			node.locked = true
+	Audio.play("elevator")
+	_rides.append({"riders": riders.duplicate(), "from": from, "cage": cage, "t": 0.0, "to": to})
+	if from == UNDERGROUND:
+		game.underground.flash_layer = int(String(cage).trim_prefix("u"))
+	ride_started.emit(riders, from)
+
+
+func _advance(r: Dictionary, delta: float) -> void:
+	r.t += delta
+	var k := clampf(r.t / RIDE_TIME, 0.0, 1.0)
+	var root: Node = game.hillville if r.from == HILLVILLE else game.underground
+	for p in r.riders:
+		var node: Node2D = game.player_node(p)
+		if node == null:
+			continue
+		node.ride_offset = SINK_PX * k * (1.0 if r.from == HILLVILLE else -1.0)
+		node.modulate.a = 1.0 - k * 0.7
+	if root != null and "cage_flash" in root:
+		root.cage_flash = absf(sin(k * PI * 3.0))
+	if r.t < RIDE_TIME:
+		return
+	_rides.erase(r)
+	if root != null and "cage_flash" in root:
+		root.cage_flash = 0.0
+	var to: Dictionary = r.to
+	var dumped := false
+	var i := 0
+	for p in r.riders:
+		var node: Node2D = game.player_node(p)
+		if node == null:
+			continue
+		node.ride_offset = 0.0
+		node.modulate.a = 1.0
+		var pos: Vector2
+		if to.scene == HILLVILLE:
+			var bag: Dictionary = node.take_backpack()
+			for b in bag:
+				Inventory.add(StringName(b), int(bag[b]))
+				dumped = true
+			pos = game.hillville.arrival()
+		else:
+			pos = game.underground.landing(to.layer)
+		pos.x += (i - (r.riders.size() - 1) * 0.5) * 14.0
+		game.place_player(p, to.scene, pos)
+		node.locked = false
+		i += 1
+	if dumped:
+		Audio.play("pile_dump")
+	door.arrived(r.riders)
+	var dest: Node = game.hillville if to.scene == HILLVILLE else game.underground
+	if to.scene == UNDERGROUND:
+		game.underground.flash_layer = to.layer
+	if dest != null and "cage_flash" in dest:
+		dest.cage_flash = 1.0
+		var tw := dest.create_tween()
+		tw.tween_property(dest, "cage_flash", 0.0, 0.3)
+	ride_finished.emit(r.riders, to.scene)
+	if game.has_method("autosave"):
+		game.autosave()

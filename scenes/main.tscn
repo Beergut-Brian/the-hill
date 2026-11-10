@@ -4,37 +4,8 @@
 [ext_resource type="PackedScene" path="res://scenes/ui/lobby.tscn" id="2_lobby"]
 [ext_resource type="PackedScene" path="res://scenes/ui/pause_menu.tscn" id="3_pause"]
 
-[sub_resource type="RectangleShape2D" id="floor_shape"]
-size = Vector2(1920, 120)
-
 [node name="Main" type="Node2D"]
 script = ExtResource("1_main")
-
-[node name="Arena" type="Node2D" parent="."]
-
-[node name="Floor" type="StaticBody2D" parent="Arena"]
-position = Vector2(960, 1000)
-collision_layer = 1
-
-[node name="Shape" type="CollisionShape2D" parent="Arena/Floor"]
-shape = SubResource("floor_shape")
-
-[node name="Visual" type="ColorRect" parent="Arena/Floor"]
-offset_left = -960.0
-offset_top = -40.0
-offset_right = 960.0
-offset_bottom = 80.0
-color = Color(0.2, 0.2, 0.25, 1)
-
-[node name="Spawns" type="Node2D" parent="Arena"]
-
-[node name="P1" type="Marker2D" parent="Arena/Spawns"]
-position = Vector2(760, 900)
-
-[node name="P2" type="Marker2D" parent="Arena/Spawns"]
-position = Vector2(1160, 900)
-
-[node name="Players" type="Node2D" parent="Arena"]
 
 [node name="UI" type="CanvasLayer" parent="."]
 

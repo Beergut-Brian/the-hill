@@ -176,6 +176,9 @@ and prints the path. `--screenshot-after=<seconds>` CLI flag does it headlessly 
 `--shot-dir=`, `--screenshot-after=`, and for The Hill: `--proto` boots
 `scenes/proto/foundation_proto.tscn` (the Phase 1 risk prototype) instead of the lobby, and
 `--proto-auto` does the same with a scripted, input-free run-through (for shots and smoke boots).
+`--demo` boots straight into the game with both players virtual and plays the first-playable
+path by script (clear scrub, ride down, dig to Clay, find the car, ride up, build a Barn and a
+Garage, the Excavator rolls out); it starts from a wiped save in a throwaway profile (`demo`).
 
 ## Launcher handshake
 
@@ -228,8 +231,65 @@ func clear() -> void
 ### `World`: the underground
 
 `World` in GAME.md is the underground scene's `TileWorld` node (below). It is in the group
-`&"tile_world"`; the game connects its `tile_dug` to `Events.tile_dug` and `Inventory.add`.
-`World.dig(cell, shape, player)` is `TileWorld.dig`.
+`&"tile_world"`; the game connects its `tile_dug` to `Events.tile_dug` and to the digging
+player's backpack (below). `World.dig(cell, shape, player)` is `TileWorld.dig`.
+
+### Backpack and the shaft pile
+
+Each player carries a backpack underground. A dug block goes into the digger's backpack; when it
+is full the block still pops out of the ground with its sound, but is not kept (the backpack icon
+turns round and happy, digging never stops). Riding the elevator up empties every rider's
+backpack into `Inventory` (the shaft pile). Up top, scooped scrub goes straight to `Inventory`.
+Capacity is `Progress.backpack_capacity()`: `(BACKPACK_START + barns) * BACKPACK_PER_SIZE`
+blocks, so a Barn's "+1 backpack size" is +20 blocks.
+
+### `Progress` (`scripts/autoload/Progress.gd`): run state
+
+Everything saved that is not tiles or blocks. Emits the `Events` signals for what it owns.
+
+```gdscript
+const BACKPACK_START := 2
+const BACKPACK_PER_SIZE := 20
+signal changed()
+var treasures: Array[StringName]         # found ids
+var vehicles: Array[StringName]          # unlocked ids, always has &"front_loader"
+var buildings: Array                     # [{"id": StringName, "cell": Vector2i}]; index = handle
+var deepest: Dictionary                  # player -> deepest layer index visited (0 = Topsoil)
+var scene_of: Dictionary                 # player -> &"hillville" | &"underground" at last save
+func reset() -> void
+func has_treasure(id: StringName) -> bool
+func find_treasure(id: StringName, player: int = -1) -> bool   # first time only: Events.treasure_found
+func vehicle_rows() -> Array                                   # VehicleData by order
+func vehicle_data(id: StringName) -> VehicleData
+func has_vehicle(id: StringName) -> bool
+func next_vehicle() -> VehicleData       # lowest order not unlocked; null if its needs_treasure is missing
+func unlock_next_vehicle() -> StringName # the Garage hook: Events.vehicle_unlocked; &"" if none
+func building_data(id: StringName) -> BuildingData
+func count_buildings(id: StringName) -> int
+func add_building(id: StringName, cell: Vector2i) -> int       # Events.building_placed
+func move_building(index: int, to: Vector2i) -> void           # Events.building_moved (free, any vehicle or on foot)
+func backpack_capacity() -> int
+func visit_layer(player: int, layer_index: int) -> bool
+func deepest_of(player: int) -> int
+func to_save() -> Dictionary             # {"treasures", "vehicles", "buildings", "players"}
+func load_save(data: Dictionary) -> void
+```
+
+### Elevator rules (producer calls, 2026-11-10)
+
+- Step into a cage (up top, or any landing underground) and the door starts to close: it waits
+  `DOOR_WAIT` (1.0 s) so the other player can hop in; A skips the wait. Everyone in the cage
+  when it closes rides together. Stepping out before it closes leaves the ride.
+- Going down lands at the deepest layer any rider has visited (`Progress.deepest`), at that
+  layer's landing beside the shaft. The ride itself is under one second.
+- Going up empties the riders' backpacks into the shaft pile.
+- Every ride autosaves (also every 60 s, and on `Game.quit_requested`).
+- A vehicle rides with its driver.
+
+### Water gush (producer call, 2026-11-10)
+
+Water stays conserved while it flows, but a breached pocket **gushes** for `GUSH_TIME` (about
+2 s): its emptied cells refill from the source, so a tunnel floods and floats the player up.
 
 ### Data schemas (`scripts/data/*.gd`, rows in `data/`)
 
@@ -345,7 +405,9 @@ never idling. A pile appears at the shaft with the march clip; never a number.
 
 `"world"` (`TileWorld.to_save()`), `"inventory"`, `"treasures"` (found ids), `"buildings"`
 (`[{id, cell:[x,y]}]`), `"vehicles"` (unlocked ids), `"players"` (`[{deepest, scene}]`),
-`"gnome_stamp"`, `"residents"` (`{id: ResidentState.to_save()}`), `"seed"`.
+`"gnome_stamp"`, `"residents"` (`{id: ResidentState.to_save()}`), `"seed"`, and `"hillville"`
+(`Hillville.to_save()`: which scrub is cleared). `"treasures"`, `"vehicles"`, `"buildings"`
+and `"players"` are `Progress.to_save()`'s keys. Placed buildings are rebuilt from `"buildings"`.
 
 ## Module: TileWorld (`addons/openjar/tileworld/`)
 
