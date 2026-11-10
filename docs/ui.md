@@ -195,7 +195,7 @@ children (exported builds lose those).
   `handoff/shots/`.
 - **Junk Yard Zap** (3D): title "JUNK YARD ZAP", accent `#ffb21f`, sunburst `#ff6a2b`, deep
   `#33201a`; the yard diorama as `backdrop_scene`, the JYZ Jarling rig as characters.
-- **The Hill** (2D pixel art): `pixel_art = true`, `character_scale = 4` (or whatever integer
+- **The Hill** (2D pixel art; in this repo: `data/menu_skin.tres`, `scenes/ui/hill_menu_*`): `pixel_art = true`, `character_scale = 4` (or whatever integer
   your sprites use), characters as Node2D scenes (an `AnimatedSprite2D` with feet at the origin;
   add `cheer()` to play a jump animation), title as a pixel logo PNG in `title_texture`
   (nearest-filtered), an earth-and-sky palette (e.g. accent `#ffd34a`, sunburst `#5fb4e8`, deep
