@@ -107,6 +107,14 @@ func _exit_tree() -> void:
 		Game.quit_requested.disconnect(autosave)
 
 
+## A driven vehicle's parked node is out of the tree: free it with the game (no orphan on restart).
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_PREDELETE:
+		for v in vehicles.values():
+			if is_instance_valid(v) and not (v as Node).is_inside_tree():
+				(v as Node).free()
+
+
 func _make(paths: Array) -> Node:
 	for path: String in paths:
 		if not ResourceLoader.exists(path):
