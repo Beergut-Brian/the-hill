@@ -9,6 +9,9 @@ const ROOT := "res://assets/sprites/"
 const MANIFEST := ROOT + "manifest.json"
 
 static var _manifest: Dictionary = {}
+## Sheets built at runtime (CharacterSheet: a roster character's pixel form): file -> texture.
+## Their manifest entries sit in the manifest under "virtual:<file>".
+static var _virtual: Dictionary = {}
 
 var fps := 0.0
 var frames := 1
@@ -26,6 +29,25 @@ static func manifest() -> Dictionary:
 	return _manifest
 
 
+## Registers a runtime-built sheet under a virtual file name ("roster/pip.png") with its entry.
+static func add_virtual(file: String, tex: Texture2D, e: Dictionary) -> void:
+	manifest()
+	_virtual[file] = tex
+	_manifest["virtual:" + file] = e
+
+
+static func remove_virtual(file: String) -> void:
+	_virtual.erase(file)
+	_manifest.erase("virtual:" + file)
+
+
+## The texture of a sheet (virtual or under assets/sprites/), or null.
+static func sheet_texture(file: String) -> Texture2D:
+	if _virtual.has(file):
+		return _virtual[file]
+	return load(ROOT + file) if ResourceLoader.exists(ROOT + file) else null
+
+
 ## The manifest entry for a sheet file ("props/boulder.png"), or {}.
 static func entry(file: String) -> Dictionary:
 	for k in manifest():
@@ -36,7 +58,7 @@ static func entry(file: String) -> Dictionary:
 
 
 static func has_sheet(file: String) -> bool:
-	return ResourceLoader.exists(ROOT + file)
+	return _virtual.has(file) or ResourceLoader.exists(ROOT + file)
 
 
 ## Frame size of a sheet: manifest "frame", else square frames as tall as the image.
@@ -44,7 +66,7 @@ static func frame_size(file: String) -> Vector2i:
 	var e := entry(file)
 	if e.has("frame"):
 		return Vector2i(int(e.frame[0]), int(e.frame[1]))
-	var tex: Texture2D = load(ROOT + file)
+	var tex := sheet_texture(file)
 	return Vector2i(tex.get_height(), tex.get_height()) if tex else Vector2i(16, 16)
 
 
@@ -63,7 +85,7 @@ static func make(file: String, anim := "") -> SheetSprite:
 	if not has_sheet(file):
 		return null
 	var s := SheetSprite.new()
-	s.texture = load(ROOT + file)
+	s.texture = sheet_texture(file)
 	s.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	s.centered = false
 	var e := entry(file)

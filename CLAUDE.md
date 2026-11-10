@@ -46,9 +46,11 @@ scenes/main.tscn        Boot scene: title card, controller detection, drop-in P2
 scenes/players/         Player scenes. Systems lane owns.
 scenes/levels/          Levels / rounds / arenas. Gameplay lane owns.
 scenes/ui/              Pause, restart, HUD. Systems owns structure, Art owns theme.
-scripts/autoload/       Game.gd, Save.gd, Audio.gd, Debug.gd, Players.gd. Systems lane owns.
+scripts/autoload/       Game.gd, Save.gd, Audio.gd, Debug.gd, Players.gd, Roster.gd. Systems lane owns.
 scripts/gameplay/       Gameplay lane owns.
-data/                   .tres / .json content: upgrades, enemies, waves. Content lane owns.
+data/                   .tres / .json content: upgrades, enemies, waves. Content lane owns
+                        (except roster.json: written by scripts/tools/sync_characters.sh).
+assets/characters/      Vendored playable characters (sync_characters.sh). Do not edit by hand.
 assets/                 sprites, models, audio, fonts. Art and Audio lanes own.
 art/prompts/            Generation prompt packs for this game's look. Art lane owns.
 store/                  grid.png (600x900), hero.png (920x430), clip.mp4 for the launcher.
@@ -94,8 +96,11 @@ to visual PRs.
 Player 1 is always **green**, Player 2 is always **red**. The first controller to press a
 button becomes P1. `Players.gd` owns the mapping; never hard-code device ids.
 
-Jeff (P1) and Chuck (P2) are player-locked characters from `openjar-characters`; any other
-library character is universal. Never put a player-locked character on the wrong side.
+Players choose who they play as in the lobby (`Roster`, `docs/roster.md`). Jeff is the P1 default
+and Chuck the P2 default; any playable character can be either player, never both at once. The
+slot's colour (green / red) stays with the player whoever they pick. Spawn the player's character
+from `Roster.info(Roster.pick(p))`, never a hard-coded Jeff or Chuck. Residents (Mole, Dragon, ...)
+are never playable.
 
 ## Commit messages
 

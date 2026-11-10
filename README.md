@@ -28,7 +28,7 @@ Godot 4 by a producer agent (Hermes) and parallel agent lanes, played on the fam
 | `docs/setup.md` | Godot, docs, gdUnit4, submodule, export templates |
 | `playtests/_TEMPLATE.md` | What Hermes fills from Kaden's voice note |
 | `project.godot` | 1080p, Forward+, input map for P1/P2 (Xbox layout, 0.15 dead zone), autoloads |
-| `scripts/autoload/` | `Players` (join, green/red), `Game` (state machine), `Save`, `Audio`, `Debug` |
+| `scripts/autoload/` | `Players` (join, green/red), `Roster` (who you play as), `Game` (state machine), `Save`, `Audio`, `Debug` |
 | `scenes/main.tscn` | Boot scene: press any button → spawn → round |
 | `scenes/players/player.tscn` | Placeholder coloured-box player with move/jump/action + squash |
 | `tests/test_smoke.gd` | gdUnit4: scene loads, input map complete, round cycle, save roundtrip |
@@ -39,7 +39,9 @@ Godot 4 by a producer agent (Hermes) and parallel agent lanes, played on the fam
 ## Players
 
 P1 is green (`#3cc24a`), P2 is red (`#e4393c`). First pad to press a button is P1.
-Jeff (P1) and Chuck (P2) are player-locked characters from `openjar-characters`.
+Each player picks a character on their podium in the lobby (the chooser, `Roster`); Jeff is the P1
+default and Chuck the P2 default. Picks are remembered across every Open Jar game and the launcher.
+The roster is vendored from `openjar-characters` by `scripts/tools/sync_characters.sh` (`docs/roster.md`).
 
 ## Run
 

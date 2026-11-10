@@ -13,8 +13,13 @@ static var _tex: Dictionary = {}
 ## freed before the frame renders and shows as a white box), or null when the file is not there.
 static func texture(file: String) -> Texture2D:
 	if not _tex.has(file):
-		_tex[file] = load(ROOT + file) if ResourceLoader.exists(ROOT + file) else null
+		_tex[file] = SheetSprite.sheet_texture(file)
 	return _tex[file]
+
+
+## Drops a cached texture (a runtime-built sheet was replaced).
+static func forget(file: String) -> void:
+	_tex.erase(file)
 
 
 static func has(file: String) -> bool:
@@ -73,10 +78,11 @@ static func draw(ci: CanvasItem, file: String, col: int, row_i: int, at: Vector2
 		ci.draw_texture_rect_region(tex, Rect2(p.x - pv.x, p.y - pv.y, fs.x, fs.y), src, mod)
 
 
-## A character-sheet draw by animation name ("jeff", "walk", t).
+## A character-sheet draw by Roster id (or sheet file) and animation name ("jeff", "walk", t). Any roster character:
+## the game's own sheet, or one built from its pixel form (CharacterSheet).
 static func draw_char(ci: CanvasItem, who: String, anim: String, t: float, at: Vector2, flip := false,
 		mod := Color.WHITE, frame := -1) -> void:
-	var file := "characters/%s.png" % who
+	var file := who if who.ends_with(".png") else CharacterSheet.file_of(who)
 	var r := row(file, anim)
 	if r.is_empty():
 		return
@@ -84,7 +90,12 @@ static func draw_char(ci: CanvasItem, who: String, anim: String, t: float, at: V
 	draw(ci, file, clampi(f, 0, int(r.frames) - 1), int(r.row), at, flip, mod)
 
 
-## "jeff" for player 0 (P1), "chuck" for player 1 (P2); never swapped.
+## The Roster id player `player` plays: their pick in the chooser (Jeff / Chuck by default).
 static func char_of(player: int) -> String:
-	return "jeff" if player == 0 else "chuck"
+	return CharacterSheet.id_of(player)
+
+
+## The sheet that draws player `player`'s character (see CharacterSheet).
+static func char_file(player: int) -> String:
+	return CharacterSheet.file_of_player(player)
 

@@ -10,7 +10,24 @@ var _shot_dir := "user://screenshots"
 var _clock := 0.0
 
 
+## `--roster-data=res://tests/fixtures/x.json`: play with another roster file (a test fixture, e.g. the
+## stand-in third character for shots), in any scene. Ignored when the file is not there (exports
+## ship no tests/), so it can never change a release.
+static func roster_data_arg(args: PackedStringArray) -> String:
+	for a in args:
+		if a.begins_with("--roster-data="):
+			var path := a.trim_prefix("--roster-data=")
+			return path if FileAccess.file_exists(path) else ""
+	return ""
+
+
 func _ready() -> void:
+	# Debug is registered before Roster: set the path now and Roster's own _ready reads it.
+	var data := roster_data_arg(OS.get_cmdline_user_args() + OS.get_cmdline_args())
+	if data != "":
+		Roster.data_path = data
+		if Roster.is_inside_tree():
+			Roster.reload()
 	layer = 100
 	process_mode = Node.PROCESS_MODE_ALWAYS
 	_label = Label.new()

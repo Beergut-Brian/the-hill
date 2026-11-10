@@ -53,6 +53,10 @@ points from it and never hard-codes them. Credits: `assets/CREDITS.md`.
   P2 red per pixel-rules (the characters-repo front draft has a black hat with a red brim). Jeff's feet
   are bare skin per pixel-rules; his comb is the approved raspberry `#D63384`. The backpack is not in
   the sprite (code draws it). `sleep` is the idle body with eyes shut, lying down, head to the right.
+- Other roster characters (picked in the chooser) have no sheet here yet: `CharacterSheet`
+  (`scenes/players/character_sheet.gd`) builds one at runtime from the synced front-view `pixel.png`
+  in the same rows and frame counts. To hand-make one, add `characters/<id>.png` with player rows
+  (`dig_side` at least) to this tool and the manifest; the game prefers it automatically.
 - Residents' `idle` frame 2 is a 1 px breath of the approved front draft (no new pose). The Dragon has
   a gold hoard added in front of her belly.
 - The Flooded Cabin sprite includes its pond band (translucent water from y 82 down; `waterline` in

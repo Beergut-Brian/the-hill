@@ -2,7 +2,9 @@
 ## lobby, lobby-joined, lobby-ready, lobby-hold, lobby-settings, lobby-confirm,
 ## pause, pause-settings, pause-confirm, and the Showtime motion strip lobby-go1..lobby-go6
 ## (SETTINGS focused, up to PLAY, A: flash + jump, wipe, round card, into the game; each is one
-## posed moment, frozen ~1 s after boot). The lobby calls run() once from _ready().
+## posed moment, frozen ~1 s after boot), the chooser: lobby-pick (P1 choosing, arrows; P2 ready)
+## and lobby-swap (P1's podium posed mid-swap, with the poof). Add --ui-pixel for a pixel_art skin
+## (the characters' pixel forms). The lobby calls run() once from _ready().
 class_name UiPreview
 extends RefCounted
 
@@ -21,6 +23,11 @@ static func run(lobby: Control) -> void:
 	var s := state_from_args(OS.get_cmdline_user_args())
 	if s == "" or Game.demo:
 		return
+	if "--ui-pixel" in OS.get_cmdline_user_args():
+		var sk := UiStyle.skin().duplicate() as MenuSkin
+		sk.pixel_art = true
+		sk.character_scale = 9.0
+		UiStyle.use_skin(sk)
 	lobby.freeze = true
 	if s.begins_with("pause"):
 		Players.join_virtual(P1)
@@ -57,6 +64,22 @@ static func run(lobby: Control) -> void:
 		"lobby-ready":
 			Players.join_virtual(P2)
 			lobby.count_step(lobby.COUNT_STEP + 0.05)
+		"lobby-pick", "lobby-swap":
+			Players.join_virtual(P2)
+			lobby.set_ready(P1, false, true)
+			if s == "lobby-swap":
+				await lobby.get_tree().create_timer(0.9).timeout
+				var spot: Control = lobby.get_node("Spots/P1")
+				var slot: CharacterSlot = spot.get_node("Character")
+				spot.nudge(1)
+				slot.swap_to(Roster.pick(P1))
+				await lobby.get_tree().create_timer(0.08).timeout
+				lobby.process_mode = Node.PROCESS_MODE_DISABLED
+				spot.process_mode = Node.PROCESS_MODE_DISABLED
+				slot.pose_swap(0.35)
+				for c in spot.get_children():
+					if c is Poof:
+						c.t = 0.3
 		"lobby-hold":
 			lobby.hold_step(P1, true, lobby.HOLD_TO_START * 0.6)
 

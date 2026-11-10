@@ -6,3 +6,4 @@ Kaden's plan: chunky 2D pixel art. Tiles are 16 px, characters 32 px tall, vehic
 - P1 green `#3cc24a` and P2 red `#e4393c` are for player identity only.
 - Original designs only. No real places.
 - Jeff and Chuck appear in pixel form wearing hard hats. That 2D look is added back into `openjar-characters`.
+- Jeff and Chuck are the P1 / P2 defaults, not locked: players pick any roster character in the lobby, and the slot colour (rings, arrows, plate), not the character, says who is who.
