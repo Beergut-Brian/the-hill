@@ -29,6 +29,7 @@ func _ready() -> void:
 	_restore_clock()
 	Game.lobby_ready.connect(_on_lobby_ready)
 	Game.back_to_lobby.connect(_clear_game)
+	Audio.music_state(&"up", 0, false)   # the sunny theme from the lobby on
 	Game.round_started.connect(_on_round_started)
 	if Game.demo:
 		# The demo plays from a wiped save in a throwaway profile, never the kid's.

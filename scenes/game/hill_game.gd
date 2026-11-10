@@ -73,6 +73,9 @@ func _ready() -> void:
 	hud.name = "Hud"
 	hud.game = self
 	director.add_child(hud)
+	var sound := HillAudio.new()   # Audio lane: engines, layered music, snore, barks
+	sound.game = self
+	add_child(sound)
 	book_layer = Control.new()
 	book_layer.name = "BookLayer"
 	book_layer.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
