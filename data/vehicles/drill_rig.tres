@@ -13,4 +13,5 @@ speed = 60
 carry = 3.0
 needs_treasure = &"giant_tooth"
 works_up_top = false
-sounds = {&"engine": &"drill_rig_engine", &"horn": &"drill_rig_horn", &"dig": &"drill_rig_dig"}
+ability = &"auto_drill"
+sounds = {&"engine": &"drill_rig_engine", &"horn": &"drill_rig_horn", &"dig": &"drill_rig_dig", &"spin": &"drill_rig_spin"}

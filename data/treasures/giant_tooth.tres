@@ -8,3 +8,4 @@ id = &"giant_tooth"
 layer = &"stone"
 footprint = Vector2i(2, 2)
 unlocks = &"drill_rig"
+stays = true

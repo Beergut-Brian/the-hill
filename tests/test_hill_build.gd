@@ -135,9 +135,10 @@ func test_book_moves_and_closes_with_b() -> void:
 	_build.book_input(0, Vector2.RIGHT, false, false)
 	_build.book_input(0, Vector2.RIGHT, false, false)   # held: one step only
 	assert_int(book.focus).is_equal(1)
-	_build.book_input(0, Vector2.ZERO, false, false)
-	_build.book_input(0, Vector2.RIGHT, false, false)
-	assert_int(book.focus).is_equal(0)   # wraps
+	for i in book.card_ids().size() + book.locked_ids().size() - 1:
+		_build.book_input(0, Vector2.ZERO, false, false)
+		_build.book_input(0, Vector2.RIGHT, false, false)
+	assert_int(book.focus).is_equal(0)   # wraps (through the locked picture cards too)
 	_build.book_input(0, Vector2.ZERO, false, true)
 	assert_bool(_build.captures(0)).is_false()
 
@@ -286,13 +287,30 @@ func test_garage_unlocks_excavator_then_still_allowed() -> void:
 	assert_that(_rolled[0][0]).is_equal(&"excavator")
 	assert_float(_rolled[0][1].x).is_equal(43 * 48 + 72.0)
 	assert_float(_build.building_node(0).door_open).is_equal(1.0)
-	# A second Garage: nothing left to unlock, still placed.
+	# A second Garage gives the Dump Truck (the ladder's next vehicle), and so on.
 	_pick(&"garage")
 	_aim(33, 3)
 	assert_bool(_build.action(0)).is_true()
 	assert_int(Progress.count_buildings(&"garage")).is_equal(2)
 	await get_tree().create_timer(1.3).timeout
-	assert_int(_rolled.size()).is_equal(1)
+	assert_int(_rolled.size()).is_equal(2)
+	assert_that(_rolled[1][0]).is_equal(&"dump_truck")
+	assert_int(_p.honks).is_equal(0)
+
+
+func test_garages_past_the_ladder_are_still_allowed() -> void:
+	Progress.find_treasure(&"buried_car")
+	Progress.find_treasure(&"giant_tooth")
+	for v in [&"excavator", &"dump_truck", &"crane", &"drill_rig"]:
+		Progress.vehicles.append(v)
+	Inventory.add(&"clay", 40)
+	Inventory.add(&"stone", 20)
+	_pick(&"garage")
+	_aim(43, 3)
+	assert_bool(_build.action(0)).is_true()
+	assert_int(Progress.count_buildings(&"garage")).is_equal(1)
+	await get_tree().create_timer(1.3).timeout
+	assert_int(_rolled.size()).is_equal(0)
 	assert_int(_p.honks).is_equal(0)
 
 

@@ -34,6 +34,7 @@ const ZONES := [
 	[39, 41, &"shaft"],
 	[41, 43, &"pile"],
 	[43, 47, &""],
+	[47, 49, &"shelf"],
 	[104, 106, &"pond"],
 	[108, 110, &"pond"],
 	[152, 153, &"keep_rock"],
@@ -307,7 +308,7 @@ func scrub_kind(c: int) -> int:
 	return _kind[c] if c >= 0 and c < COLS and _h[c] > 0 else Scrub.NONE
 
 
-## What owns plot cell `cell`: a ruin id, &"shaft", &"pile", &"pond", &"gate", &"keep_rock",
+## What owns plot cell `cell`: a ruin id, &"shaft", &"pile", &"shelf", &"pond", &"gate", &"keep_rock",
 ## &"outside", or &"" (free ground; scrub may still stand on it).
 func cell_owner(cell: int) -> StringName:
 	if cell < 0 or cell >= CELLS:

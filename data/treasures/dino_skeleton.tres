@@ -1,0 +1,11 @@
+[gd_resource type="Resource" script_class="TreasureData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/data/treasure_data.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = &"dino_skeleton"
+layer = &"stone"
+footprint = Vector2i(4, 2)
+unlocks = &""
+museum_text = "A long-neck dinosaur skeleton, lying down for a nap."

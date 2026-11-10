@@ -8,3 +8,4 @@ id = &"gnome_room"
 layer = &"stone"
 footprint = Vector2i(4, 3)
 unlocks = &"gnome_foreman"
+stays = true

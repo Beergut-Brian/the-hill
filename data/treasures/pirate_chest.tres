@@ -1,0 +1,11 @@
+[gd_resource type="Resource" script_class="TreasureData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/data/treasure_data.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = &"pirate_chest"
+layer = &"ice"
+footprint = Vector2i(2, 2)
+unlocks = &""
+museum_text = "A pirate chest, frozen shut, gold coins peeking out."

@@ -8,7 +8,7 @@ extends Node
 const PLOT := 48
 const BUILDING_DIR := "res://data/buildings/"
 ## Book card order; any other showable row comes after, by id.
-const ORDER := [&"barn", &"house", &"garage"]
+const ORDER := [&"barn", &"house", &"garage", &"lighthouse", &"water_tower"]
 
 ## The HillGame (or a test fake). Falls back to the parent.
 var game: Node
@@ -20,11 +20,14 @@ func _ready() -> void:
 	if game == null:
 		game = get_parent()
 	Events.entered_scene.connect(_on_entered_scene)
+	Events.treasure_found.connect(_on_treasure_found)
 
 
 func _exit_tree() -> void:
 	if Events.entered_scene.is_connected(_on_entered_scene):
 		Events.entered_scene.disconnect(_on_entered_scene)
+	if Events.treasure_found.is_connected(_on_treasure_found):
+		Events.treasure_found.disconnect(_on_treasure_found)
 
 
 func _s(p: int) -> Dictionary:
@@ -148,6 +151,16 @@ func rebuild() -> void:
 
 ## The book's cards: every showable, non-ruin BuildingData row whose vehicle (if any) is unlocked, in ORDER.
 func book_rows() -> Array:
+	return _rows(false)
+
+
+## Cards shown greyed at the end of the book with a picture of what opens them (the Lighthouse and
+## the Water Tower before the Crane). Picking one bounces the picture; it is never a dead end.
+func locked_rows() -> Array:
+	return _rows(true)
+
+
+func _rows(locked: bool) -> Array:
 	var rows: Array = []
 	for f in DirAccess.get_files_at(BUILDING_DIR):
 		var file := f.trim_suffix(".remap")
@@ -156,7 +169,8 @@ func book_rows() -> Array:
 		var d := Progress.building_data(StringName(file.get_basename()))
 		if d == null or d.is_ruin or not d.can_show_in_book(Progress.treasures, 0):
 			continue
-		if d.needs_vehicle != &"" and not Progress.has_vehicle(d.needs_vehicle):
+		var waits := d.needs_vehicle != &"" and not Progress.has_vehicle(d.needs_vehicle)
+		if waits != locked:
 			continue   # the Lighthouse waits for the Crane
 		rows.append(d)
 	rows.sort_custom(func(a: BuildingData, b: BuildingData) -> bool:
@@ -263,6 +277,7 @@ func _open_book(p: int) -> void:
 	book.player = p
 	book.controller = self
 	book.rows = book_rows()
+	book.locked = locked_rows()
 	_book_parent().add_child(book)
 	s.book = book
 	book.open()
@@ -278,6 +293,10 @@ func _close_book(p: int) -> void:
 func _pick(p: int, id: StringName) -> void:
 	var d := Progress.building_data(id)
 	if d == null:
+		return
+	var bk = _s(p).book
+	if bk != null and is_instance_valid(bk) and bk.focused_locked():
+		bk.hint()
 		return
 	if not Inventory.spend(d.cost):
 		_s(p).book.shake()
@@ -343,12 +362,57 @@ func _garage(g: Building, unfold: Tween) -> void:
 	await unfold.finished
 	if not is_instance_valid(g):
 		return
+	if Progress.next_vehicle() == null and Progress.next_in_line() != null:
+		# Waiting for its treasure (the Drill Rig needs the Giant Tooth): the door stays shut
+		# until it is found (redeem_garages). The card showed the tooth.
+		g.bump()
+		Audio.play("garage_waits")
+		return
 	await g.open_door().finished
 	if not is_instance_valid(g):
 		return
 	var id := Progress.unlock_next_vehicle()
 	if id != &"":
 		_hv().vehicle_rolls_out.emit(id, g.door_position())
+
+
+## A Garage built while its vehicle waited for a treasure opens once the treasure is found: the
+## newest waiting Garage's door rolls up and the vehicle rolls out. Returns how many opened.
+func redeem_garages() -> int:
+	var n := 0
+	while Progress.garages_waiting() > 0 and Progress.next_vehicle() != null:
+		var g := _waiting_garage(n)
+		var id := Progress.unlock_next_vehicle()
+		n += 1
+		if g == null or _hv() == null:
+			continue
+		var door := g.door_position()
+		var tw := g.open_door()
+		tw.finished.connect(func() -> void:
+			if is_instance_valid(g):
+				_hv().vehicle_rolls_out.emit(id, door))
+	return n
+
+
+## The waiting Garage nodes, newest first; `skip` already used.
+func _waiting_garage(skip: int) -> Building:
+	if _hv() == null:
+		return null
+	var found := 0
+	for i in range(Progress.buildings.size() - 1, -1, -1):
+		if Progress.buildings[i].id != &"garage":
+			continue
+		var node := building_node(i)
+		if node != null and node.door_open < 0.5:
+			if found == skip:
+				return node
+			found += 1
+	return null
+
+
+func _on_treasure_found(_id: StringName, _p: int) -> void:
+	if Progress.garages_waiting() > 0:
+		redeem_garages()
 
 
 func _honk(p: int) -> void:
