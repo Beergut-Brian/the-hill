@@ -1,0 +1,26 @@
+[gd_resource type="Resource" script_class="MenuSkin" format=3]
+
+[ext_resource type="Script" path="res://scenes/ui/kit/menu_skin.gd" id="1_skin"]
+[ext_resource type="Texture2D" path="res://assets/ui/the_hill_logo.png" id="2_logo"]
+[ext_resource type="PackedScene" path="res://scenes/ui/hill_menu_jeff.tscn" id="3_jeff"]
+[ext_resource type="PackedScene" path="res://scenes/ui/hill_menu_chuck.tscn" id="4_chuck"]
+[ext_resource type="PackedScene" path="res://scenes/ui/hill_menu_backdrop.tscn" id="5_world"]
+
+[resource]
+script = ExtResource("1_skin")
+title_texture = ExtResource("2_logo")
+title_text = "The Hill"
+accent = Color(1, 0.823529, 0.247059, 1)
+accent2 = Color(0.345098, 0.768627, 0.941176, 1)
+deep = Color(0.243137, 0.164706, 0.129412, 1)
+p1_character = ExtResource("3_jeff")
+p2_character = ExtResource("4_chuck")
+p1_name = "JEFF"
+p2_name = "CHUCK"
+pixel_art = true
+character_scale = 8.0
+backdrop = 1
+backdrop_scene = ExtResource("5_world")
+sunburst_over_world = 0.35
+blur = 2.0
+round_card_title = "DIG IN!"

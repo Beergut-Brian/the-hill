@@ -1,13 +1,11 @@
 ## Boot scene: the lobby (start screen and main menu), then The Hill (HillGame) under Main, before
-## UI, so pause and the Debug overlay stay on top. The lobby is customised here, in code: title,
-## accent and the Jeff / Chuck placeholder figures. Restart (back to the lobby) saves and frees
-## the game. --demo skips the lobby (Game.demo) and plays with both players virtual.
+## UI, so pause and the Debug overlay stay on top. The lobby's look is data/menu_skin.tres.
+## Restart (back to the lobby) saves and frees the game. --demo skips the lobby (Game.demo) and
+## plays with both players virtual.
 ## --proto / --proto-auto boot the Phase 1 prototype instead and skip the lobby.
 extends Node2D
 
 const PROTO_SCENE := "res://scenes/proto/foundation_proto.tscn"
-const LobbyFigure := preload("res://scenes/ui/lobby_figure.gd")
-const ACCENT := Color("f2b134")
 
 ## The running HillGame, or null in the lobby.
 var game: HillGame
@@ -28,7 +26,7 @@ func _ready() -> void:
 	if mode != &"":
 		_boot_proto(mode == &"auto")
 		return
-	_customise_lobby()
+	_restore_clock()
 	Game.lobby_ready.connect(_on_lobby_ready)
 	Game.back_to_lobby.connect(_clear_game)
 	Game.round_started.connect(_on_round_started)
@@ -44,29 +42,15 @@ func _ready() -> void:
 		Game.to_lobby()
 
 
-func _customise_lobby() -> void:
-	UiStyle.accent = ACCENT
-	var lobby := get_node_or_null(^"UI/Lobby")
-	if lobby == null:
+## The lobby's look is the Showtime skin, data/menu_skin.tres (logo, Jeff and Chuck from the sprite
+## sheets, Hillville blurred behind). Here only the clock: the lobby's Hillville shows the time of
+## day the save left off at (--time=... freezes it instead; --demo keeps the default morning).
+func _restore_clock() -> void:
+	if Game.demo:
 		return
-	lobby.title_text = "The Hill"
-	for p in [Players.P1, Players.P2]:
-		var spot := lobby.get_node_or_null("Spots/P%d" % (p + 1))
-		var old: Control = spot.get_node_or_null(^"Character") if spot else null
-		if old == null:
-			continue
-		var fig := LobbyFigure.new()
-		fig.player = p
-		fig.position = old.position
-		fig.size = old.size
-		fig.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		var at := old.get_index()
-		spot.remove_child(old)
-		old.free()
-		fig.name = "Character"
-		spot.add_child(fig)
-		spot.move_child(fig, at)
-		fig.set_joined(spot.get("joined") == true)
+	var td = Save.get_value("time_of_day")
+	if td is Dictionary:
+		TimeOfDay.load_save(td)
 
 
 func _on_lobby_ready(players: Array) -> void:

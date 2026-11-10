@@ -21,8 +21,8 @@ var focus := Row.MUSIC
 var _tw: Tween
 
 @onready var _card: Control = $Card
+@onready var _wedge: Control = $Wedge
 @onready var _rows: Array = [$Card/Rows/Music, $Card/Rows/Sound, $Card/Rows/Shake, $Card/Rows/Solo]
-@onready var _card_y: float = _card.position.y
 
 
 static func screen_shake() -> bool:
@@ -36,7 +36,15 @@ static func value_of(key: String):
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
 	visible = false
+	add_to_group("openjar_skinned")
+	apply_skin()
 	Players.solo_changed.connect(_on_solo_changed)
+
+
+func apply_skin() -> void:
+	UiStyle.style_title($Card/Heading, 150, UiStyle.CREAM, 0.0, UiStyle.INK_SHOW, 0)
+	$Card/Heading.text = "SETTINGS"
+	$Card/Caption.add_theme_color_override("font_color", Color(UiStyle.CREAM, 0.7))
 
 
 func open() -> void:
@@ -44,7 +52,7 @@ func open() -> void:
 	active = true
 	visible = true
 	_set_focus(Row.MUSIC, false)
-	Audio.play("ui_confirm")
+	UiSound.play("ui_confirm")
 	_slide(true)
 
 
@@ -52,7 +60,7 @@ func close() -> void:
 	if not active:
 		return
 	active = false
-	Audio.play("ui_back")
+	UiSound.play("ui_back")
 	_slide(false)
 	closed.emit()
 
@@ -92,7 +100,10 @@ func adjust(dir: int, pressed := false) -> void:
 		_apply(focus, v)
 	else:
 		_apply(focus, not row.is_on() if pressed else dir > 0)
-	Audio.play("ui_confirm" if pressed else "ui_move")
+	if row.kind == SettingRow.Kind.SLIDER:
+		UiSound.play("ui_tick", 0.8 + 0.5 * row.value)
+	else:
+		UiSound.play("ui_toggle", 1.1 if row.is_on() else 0.9)
 
 
 func _apply(row: Row, v) -> void:
@@ -120,7 +131,7 @@ func _refresh() -> void:
 
 func _set_focus(to: Row, sound := true) -> void:
 	if sound:
-		Audio.play("ui_move")
+		UiSound.play("ui_move", 1.12 - 0.08 * to)
 	focus = to
 	for i in _rows.size():
 		_rows[i].focused = i == focus
@@ -137,8 +148,11 @@ func _slide(on: bool) -> void:
 	if _tw:
 		_tw.kill()
 	_tw = create_tween().set_parallel()
-	_tw.tween_property(self, "modulate:a", 1.0 if on else 0.0, 0.18).from(0.0 if on else 1.0)
-	_tw.tween_property(_card, "position:y", _card_y if on else _card_y + 30.0, 0.24) \
-			.from(_card_y + 40.0 if on else _card_y).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
-	if not on:
+	_tw.tween_property(self, "modulate:a", 1.0 if on else 0.0, 0.12 if on else 0.18).from(0.0 if on else 1.0)
+	if on:
+		_tw.tween_property(_wedge, "edge", 946.0, 0.3).from(1500.0).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+		_tw.tween_property(_card, "position:x", 0.0, 0.3).from(500.0).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+		MenuItem.slam_all(_rows, 0.06, 0.05)
+	else:
+		_tw.tween_property(_card, "position:x", 300.0, 0.18).from(0.0)
 		_tw.chain().tween_callback(func() -> void: visible = active)

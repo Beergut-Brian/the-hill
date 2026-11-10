@@ -20,13 +20,19 @@ func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
 	visible = false
 	_card.pivot_offset = _card.size * 0.5
+	UiStyle.showtime_card(_card)
+	UiStyle.style_title($Card/Heading, 72, UiStyle.CREAM, $Card/Heading.size.x, UiStyle.INK_SHOW, 0)
+	$Card/Heading.text = "LEAVE THE GAME?"
+	$Card/Heading.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	$Card/Hint.color = Color(UiStyle.CREAM, 0.75)
+	$Card/Body.add_theme_color_override("font_color", Color(UiStyle.CREAM, 0.8))
 
 
 func open() -> void:
 	active = true
 	visible = true
 	_set_focus(Choice.CANCEL, false)
-	Audio.play("ui_confirm")
+	UiSound.play("ui_confirm")
 	if _tw:
 		_tw.kill()
 	_tw = create_tween().set_parallel()
@@ -59,7 +65,7 @@ func choose(confirmed: bool) -> void:
 	if not active:
 		return
 	_buttons[Choice.CONFIRM if confirmed else Choice.CANCEL].press()
-	Audio.play("ui_confirm" if confirmed else "ui_back")
+	UiSound.play("ui_confirm" if confirmed else "ui_back")
 	active = false
 	visible = false
 	chosen.emit(confirmed)
@@ -67,7 +73,7 @@ func choose(confirmed: bool) -> void:
 
 func _set_focus(to: Choice, sound := true) -> void:
 	if sound:
-		Audio.play("ui_move")
+		UiSound.play("ui_move")
 	focus = to
 	for i in _buttons.size():
 		_buttons[i].focused = i == focus
