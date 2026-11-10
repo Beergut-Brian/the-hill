@@ -411,6 +411,11 @@ Save key `"time_of_day"`.
   when it closes rides together. Stepping out before it closes leaves the ride.
 - Going down lands at the deepest layer any rider has visited (`Progress.deepest`), at that
   layer's landing beside the shaft. The ride itself is under one second.
+- **Crane cable ride (Vehicles lane, 2026-11-10, H-05):** going down with the Crane aboard, the
+  riders come in at the shaft mouth after the cage sinks and the Crane's cable lowers them down
+  the shaft to that landing (`CraneRide.DROP`, 1.1 s; the whole ride stays under 2 s). They stay
+  locked until they land; `ride_finished` fires when they come in at the mouth, `CraneRide.landed`
+  when each one touches down.
 - Going up empties the riders' backpacks into the shaft pile.
 - Every ride autosaves (also every 60 s, and on `Game.quit_requested`).
 - A vehicle rides with its driver.
