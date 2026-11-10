@@ -303,6 +303,8 @@ func test_the_caveman_follows_then_walks_into_the_shaft() -> void:
 	_hold(Vector2(1, 0))
 	await _physics(45)
 	_hold(Vector2.ZERO)
+	# The Ice landing floor is slippery (W-11): let the glide run out before measuring.
+	await _until(func() -> bool: return absf(u.hazards.glide_of(P1)) < 0.01, 180)
 	await _physics(40)
 	assert_str(String(res.caveman_state())).is_equal("following")
 	var gap := absf(res.caveman.position.x - u.to_local(p.global_position).x)
