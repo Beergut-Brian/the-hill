@@ -248,6 +248,8 @@ func _snore_play(k: float) -> void:
 	if Audio.play("dragon_snore", null, linear_to_db(clampf(k, SNORE_MIN, 1.0))):
 		snores_played += 1
 		last_snore_db = linear_to_db(clampf(k, SNORE_MIN, 1.0))
+		if _log_every > 0.0:
+			print("audio: t=%.1f snore %.1f dB" % [_t, last_snore_db])
 
 
 func _snore(players: Dictionary, delta: float) -> void:
@@ -316,6 +318,12 @@ func _on_dragon_woken() -> void:
 func _on_building_placed(id: StringName, _cell: Vector2i) -> void:
 	if id == &"lighthouse":
 		# B-07: the lamp flares and the next layer down lights; after the placing clunk.
-		get_tree().create_timer(LIGHTHOUSE_DELAY).timeout.connect(Audio.play.bind("lighthouse_on"))
+		get_tree().create_timer(LIGHTHOUSE_DELAY).timeout.connect(_lighthouse_on)
 	# The Foreman inspects every new building: a clipboard mutter once the march sets off.
 	get_tree().create_timer(1.2).timeout.connect(Audio.bark.bind("gnome_foreman", "mutter"))
+
+
+func _lighthouse_on() -> void:
+	var ok := Audio.play("lighthouse_on")
+	if _log_every > 0.0:
+		print("audio: t=%.1f lighthouse_on %s" % [_t, "played" if ok else "capped"])
