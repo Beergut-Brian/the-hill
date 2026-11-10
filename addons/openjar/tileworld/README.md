@@ -85,7 +85,9 @@ Writing a new shape:
 `WorldGenerator.setup(shape, seed)` is called by `TileWorld.setup`. Override
 `base_tile(cell) -> int` (0 is air) and `base_water(cell) -> bool` (this air cell starts full of
 water). Both must be deterministic for a (shape, seed) and independent of call order, because
-chunks load in any order and the base world is never stored.
+chunks load in any order and the base world is never stored. A chunk load asks for all its cells at
+once through `base_chunk(cells) -> PackedInt32Array` (`base_tile | WorldGenerator.WATER_BIT` when
+`base_water`); the default loops the two calls, override it when a chunk load is slow.
 
 `LayeredGenerator` works with any shape (it only uses `depth_of`):
 
@@ -96,6 +98,10 @@ chunks load in any order and the base world is never stored.
 * `cave_threshold` (0.55; above 1 means no caves), `cave_frequency`, `cave_min_depth`: noise caves.
 * `water_from_depth` (-1 = none), `water_pockets`: caves at or below that depth start full of water.
 
+Its `base_chunk` does a chunk in one pass (rim test only on cells at the chunk's edge). A subclass
+that overrides `base_tile` or `base_water` falls back to the per-cell path unless it overrides
+`base_chunk` too.
+
 ## Digging and edits
 
 `dig(cell, offsets, player)` removes every breakable solid tile at `cell + offset`, emits
@@ -103,7 +109,8 @@ chunks load in any order and the base world is never stored.
 the removed cells. `set_tile(cell, id)` is the lower-level edit.
 
 `EditStore` (`world.edits`) keeps only differences from the generator's base: `tiles` (cell to id)
-and `water` (cell to bool). An entry is dropped when the cell goes back to its base value, so a
+and `water` (cell to bool); write it through `set_tile` / `set_water` / `load_save` (TileWorld
+remembers which chunks have edits, so the others load without per-cell lookups). An entry is dropped when the cell goes back to its base value, so a
 dug-then-refilled cell costs nothing. `to_save()` returns plain JSON-safe data:
 
 ```
@@ -153,7 +160,10 @@ nothing. `darkness_at(depth)` reads a band.
 ## Performance knobs
 
 * `chunk_radius` (1): chunks kept around each tracked node, 3x3 at 1. The biggest lever.
-* `chunk_budget_per_frame` (2): new chunks built per physics frame; the rest wait.
+* `chunk_budget_per_frame` (1): new chunks built per physics frame; the rest wait. Chunks that
+  left the neighbourhood are freed (two per frame) only in frames that built none, and the water
+  tick waits one frame after a frame that built or freed a chunk. A chunk costs about 3 ms of
+  script plus 3 to 4 ms of TileMapLayer collision build on this CPU.
 * `max_awake_bodies` (60): awake rigid bodies; the rest queue. `water_hz` (10): water ticks per second.
 
 Measure with `demo/stress.tscn` before changing any.

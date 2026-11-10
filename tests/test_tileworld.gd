@@ -513,3 +513,145 @@ func test_darkness_bands_and_sprites() -> void:
 	assert_int(w._darkness.material_shared.get_shader_parameter("light_count")).is_equal(1)
 	w.set_darkness([])
 	assert_array(w._darkness.sprite_keys()).is_empty()
+
+
+# --- 9. chunk-load fast paths ------------------------------------------------------------------
+
+## A generator with rim, bands, caves and water, so every branch of base_chunk is hit.
+func _busy_gen() -> LayeredGenerator:
+	var g := LayeredGenerator.new()
+	g.surface_depth = 3
+	g.border_tile = STONE
+	g.bands = [{"from": 0, "tile": DIRT}, {"from": 20, "tile": STONE}]
+	g.cave_threshold = 0.2
+	g.cave_min_depth = 2
+	g.water_from_depth = 12
+	return g
+
+
+func _check_base_chunk(shape: WorldShape, keys: Array[Vector2i]) -> void:
+	var g := _busy_gen()
+	g.setup(shape, 99)
+	var kinds := {}
+	for k in keys:
+		var cells := shape.chunk_cells(k)
+		var fast := g.base_chunk(cells)
+		assert_int(fast.size()).is_equal(cells.size())
+		var bad := 0
+		for i in cells.size():
+			var want := g.base_tile(cells[i]) | (WorldGenerator.WATER_BIT if g.base_water(cells[i]) else 0)
+			if fast[i] != want:
+				bad += 1
+			kinds[fast[i]] = true
+		assert_int(bad).is_equal(0)
+	# Air, both bands, the rim and water all showed up.
+	for v in [0, DIRT, STONE, WorldGenerator.WATER_BIT]:
+		assert_bool(kinds.has(v)).is_true()
+
+
+func test_base_chunk_matches_per_cell_rect() -> void:
+	var shape := RectShape.new(96, 96, 32)
+	var keys: Array[Vector2i] = []
+	for cy in 3:
+		for cx in 3:
+			keys.append(Vector2i(cx, cy))
+	_check_base_chunk(shape, keys)
+
+
+func test_base_chunk_matches_per_cell_disk() -> void:
+	var shape := DiskShape.new(64, 16)
+	var keys: Array[Vector2i] = []
+	for ring in shape.rings():
+		for s in shape.sectors_in(ring):
+			keys.append(Vector2i(ring, s))
+	_check_base_chunk(shape, keys)
+
+
+## A subclass that overrides base_tile keeps its overrides on the bulk path.
+class _Override extends LayeredGenerator:
+	func base_tile(cell: Vector2i) -> int:
+		return 0 if cell.x == 5 else super.base_tile(cell)
+
+
+func test_base_chunk_respects_subclass_overrides() -> void:
+	var shape := RectShape.new(32, 32, 32)
+	var g := _Override.new()
+	g.bands = [{"from": 0, "tile": DIRT}]
+	g.cave_threshold = 2.0
+	g.setup(shape, 1)
+	var cells := shape.chunk_cells(Vector2i.ZERO)
+	var ids := g.base_chunk(cells)
+	for i in cells.size():
+		assert_int(ids[i]).is_equal(0 if cells[i].x == 5 else DIRT)
+
+
+func test_disk_chunk_cells_cache_agrees_with_chunk_of() -> void:
+	var shape := DiskShape.new(64, 16)
+	var seen := {}
+	for ring in shape.rings():
+		for s in shape.sectors_in(ring):
+			var k := Vector2i(ring, s)
+			var a := shape.chunk_cells(k)
+			a.append(Vector2i(9999, 9999))            # callers get a copy
+			var b := shape.chunk_cells(k)
+			assert_int(b.size()).is_equal(a.size() - 1)
+			for c in b:
+				assert_bool(shape.contains(c)).is_true()
+				assert_that(shape.chunk_of(c)).is_equal(k)
+				assert_bool(seen.has(c)).is_false()
+				seen[c] = true
+	var inside := 0
+	for y in range(-64, 64):
+		for x in range(-64, 64):
+			if shape.contains(Vector2i(x, y)):
+				inside += 1
+	assert_int(seen.size()).is_equal(inside)
+
+
+func test_budgeted_frees_wait_for_a_call_without_loads() -> void:
+	var w := _world(RectShape.new(256, 256, 32))
+	var t := _tracker(w, Vector2i(40, 40))
+	w.update_chunks()
+	t.position = w.shape.center_of(Vector2i(40 + 32, 40))   # one chunk right: 3 in, 3 out
+	var n := {"loads": 0, "frees": 0}
+	w.chunk_loaded.connect(func(_k): n["loads"] += 1)
+	w.chunk_freed.connect(func(_k): n["frees"] += 1)
+	var calls := 0
+	while calls < 20 and (n["loads"] < 3 or n["frees"] < 3):
+		var l0: int = n["loads"]
+		var f0: int = n["frees"]
+		w.update_chunks(1)
+		calls += 1
+		assert_int(n["loads"] - l0).is_less_equal(1)
+		assert_int(n["frees"] - f0).is_less_equal(2)
+		assert_bool(n["loads"] > l0 and n["frees"] > f0).is_false()
+	assert_int(n["loads"]).is_equal(3)
+	assert_int(n["frees"]).is_equal(3)
+	assert_array(_sorted(w.loaded_chunks())).is_equal(_sorted(w.shape.neighbourhood(Vector2i(2, 1))))
+
+
+func test_edited_chunk_reloads_with_edits_and_untouched_chunk_without() -> void:
+	var w := _world(RectShape.new(256, 64, 32), 0)
+	var t := _tracker(w, Vector2i(5, 5))
+	w.update_chunks()
+	w.dig(Vector2i(6, 6))
+	w.set_water(Vector2i(6, 6), true)
+	w.set_tile(Vector2i(70, 5), 0)                        # unloaded chunk (2, 0)
+	assert_bool(w._edited_chunks.has(Vector2i(0, 0))).is_true()
+	assert_bool(w._edited_chunks.has(Vector2i(2, 0))).is_true()
+	assert_bool(w._edited_chunks.has(Vector2i(1, 0))).is_false()
+	t.position = w.shape.center_of(Vector2i(70, 5))
+	w.update_chunks()
+	assert_bool(w.is_loaded(Vector2i(70, 5))).is_true()
+	assert_bool(w.is_solid(Vector2i(70, 5))).is_false()
+	assert_bool(w._chunks[Vector2i(2, 0)].get_cell_source_id(Vector2i(70, 5)) == -1).is_true()
+	assert_bool(w._chunks[Vector2i(2, 0)].get_cell_source_id(Vector2i(71, 5)) == 0).is_true()
+	t.position = w.shape.center_of(Vector2i(5, 5))
+	w.update_chunks()
+	assert_bool(w.has_water(Vector2i(6, 6))).is_true()
+	assert_bool(w.is_solid(Vector2i(6, 6))).is_false()
+	var data := w.to_save()
+	var b := _world(RectShape.new(256, 64, 32), 0)
+	b.load_save(data)
+	assert_bool(b._edited_chunks.has(Vector2i(0, 0))).is_true()
+	assert_bool(b._edited_chunks.has(Vector2i(2, 0))).is_true()

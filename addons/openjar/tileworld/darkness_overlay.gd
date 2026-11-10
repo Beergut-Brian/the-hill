@@ -103,29 +103,27 @@ func add_chunk(key: Vector2i, cells: Array) -> void:
 		hi = hi.max(c)
 	var w := hi.x - lo.x + 1
 	var h := hi.y - lo.y + 1
-	var data := PackedByteArray()
-	data.resize(w * h * 4)
+	# One little-endian RGBA int per pixel; 0 (alpha 0) marks cells outside this chunk.
+	var data := PackedInt32Array()
+	data.resize(w * h)
+	data.fill(0)
 	var any := false
-	var cache := {}
+	var cache: Dictionary[int, int] = {}
 	for c: Vector2i in cells:
 		var depth := shape.depth_of(c)
-		var px: PackedByteArray = cache.get(depth, PackedByteArray())
-		if px.is_empty():
+		var px = cache.get(depth)
+		if px == null:
 			var b := _band_at(depth)
 			var d := clampf(float(b.get("darkness", 0.0)), 0.0, 1.0) if not b.is_empty() else 0.0
 			var tint: Color = b.get("tint", Color.BLACK) if not b.is_empty() else Color.BLACK
-			px = PackedByteArray([tint.r8, tint.g8, tint.b8, 1 + roundi(d * 254.0)])
+			var alpha := 1 + roundi(d * 254.0)
+			any = any or alpha > 1
+			px = tint.r8 | (tint.g8 << 8) | (tint.b8 << 16) | (alpha << 24)
 			cache[depth] = px
-		if px[3] > 1:
-			any = true
-		var i := ((c.y - lo.y) * w + (c.x - lo.x)) * 4
-		data[i] = px[0]
-		data[i + 1] = px[1]
-		data[i + 2] = px[2]
-		data[i + 3] = px[3]
+		data[(c.y - lo.y) * w + (c.x - lo.x)] = px
 	if not any:
 		return
-	var img := Image.create_from_data(w, h, false, Image.FORMAT_RGBA8, data)
+	var img := Image.create_from_data(w, h, false, Image.FORMAT_RGBA8, data.to_byte_array())
 	var s := Sprite2D.new()
 	s.centered = false
 	s.texture = ImageTexture.create_from_image(img)

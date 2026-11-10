@@ -21,6 +21,8 @@ var water_from_depth := -1
 var water_pockets := true
 
 var _noise: FastNoiseLite
+## _band_tile by depth, grown on demand.
+var _band_lut := PackedInt32Array()
 
 
 func setup(p_shape: WorldShape, p_seed: int) -> void:
@@ -33,6 +35,7 @@ func setup(p_shape: WorldShape, p_seed: int) -> void:
 	var sorted := bands.duplicate()
 	sorted.sort_custom(func(a, b): return int(a["from"]) < int(b["from"]))
 	bands = sorted
+	_band_lut = PackedInt32Array()
 
 
 func base_tile(cell: Vector2i) -> int:
@@ -52,9 +55,72 @@ func base_water(cell: Vector2i) -> bool:
 	var depth := shape.depth_of(cell)
 	if depth < water_from_depth or depth < surface_depth:
 		return false
-	if border_tile > 0 and _on_rim(cell):
-		return false
-	return _is_cave(cell, depth)
+	return _is_cave(cell, depth) and not (border_tile > 0 and _on_rim(cell))
+
+
+## The whole chunk in one pass: depth and noise once per cell, bands from a table, and the rim
+## test only for cells with a neighbour outside the chunk (any other neighbour is inside the shape).
+## A subclass that overrides base_tile or base_water gets the per-cell path unless it overrides this.
+func base_chunk(cells: Array[Vector2i]) -> PackedInt32Array:
+	if get_script() != LayeredGenerator:
+		return super.base_chunk(cells)
+	var out := PackedInt32Array()
+	out.resize(cells.size())
+	if cells.is_empty():
+		return out
+	var rim := _rim_mask(cells) if border_tile > 0 else PackedByteArray()
+	var cave_from := surface_depth + cave_min_depth
+	var wet_from := water_from_depth if water_pockets and water_from_depth >= 0 else 1 << 30
+	var i := 0
+	for c in cells:
+		var depth := shape.depth_of(c)
+		var v := 0
+		if depth >= surface_depth:
+			if border_tile > 0 and rim[i] == 1:
+				v = border_tile
+			elif depth >= cave_from and _noise.get_noise_2d(c.x, c.y) > cave_threshold:
+				v = WATER_BIT if depth >= wet_from else 0
+			else:
+				if depth >= _band_lut.size():
+					_grow_band_lut(depth)
+				v = _band_lut[depth]
+		out[i] = v
+		i += 1
+	return out
+
+
+func _grow_band_lut(depth: int) -> void:
+	var from := _band_lut.size()
+	_band_lut.resize(depth + 64)
+	for d in range(from, _band_lut.size()):
+		_band_lut[d] = _band_tile(d)
+
+
+## 1 for cells on the rim of the shape, else 0.
+func _rim_mask(cells: Array[Vector2i]) -> PackedByteArray:
+	var lo: Vector2i = cells[0]
+	var hi: Vector2i = cells[0]
+	for c in cells:
+		lo = lo.min(c)
+		hi = hi.max(c)
+	lo -= Vector2i.ONE
+	hi += Vector2i.ONE
+	var gw := hi.x - lo.x + 1
+	var grid := PackedByteArray()
+	grid.resize(gw * (hi.y - lo.y + 1))
+	grid.fill(0)
+	for c in cells:
+		grid[(c.y - lo.y) * gw + c.x - lo.x] = 1
+	var out := PackedByteArray()
+	out.resize(cells.size())
+	out.fill(0)
+	var i := 0
+	for c in cells:
+		var k := (c.y - lo.y) * gw + c.x - lo.x
+		if (grid[k - 1] == 0 or grid[k + 1] == 0 or grid[k - gw] == 0 or grid[k + gw] == 0) and _on_rim(c):
+			out[i] = 1
+		i += 1
+	return out
 
 
 func _band_tile(depth: int) -> int:

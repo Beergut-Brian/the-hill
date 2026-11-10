@@ -37,11 +37,11 @@ func reset(p_seed: int) -> void:
 	queue_redraw()
 
 
-func on_chunk_loaded(cells: Array[Vector2i]) -> void:
-	for c in cells:
-		if world._stored_water(c):
-			live[c] = true
-			_active[c] = true
+## wet: the cells of the new chunk that hold water (TileWorld works it out while loading).
+func on_chunk_loaded(wet: Array[Vector2i]) -> void:
+	for c in wet:
+		live[c] = true
+		_active[c] = true
 	for c in _blocked:
 		_active[c] = true
 	_blocked.clear()
@@ -66,6 +66,7 @@ func set_water(cell: Vector2i, on: bool) -> void:
 		world.edits.water.erase(cell)
 	else:
 		world.edits.water[cell] = on
+		world._mark_edited(cell)
 	if world.is_loaded(cell):
 		if on:
 			live[cell] = true

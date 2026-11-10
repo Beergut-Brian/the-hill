@@ -17,7 +17,7 @@ signal water_entered(cell: Vector2i)
 const WaterSim := preload("water_sim.gd")
 const BodyIndex := preload("body_index.gd")
 const DarknessOverlay := preload("darkness_overlay.gd")
-const _WATER_BIT := 1 << 20
+const _WATER_BIT := WorldGenerator.WATER_BIT
 const _ID_MASK := _WATER_BIT - 1
 
 var shape: WorldShape
@@ -27,7 +27,8 @@ var world_seed := 0
 var max_awake_bodies: int = 60
 var chunk_radius: int = 1
 ## New chunks built per physics frame (direct update_chunks() calls are unlimited by default).
-var chunk_budget_per_frame := 2
+## A chunk costs a few ms (generator, tiles, collision), so keep this at 1 for a steady 60 fps.
+var chunk_budget_per_frame := 1
 var drain_per_second: float = 0.0
 ## Water ticks per second from _physics_process; <= 0 means only explicit step_water() calls.
 var water_hz := 10.0
@@ -51,10 +52,15 @@ var _base: Dictionary[Vector2i, int] = {}
 var _tracked: Array[Node2D] = []
 var _last_track_keys: Array[Vector2i] = []
 var _chunks_pending := true
+## Chunk keys that may hold an entry in `edits` (set on every write, rebuilt on load_save); a chunk
+## not in here loads from the generator alone, with no per-cell lookups.
+var _edited_chunks: Dictionary[Vector2i, bool] = {}
 var _water: WaterSim
 var _bodies: BodyIndex
 var _darkness: DarknessOverlay
 var _water_acc := 0.0
+## Chunks loaded + freed by the last update_chunks() call.
+var _changed_chunks := 0
 
 
 func setup(p_shape: WorldShape, p_generator: WorldGenerator, p_palette: Array[TileDef], p_seed: int) -> void:
@@ -66,6 +72,7 @@ func setup(p_shape: WorldShape, p_generator: WorldGenerator, p_palette: Array[Ti
 	world_seed = p_seed
 	generator.setup(shape, world_seed)
 	edits.clear()
+	_edited_chunks.clear()
 	_solid.resize(palette.size())
 	_breakable.resize(palette.size())
 	for i in palette.size():
@@ -136,11 +143,13 @@ func set_tile(cell: Vector2i, id: int) -> void:
 	var old := get_tile(cell)
 	if old == id:
 		return
+	var key := shape.chunk_of(cell)
 	if id == base_tile_of(cell):
 		edits.tiles.erase(cell)
 	else:
 		edits.tiles[cell] = id
-	var layer: TileMapLayer = _chunks.get(shape.chunk_of(cell))
+		_edited_chunks[key] = true
+	var layer: TileMapLayer = _chunks.get(key)
 	if layer:
 		if id > 0:
 			layer.set_cell(cell, 0, Vector2i(id - 1, 0))
@@ -193,8 +202,11 @@ func loaded_chunks() -> Array[Vector2i]:
 	return out
 
 
-## Loads chunks around tracked nodes and frees the rest. `budget` < 0: no limit on new chunks.
+## Loads chunks around tracked nodes and frees the rest. `budget` < 0: no limit. With a budget,
+## at most `budget` chunks load per call, and unwanted chunks are freed (2 x budget per call) only
+## in calls that loaded nothing, so one call never pays for both.
 func update_chunks(budget: int = -1) -> void:
+	_changed_chunks = 0
 	if shape == null:
 		return
 	var keys: Array[Vector2i] = []
@@ -209,11 +221,8 @@ func update_chunks(budget: int = -1) -> void:
 		for k in keys:
 			for w in shape.neighbourhood(k, chunk_radius):
 				wanted[w] = true
-		for k in _chunks.keys():
-			if not wanted.has(k):
-				_free_chunk(k)
-		var made := 0
 		_chunks_pending = false
+		var made := 0
 		for k in wanted:
 			if _chunks.has(k):
 				continue
@@ -222,6 +231,19 @@ func update_chunks(budget: int = -1) -> void:
 				break
 			_load_chunk(k)
 			made += 1
+		var unwanted: Array[Vector2i] = []
+		for k in _chunks:
+			if not wanted.has(k):
+				unwanted.append(k)
+		var free_budget := -1 if budget < 0 else (0 if made > 0 else maxi(budget, 1) * 2)
+		var freed := 0
+		for k in unwanted:
+			if free_budget >= 0 and freed >= free_budget:
+				_chunks_pending = true
+				break
+			_free_chunk(k)
+			freed += 1
+		_changed_chunks = made + freed
 	_bodies.sync_frozen()
 
 
@@ -233,26 +255,46 @@ func local_pos(n: Node2D) -> Vector2:
 
 func _load_chunk(key: Vector2i) -> void:
 	var cells := shape.chunk_cells(key)
+	var base := generator.base_chunk(cells)
+	var edited := _edited_chunks.has(key)
 	var layer := TileMapLayer.new()
 	layer.name = "Chunk_%d_%d" % [key.x, key.y]
 	layer.tile_set = _tile_set
 	layer.z_index = -1
+	var wet: Array[Vector2i] = []
+	var n_ids := _solid.size()
+	var i := 0
 	for c in cells:
-		var b := generator.base_tile(c)
-		var v := b
-		if not is_solid_id(b) and generator.base_water(c):
-			v |= _WATER_BIT
+		var v := base[i]
+		i += 1
+		var id := v & _ID_MASK
+		if id > 0 and id < n_ids and _solid[id] == 1:
+			v = id
 		_base[c] = v
-		var e = edits.tiles.get(c)
-		var id: int = e if e != null else b
+		var water := (v & _WATER_BIT) != 0
+		if edited:
+			var e = edits.tiles.get(c)
+			if e != null:
+				id = e
+			var we = edits.water.get(c)
+			if we != null:
+				water = we
+			water = water and not is_solid_id(id)
 		if id > 0:
 			layer.set_cell(c, 0, Vector2i(id - 1, 0))
+		if water:
+			wet.append(c)
 	add_child(layer)
 	_chunks[key] = layer
 	_chunk_cells[key] = cells
-	_water.on_chunk_loaded(cells)
+	_water.on_chunk_loaded(wet)
 	_darkness.add_chunk(key, cells)
 	chunk_loaded.emit(key)
+
+
+## Something wrote an edit at cell (TileWorld and its water do this on every write).
+func _mark_edited(cell: Vector2i) -> void:
+	_edited_chunks[shape.chunk_of(cell)] = true
 
 
 func _free_chunk(key: Vector2i) -> void:
@@ -394,6 +436,11 @@ func load_save(data: Dictionary) -> void:
 	if int(data.get("seed", world_seed)) != world_seed:
 		push_warning("TileWorld.load_save: save seed %s differs from world seed %d" % [data.get("seed"), world_seed])
 	edits.load_save(data)
+	_edited_chunks.clear()
+	for c in edits.tiles:
+		_mark_edited(c)
+	for c in edits.water:
+		_mark_edited(c)
 	var keys := _chunks.keys()
 	for k in keys:
 		_free_chunk(k)
@@ -412,7 +459,8 @@ func _physics_process(delta: float) -> void:
 	if water_hz > 0.0:
 		var period := 1.0 / water_hz
 		_water_acc = minf(_water_acc + delta, period * 2.0)
-		if _water_acc >= period:
+		# A frame that built or freed a chunk is already a heavy one: the water tick waits a frame.
+		if _water_acc >= period and _changed_chunks == 0:
 			_water_acc -= period
 			step_water()
 

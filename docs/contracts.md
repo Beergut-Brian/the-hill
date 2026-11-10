@@ -379,6 +379,7 @@ class_name WorldGenerator extends RefCounted   # the seeded base world; the game
 func setup(shape: WorldShape, world_seed: int) -> void
 func base_tile(cell: Vector2i) -> int          # deterministic; must not depend on call order
 func base_water(cell: Vector2i) -> bool        # true: this air cell starts full of water
+func base_chunk(cells: Array[Vector2i]) -> PackedInt32Array   # a chunk at once: base_tile | WATER_BIT if base_water; override for speed
 
 class_name TileWorld extends Node2D
 signal tile_dug(cell: Vector2i, block: StringName, player: int)       # block = TileDef.id

@@ -6,6 +6,7 @@ extends WorldShape
 
 var radius: int
 var band: int
+var _cells_cache: Dictionary[Vector2i, Array] = {}
 
 
 func _init(p_radius: int = 200, p_band: int = 32) -> void:
@@ -36,7 +37,18 @@ func chunk_of(cell: Vector2i) -> Vector2i:
 	return Vector2i(ring, mini(int(fposmod(m.angle(), TAU) / TAU * n), n - 1))
 
 
+## Computed once per key, then copied from a cache (shapes are not changed after use).
 func chunk_cells(key: Vector2i) -> Array[Vector2i]:
+	var cached = _cells_cache.get(key)
+	if cached == null:
+		cached = _compute_chunk_cells(key)
+		_cells_cache[key] = cached
+	var out: Array[Vector2i] = []
+	out.assign(cached)
+	return out
+
+
+func _compute_chunk_cells(key: Vector2i) -> Array[Vector2i]:
 	# Bounding box of the ring sector: its four corners plus where the arcs cross an axis.
 	var n := sectors_in(key.x)
 	var a0 := TAU * key.y / n
@@ -50,12 +62,17 @@ func chunk_cells(key: Vector2i) -> Array[Vector2i]:
 		var axis := q * TAU / 4.0
 		if axis >= a0 and axis <= a1:
 			box = box.expand(Vector2.from_angle(axis) * r1)
+	# contains() and chunk_of() inlined, with the same arithmetic, so the two always agree.
+	var rr := float(radius * radius)
+	var last := rings() - 1
 	var cells: Array[Vector2i] = []
 	for y in range(floori(box.position.y) - 1, ceili(box.end.y) + 1):
 		for x in range(floori(box.position.x) - 1, ceili(box.end.x) + 1):
-			var cell := Vector2i(x, y)
-			if contains(cell) and chunk_of(cell) == key:
-				cells.append(cell)
+			var m := Vector2(Vector2i(x, y)) + Vector2(0.5, 0.5)
+			if m.length_squared() >= rr or mini(int(m.length() / band), last) != key.x:
+				continue
+			if mini(int(fposmod(m.angle(), TAU) / TAU * n), n - 1) == key.y:
+				cells.append(Vector2i(x, y))
 	return cells
 
 
