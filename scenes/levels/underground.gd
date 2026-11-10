@@ -14,6 +14,7 @@ const BLOCK_ORDER: Array[StringName] = [&"dirt", &"clay", &"stone", &"ice", &"cr
 const BLOCK_DIR := "res://data/blocks/"
 const LAYER_DIR := "res://data/layers/"
 const TREASURE_DIR := "res://data/treasures/"
+const HAZARD_DIR := "res://data/hazards/"
 const WIDTH := HillGenerator.WIDTH
 const HEIGHT := HillGenerator.HEIGHT
 const DEFAULT_SEED := 20261110
@@ -44,7 +45,13 @@ var flash_layer := 0
 var _layers: Array = []
 var _cages: Node2D
 var look: UndergroundLook
-var _gush := {"t": -1.0, "acc": 0.0, "done": false, "cells": []}
+## One per water pocket (generator.pockets, the big Clay pocket first).
+var _gushes: Array = []
+## Kid-safe hazards (bonk, float, cave-in) and the residents' behaviour; see their scripts.
+var hazards: Hazards
+var residents: UndergroundResidents
+## Which residents have been met (thaw, reveal); HillGame swaps in its saved Story.
+var story := Story.new()
 
 
 func _ready() -> void:
@@ -58,6 +65,7 @@ func _ready() -> void:
 	_layers.sort_custom(func(a: LayerData, b: LayerData) -> bool: return a.depth_from < b.depth_from)
 	generator = HillGenerator.new()
 	generator.configure(_layers, ids, load_rows(TREASURE_DIR))
+	generator.configure_hazards(load_rows(HAZARD_DIR))
 	var back := Node2D.new()
 	back.name = "Backdrop"
 	back.z_index = -100
@@ -74,8 +82,8 @@ func _ready() -> void:
 	for l: LayerData in _layers:
 		bands.append({"from": l.depth_from, "to": l.depth_to, "darkness": l.darkness, "tint": l.light_tint})
 	world.set_darkness(bands)
-	for c in _cells_of(generator.pocket):
-		_gush.cells.append(c)
+	for r: Rect2i in generator.pockets:
+		_gushes.append({"rect": r, "t": -1.0, "acc": 0.0, "done": false, "cells": _cells_of(r)})
 	_spawn_bodies()
 	var keeper := Node2D.new()
 	keeper.name = "Keeper"
@@ -93,6 +101,12 @@ func _ready() -> void:
 	players_root = Node2D.new()
 	players_root.name = "Players"
 	add_child(players_root)
+	hazards = Hazards.new()
+	add_child(hazards)
+	hazards.setup(self)
+	residents = UndergroundResidents.new()
+	add_child(residents)
+	residents.setup(self)
 	world.tile_dug.connect(_on_tile_dug)
 	world.dig_blocked.connect(_on_dig_blocked)
 	world.body_landed.connect(func(_b: Node2D, _s: float) -> void: Audio.play("fall"))
@@ -169,8 +183,16 @@ func block_color(id: StringName) -> Color:
 	return b.color if b else Color.SADDLE_BROWN
 
 
+## The big Clay pocket has gushed (the demo waits for it).
+func big_pocket_gushed() -> bool:
+	return not _gushes.is_empty() and (_gushes[0].t > 0.0 or bool(_gushes[0].done))
+
+
 func is_gushing() -> bool:
-	return _gush.t > 0.0
+	for g in _gushes:
+		if g.t > 0.0:
+			return true
+	return false
 
 
 # --- bodies ------------------------------------------------------------------------------------
@@ -213,9 +235,10 @@ func _on_tile_dug(cell: Vector2i, block: StringName, player: int) -> void:
 	for s in generator.treasure_spots:
 		if (s.rect as Rect2i).grow(2).has_point(cell):
 			_found(s.id, player, (s.rect as Rect2i))
-	if _gush.t < 0.0 and not _gush.done and generator.pocket.size != Vector2i.ZERO \
-			and generator.pocket.grow(1).has_point(cell):
-		start_gush()
+	for i in _gushes.size():
+		var g: Dictionary = _gushes[i]
+		if g.t < 0.0 and not g.done and (g.rect as Rect2i).grow(1).has_point(cell):
+			start_gush(i)
 
 
 func _found(id: StringName, player: int, rect: Rect2i) -> void:
@@ -249,31 +272,40 @@ func _on_water_entered(cell: Vector2i) -> void:
 	burst(world.shape.center_of(cell), Color(0.4, 0.7, 1.0), 8)
 
 
-## Contract "Water gush": the breached pocket refills its emptied cells for GUSH_TIME.
-func start_gush() -> void:
-	_gush.t = GUSH_TIME
-	_gush.acc = 0.0
+## Contract "Water gush": a breached pocket (index into generator.pockets, 0 = the big Clay one)
+## refills its emptied cells for GUSH_TIME.
+func start_gush(i := 0) -> void:
+	if i < 0 or i >= _gushes.size():
+		return
+	var g: Dictionary = _gushes[i]
+	g.t = GUSH_TIME
+	g.acc = 0.0
 	Audio.play("flood")
-	burst((Vector2(generator.pocket.position) + Vector2(generator.pocket.size) * 0.5) * 16.0, Color(0.5, 0.8, 1.0), 20, 140.0)
+	var r: Rect2i = g.rect
+	burst((Vector2(r.position) + Vector2(r.size) * 0.5) * 16.0, Color(0.5, 0.8, 1.0), 20, 140.0)
 
 
 func _physics_process(delta: float) -> void:
-	if _gush.t <= 0.0:
-		return
-	_gush.t -= delta
-	_gush.acc += delta
-	while _gush.acc >= GUSH_TICK:
-		_gush.acc -= GUSH_TICK
+	for g: Dictionary in _gushes:
+		if g.t > 0.0:
+			_step_gush(g, delta)
+
+
+func _step_gush(g: Dictionary, delta: float) -> void:
+	g.t -= delta
+	g.acc += delta
+	while g.acc >= GUSH_TICK:
+		g.acc -= GUSH_TICK
 		var n := 0
-		for c: Vector2i in _gush.cells:
+		for c: Vector2i in g.cells:
 			if n >= GUSH_PER_TICK:
 				break
 			if world.is_loaded(c) and not world.is_solid(c) and not world.has_water(c):
 				world.set_water(c, true)
 				n += 1
-	if _gush.t <= 0.0:
-		_gush.t = -1.0
-		_gush.done = true
+	if g.t <= 0.0:
+		g.t = -1.0
+		g.done = true
 
 
 ## A one-shot particle puff in the world, freed when it finishes.
