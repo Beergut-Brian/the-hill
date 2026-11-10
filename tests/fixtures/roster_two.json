@@ -1,0 +1,34 @@
+{
+ "source": "openjar-characters",
+ "characters_tag": "v0.3.0",
+ "roster": [
+  "jeff",
+  "chuck"
+ ],
+ "defaults": {
+  "P1": "jeff",
+  "P2": "chuck"
+ },
+ "player_colours": {
+  "P1": "#3cc24a",
+  "P2": "#e4393c"
+ },
+ "characters": {
+  "jeff": {
+   "name": "Jeff",
+   "glb": "res://assets/characters/jeff/jeff.glb",
+   "pixel": "res://assets/characters/jeff/pixel.png",
+   "voice": "",
+   "barks": [],
+   "default_for": 1
+  },
+  "chuck": {
+   "name": "Chuck",
+   "glb": "res://assets/characters/chuck/chuck.glb",
+   "pixel": "res://assets/characters/chuck/pixel.png",
+   "voice": "",
+   "barks": [],
+   "default_for": 2
+  }
+ }
+}

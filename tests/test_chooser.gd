@@ -121,7 +121,7 @@ func test_stick_and_keys_drive_it() -> void:
 
 
 func test_nobody_free_bumps() -> void:
-	Roster.data_path = "res://data/roster.json"     # Jeff and Chuck only
+	Roster.data_path = "res://tests/fixtures/roster_two.json"     # Jeff and Chuck only
 	Roster.reload()
 	var lobby := _boot()
 	_join_unready(lobby, P1)
