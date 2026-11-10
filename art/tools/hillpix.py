@@ -109,7 +109,7 @@ PALETTES = {
         key="a", name="A  Sandbox", mood="Bright toy box. Candy-clean, high value, soft plum outlines.",
         k=_K_A,
         layers=dict(top="#9a6a40", clay="#e8913c", stone="#7f93b8", ice="#c4ecfb", crys="#a865e6",
-                    cav="#a8455f", strange="#2e6a7c", edge="#9fa5ad"),
+                    cav="#a8455f", strange="#1a7472", edge="#96918a"),
         back_override=dict(ice="#4f8fc4"),
         colors=dict(sky1="#58c4f0", sky2="#a5e3fa", cloud="#ffffff", sun="#fff3a0", hill="#b4e07a",
                     grass="#8ccf3c", leaf="#2f9a74", leaf2="#2f9a74", wood="#a8703c", wall="#fbe8c0",
@@ -120,8 +120,8 @@ PALETTES = {
     "b": dict(
         key="b", name="B  Storybook", mood="Golden-hour picture book. Dusty, cosy, cream lights, plum shadows.",
         k=_K_B,
-        layers=dict(top="#8b6449", clay="#cf7d55", stone="#8090a6", ice="#cfe6ec", crys="#9b7bcb",
-                    cav="#c48f30", strange="#3f5372", edge="#a8a39b"),
+        layers=dict(top="#7c5e44", clay="#d47a58", stone="#8090a6", ice="#cfe6ec", crys="#9b7bcb",
+                    cav="#b87a1e", strange="#2f5f66", edge="#a69f90"),
         back_override=dict(ice="#6a93b0"),
         colors=dict(sky1="#9fd4d8", sky2="#f9e7bd", cloud="#fff8e6", sun="#fff1b8", hill="#cdcc80",
                     grass="#a7b548", leaf="#6f9440", leaf2="#d98a3c", wood="#8f6244", wall="#f0dcb4",
@@ -132,8 +132,8 @@ PALETTES = {
     "c": dict(
         key="c", name="C  Lantern", mood="Late-afternoon adventure. Deep jewel layers, dark tunnels, glowing finds.",
         k=_K_C,
-        layers=dict(top="#6e4230", clay="#cc7420", stone="#43568c", ice="#6cc4f0", crys="#7a35d0",
-                    cav="#6a2238", strange="#16304a", edge="#666e7c"),
+        layers=dict(top="#6a4a2e", clay="#cc7420", stone="#43568c", ice="#6cc4f0", crys="#7a35d0",
+                    cav="#80224a", strange="#0c4048", edge="#96918a"),
         back_override=dict(ice="#1f4f90"),
         colors=dict(sky1="#2f7fe0", sky2="#a8dcff", cloud="#fff6e0", sun="#ffe95c", hill="#6fae30",
                     grass="#8ccc28", leaf="#1c8068", leaf2="#1c8068", wood="#7e4826", wall="#ffdc9c",
@@ -266,7 +266,7 @@ def sparkle(im, x, y, P, big=True):
     p = im.load()
     g = P["ramps"]["gold"][3]
     pts = [(0, 0, WHITE)]
-    n = 3 if big else 1
+    n = 4 if big else 1
     for i in range(1, n + 1):
         c = WHITE if i == 1 and big else g
         pts += [(i, 0, c), (-i, 0, c), (0, i, c), (0, -i, c)]
@@ -363,11 +363,15 @@ def tile(P, kind, tx, ty):
         d.rectangle([1, 1, 14, 14], outline=A(lo))
         d.line([1, 1, 14, 1], fill=A(hi))
         g = RUNES[r.randrange(len(RUNES))].split()
-        rc = P["c"]["rune"]
-        for gy, row in enumerate(g):
-            for gx, bit in enumerate(row):
-                if bit == "1":
-                    S(5 + gx, 5 + gy, rc)
+        roll = r.random()
+        if roll < .45:      # faint runes, a few caught mid-pulse; the rest of the wall stays quiet
+            rc = P["c"]["rune"] if roll < .12 else tuple((a + 2 * b) // 3 for a, b in zip(P["c"]["rune"], mid))
+            for gy, row in enumerate(g):
+                for gx, bit in enumerate(row):
+                    if bit == "1":
+                        S(5 + gx, 5 + gy, rc)
+        else:
+            S(7, 7, lo), S(8, 8, lo), S(8, 7, hi)
     elif kind == "edge":
         d = ImageDraw.Draw(im)
         d.line([0, 0, 15, 0], fill=A(hi))
@@ -604,7 +608,7 @@ CHUCK = [
     "...NNNNn.NNNNNNn..",
     "...NnNNn.NnNNNNn..",
 ]
-SHOVEL = ["ww", "ww", ".w", ".w", ".w", ".w", ".w", ".w", ".w", ".w", ".w", ".w", "MMM", "MMm", "MMm", "MMm", ".m."]
+SHOVEL = [".MMM.", "MhMMm", "MhMMm", "MMMMm", "MMMMm", ".MMm."] + ["..w.."] * 17
 
 
 def _legend(P):
@@ -617,7 +621,7 @@ def _legend(P):
         "S": R["skin"][2], "s": R["skin"][1], "E": P["outline"], "T": WHITE,
         "B": R["jeans"][2], "b": R["jeans"][1],
         "C": R["shirt"][2], "c": hx("#1E1E26"), "K": R["boots"][0], "D": R["costume"][2],
-        "w": R["wood"][2], "M": R["metal"][2], "m": R["metal"][1],
+        "w": R["wood"][2], "M": R["metal"][2], "m": R["metal"][1], "h": R["metal"][3],
     }
 
 
@@ -626,7 +630,7 @@ def jeff(P, shovel=True, flip=False):
     body = sprite(JEFF, L)
     im = canvas(26, 32)
     if shovel:
-        im.alpha_composite(sprite(SHOVEL, L), (19, 9))
+        im.alpha_composite(sprite(SHOVEL, L), (15, 1))   # blade up, grip in his wing
     im.alpha_composite(body, (0, 0))
     im = outline(im, P["outline"])
     return im.transpose(Image.FLIP_LEFT_RIGHT) if flip else im

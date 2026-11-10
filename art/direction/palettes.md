@@ -23,8 +23,8 @@ Shadow hue 265°, light hue 55°, 10° shift per step. Outline `#3a2a44`.
 | Ice | `#677ea1` | `#8fafc9` | `#c4ecfb` | `#d8fbff` | `#4f8fc4` | `#3f729d` |
 | Crystal | `#572c93` | `#7444b8` | `#a865e6` | `#db98fa` | `#553f73` | `#44325c` |
 | The Bottom | `#6c1d4c` | `#862e54` | `#a8455f` | `#d57d86` | `#542c3d` | `#432331` |
-| Strangestone | `#122d4f` | `#1e4863` | `#2e6a7c` | `#68b5bb` | `#1f323e` | `#192832` |
-| Edgestone | `#56596f` | `#767b8a` | `#9fa5ad` | `#ccd3d8` | `#515256` | `#414245` |
+| Strangestone | `#06354a` | `#0e515d` | `#1a7472` | `#53b6a3` | `#16353a` | `#122a2e` |
+| Edgestone | `#60504b` | `#786e66` | `#96918a` | `#cac7bf` | `#4b4846` | `#3c3a38` |
 
 | Surface and props | mid | | | mid |
 | --- | --- | --- | --- | --- |
@@ -51,10 +51,13 @@ Player pop (CIE76 ΔE; under 25 would be a fail, 40+ is comfortable):
 | Ice | 81 | 100 | 98 | 101 |
 | Crystal | 153 | 117 | 96 | 81 |
 | The Bottom | 115 | 106 | 41 | 67 |
-| Strangestone | 84 | 95 | 96 | 90 |
-| Edgestone | 80 | 86 | 80 | 78 |
+| Strangestone | 70 | 90 | 101 | 93 |
+| Edgestone | 75 | 86 | 74 | 77 |
 
 Worst case ΔE 41. Environment colours inside a player's reserved hue band: none.
+
+Closest two layers: Stone and Edgestone, ΔE 26 (under 20 would smear at TV distance). The hoard gold on the cavern
+tile is ΔE 90, on the cavern wall 100.
 
 ## B  Storybook
 
@@ -64,14 +67,14 @@ Shadow hue 290°, light hue 45°, 16° shift per step. Outline `#4a3030`.
 
 | Layer | deep | low | mid | high | wall | wall dark |
 | --- | --- | --- | --- | --- | --- | --- |
-| Topsoil | `#5b272d` | `#713e36` | `#8b6449` | `#c1ac81` | `#4c3933` | `#3d2e29` |
-| Clay | `#882a3d` | `#a8433c` | `#cf7d55` | `#ebc48a` | `#724a43` | `#5b3b36` |
+| Topsoil | `#512428` | `#643c32` | `#7c5e44` | `#b8a87e` | `#44352f` | `#362a26` |
+| Clay | `#8b2c45` | `#ac403f` | `#d47a58` | `#efc28d` | `#754a45` | `#5e3b37` |
 | Stone | `#4d496d` | `#616786` | `#8090a6` | `#b0c8d2` | `#4d505b` | `#3e4049` |
 | Ice | `#78819b` | `#9eb0bf` | `#cfe6ec` | `#e8fdfc` | `#6a93b0` | `#55768d` |
 | Crystal | `#7a4385` | `#8c5ba4` | `#9b7bcb` | `#d4a9e9` | `#625170` | `#4e415a` |
-| The Bottom | `#811f13` | `#9f4f1f` | `#c48f30` | `#e5c66c` | `#6c4e33` | `#563e29` |
-| Strangestone | `#28224b` | `#2e345c` | `#3f5372` | `#7a9fb2` | `#2b2f3f` | `#222632` |
-| Edgestone | `#6e5c5b` | `#887d77` | `#a8a39b` | `#d3d0c8` | `#5c5a57` | `#4a4846` |
+| The Bottom | `#790f08` | `#953d11` | `#b87a1e` | `#ddbd5c` | `#65432a` | `#513622` |
+| Strangestone | `#182743` | `#223f53` | `#2f5f66` | `#6aaaa1` | `#233238` | `#1c282d` |
+| Edgestone | `#6d5754` | `#86786e` | `#a69f90` | `#d2cdbf` | `#5b5753` | `#494642` |
 
 | Surface and props | mid | | | mid |
 | --- | --- | --- | --- | --- |
@@ -92,16 +95,19 @@ Player pop (CIE76 ΔE; under 25 would be a fail, 40+ is comfortable):
 
 | Layer | green on tile | green on wall | red on tile | red on wall |
 | --- | --- | --- | --- | --- |
-| Topsoil | 81 | 90 | 56 | 71 |
-| Clay | 89 | 91 | 38 | 58 |
+| Topsoil | 79 | 90 | 60 | 73 |
+| Clay | 93 | 93 | 35 | 57 |
 | Stone | 86 | 90 | 84 | 80 |
 | Ice | 79 | 87 | 92 | 93 |
 | Crystal | 124 | 103 | 84 | 76 |
-| The Bottom | 72 | 82 | 57 | 61 |
-| Strangestone | 98 | 100 | 88 | 86 |
-| Edgestone | 75 | 82 | 75 | 76 |
+| The Bottom | 78 | 85 | 51 | 60 |
+| Strangestone | 80 | 92 | 93 | 88 |
+| Edgestone | 72 | 83 | 73 | 75 |
 
-Worst case ΔE 38. Environment colours inside a player's reserved hue band: none.
+Worst case ΔE 35. Environment colours inside a player's reserved hue band: none.
+
+Closest two layers: Stone and Edgestone, ΔE 23 (under 20 would smear at TV distance). The hoard gold on the cavern
+tile is ΔE 27, on the cavern wall 64.
 
 ## C  Lantern
 
@@ -111,14 +117,14 @@ Shadow hue 240°, light hue 50°, 12° shift per step. Outline `#16131f`.
 
 | Layer | deep | low | mid | high | wall | wall dark |
 | --- | --- | --- | --- | --- | --- | --- |
-| Topsoil | `#391014` | `#4f211c` | `#6e4230` | `#b58e69` | `#2c1816` | `#231312` |
+| Topsoil | `#37120f` | `#4c281b` | `#6a4a2e` | `#b39967` | `#2a1b15` | `#221611` |
 | Clay | `#6a0900` | `#93320b` | `#cc7420` | `#ecbd57` | `#522814` | `#422010` |
 | Stone | `#171749` | `#282c65` | `#43568c` | `#799dc7` | `#1e2038` | `#181a2d` |
 | Ice | `#243c7c` | `#4073ad` | `#6cc4f0` | `#96f1ff` | `#1f4f90` | `#193f73` |
 | Crystal | `#0f0a6c` | `#381a96` | `#7a35d0` | `#bf69ee` | `#2b1b53` | `#221642` |
-| The Bottom | `#370929` | `#4c1230` | `#6a2238` | `#b35861` | `#2a101d` | `#220d17` |
-| Strangestone | `#050926` | `#0c1835` | `#16304a` | `#4c87a0` | `#0b111e` | `#090e18` |
-| Edgestone | `#2b2b40` | `#424659` | `#666e7c` | `#a4b2bd` | `#2a2b32` | `#222228` |
+| The Bottom | `#420738` | `#5c1140` | `#80224a` | `#c0566e` | `#331125` | `#290e1e` |
+| Strangestone | `#001225` | `#042434` | `#0c4048` | `#3c9f98` | `#07161d` | `#061217` |
+| Edgestone | `#4e3f3b` | `#6c615b` | `#96918a` | `#cccac0` | `#3c3938` | `#302e2d` |
 
 | Surface and props | mid | | | mid |
 | --- | --- | --- | --- | --- |
@@ -139,13 +145,16 @@ Player pop (CIE76 ΔE; under 25 would be a fail, 40+ is comfortable):
 
 | Layer | green on tile | green on wall | red on tile | red on wall |
 | --- | --- | --- | --- | --- |
-| Topsoil | 90 | 101 | 55 | 76 |
+| Topsoil | 83 | 97 | 60 | 78 |
 | Clay | 90 | 95 | 40 | 59 |
 | Stone | 111 | 108 | 92 | 89 |
 | Ice | 91 | 118 | 108 | 99 |
 | Crystal | 170 | 128 | 108 | 90 |
-| The Bottom | 113 | 110 | 54 | 78 |
-| Strangestone | 103 | 106 | 93 | 92 |
-| Edgestone | 86 | 96 | 81 | 84 |
+| The Bottom | 121 | 113 | 51 | 75 |
+| Strangestone | 87 | 101 | 96 | 94 |
+| Edgestone | 75 | 90 | 74 | 79 |
 
 Worst case ΔE 40. Environment colours inside a player's reserved hue band: none.
+
+Closest two layers: Topsoil and Edgestone, ΔE 33 (under 20 would smear at TV distance). The hoard gold on the cavern
+tile is ΔE 111, on the cavern wall 119.
