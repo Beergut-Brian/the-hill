@@ -28,13 +28,21 @@ One line per file. Nothing enters `assets/` without a line here.
 
 <!-- characters:begin (scripts/tools/sync_characters.sh writes this block) -->
 
-## Characters (synced from openjar-characters v0.3.0)
+## Characters (synced from openjar-characters v0.4.0)
 
 | File | Source / tool | Prompt or notes | License |
 | --- | --- | --- | --- |
-| `characters/jeff/jeff.glb` | `openjar-characters` `v0.3.0`, `characters/jeff/refs/jarling/jeff.glb` (Jarlings avatar kit, Blender, procedural); Godot extracts its textures (`jeff_*.png`) on import | Jeff, playable; copied unchanged | Open Jar Games, in-house (same terms as openjar-characters) |
-| `characters/jeff/pixel.png` | `openjar-characters` `v0.3.0`, `tools/pixel/residents.py` `jeff()` (Python + Pillow, drawn in code) | Jeff pixel form (the-hill pixel), front view, native size | Open Jar Games, in-house (same terms as openjar-characters) |
-| `characters/chuck/chuck.glb` | `openjar-characters` `v0.3.0`, `characters/chuck/refs/jarling/chuck.glb` (Jarlings avatar kit, Blender, procedural); Godot extracts its textures (`chuck_*.png`) on import | Chuck, playable; copied unchanged | Open Jar Games, in-house (same terms as openjar-characters) |
-| `characters/chuck/pixel.png` | `openjar-characters` `v0.3.0`, `tools/pixel/residents.py` `chuck()` (Python + Pillow, drawn in code) | Chuck pixel form (the-hill pixel), front view, native size | Open Jar Games, in-house (same terms as openjar-characters) |
+| `characters/jeff/jeff.glb` | `openjar-characters` `v0.4.0`, `characters/jeff/refs/jarling/jeff.glb` (Jarlings avatar kit, Blender, procedural); Godot extracts its textures (`jeff_*.png`) on import | Jeff, playable; copied unchanged | Open Jar Games, in-house (same terms as openjar-characters) |
+| `characters/jeff/pixel.png` | `openjar-characters` `v0.4.0`, `tools/pixel/residents.py` `jeff()` (Python + Pillow, drawn in code) | Jeff pixel form (the-hill pixel), front view, native size | Open Jar Games, in-house (same terms as openjar-characters) |
+| `characters/chuck/chuck.glb` | `openjar-characters` `v0.4.0`, `characters/chuck/refs/jarling/chuck.glb` (Jarlings avatar kit, Blender, procedural); Godot extracts its textures (`chuck_*.png`) on import | Chuck, playable; copied unchanged | Open Jar Games, in-house (same terms as openjar-characters) |
+| `characters/chuck/pixel.png` | `openjar-characters` `v0.4.0`, `tools/pixel/residents.py` `chuck()` (Python + Pillow, drawn in code) | Chuck pixel form (the-hill pixel), front view, native size | Open Jar Games, in-house (same terms as openjar-characters) |
+| `characters/astro_ana/astro_ana.glb` | `openjar-characters` `v0.4.0`, `characters/astro_ana/refs/jarling/astro_ana.glb` (Jarlings avatar kit, Blender, procedural); Godot extracts its textures (`astro_ana_*.png`) on import | Astro Ana, playable; copied unchanged | Open Jar Games, in-house (same terms as openjar-characters) |
+| `characters/astro_ana/pixel.png` | `openjar-characters` `v0.4.0`, `tools/pixel/astro_ana.py` `astro_ana()` (Python + Pillow, drawn in code) | Astro Ana pixel form (the-hill pixel), front view, native size | Open Jar Games, in-house (same terms as openjar-characters) |
+| `characters/coach_whistle/coach_whistle.glb` | `openjar-characters` `v0.4.0`, `characters/coach_whistle/refs/jarling/coach_whistle.glb` (Jarlings avatar kit, Blender, procedural); Godot extracts its textures (`coach_whistle_*.png`) on import | Coach Whistle, playable; copied unchanged | Open Jar Games, in-house (same terms as openjar-characters) |
+| `characters/coach_whistle/pixel.png` | `openjar-characters` `v0.4.0`, `tools/pixel/coach_whistle.py` `coach_whistle()` (Python + Pillow, drawn in code) | Coach Whistle pixel form (the-hill pixel), front view, native size | Open Jar Games, in-house (same terms as openjar-characters) |
+| `characters/ribbit/ribbit.glb` | `openjar-characters` `v0.4.0`, `characters/ribbit/refs/jarling/ribbit.glb` (Jarlings avatar kit, Blender, procedural); Godot extracts its textures (`ribbit_*.png`) on import | Ribbit, playable; copied unchanged | Open Jar Games, in-house (same terms as openjar-characters) |
+| `characters/ribbit/pixel.png` | `openjar-characters` `v0.4.0`, `tools/pixel/ribbit.py` `ribbit()` (Python + Pillow, drawn in code) | Ribbit pixel form (the-hill pixel), front view, native size | Open Jar Games, in-house (same terms as openjar-characters) |
+| `characters/zorp/zorp.glb` | `openjar-characters` `v0.4.0`, `characters/zorp/refs/jarling/zorp.glb` (Jarlings avatar kit, Blender, procedural); Godot extracts its textures (`zorp_*.png`) on import | Zorp, playable; copied unchanged | Open Jar Games, in-house (same terms as openjar-characters) |
+| `characters/zorp/pixel.png` | `openjar-characters` `v0.4.0`, `tools/pixel/zorp.py` `zorp()` (Python + Pillow, drawn in code) | Zorp pixel form (the-hill pixel), front view, native size | Open Jar Games, in-house (same terms as openjar-characters) |
 
 <!-- characters:end -->
