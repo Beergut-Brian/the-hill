@@ -207,7 +207,9 @@ func test_pick_persists_across_a_relaunch() -> void:
 	var lobby := _boot()
 	_join_unready(lobby, P1)
 	lobby.choose(P1, 1)
-	assert_str(JSON.parse_string(FileAccess.get_file_as_string(FILE)).p1.P1).is_equal("pip")
+	# the file is keyed by save profile first, then slot; read the profile the game actually used
+	var saved: Dictionary = JSON.parse_string(FileAccess.get_file_as_string(FILE))
+	assert_str(str(saved.get(Roster._profile(), {}).get("P1", ""))).is_equal("pip")
 	_main.free()
 	Players.reset()
 	Roster.reload()                                     # the game (or another one) starts again
