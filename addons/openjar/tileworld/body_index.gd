@@ -51,15 +51,25 @@ func awake_count() -> int:
 
 
 func request_wake(b: FallingBody) -> void:
+	_request_wake(b, -1)
+
+
+## awake: the current awake count if the caller knows it, else -1. Returns the count after (or -1),
+## so a dig that wakes many bodies counts once instead of once per body.
+func _request_wake(b: FallingBody, awake: int) -> int:
 	if not is_instance_valid(b) or not b.sleeping:
-		return
+		return awake
 	if b.freeze:
 		b._wake_on_load = true
-		return
-	if awake_count() < world.max_awake_bodies:
+		return awake
+	if awake < 0:
+		awake = awake_count()
+	if awake < world.max_awake_bodies:
 		_wake(b)
+		awake += 1
 	elif not queue.has(b):
 		queue.append(b)
+	return awake
 
 
 func release_queue() -> void:
@@ -84,8 +94,9 @@ func on_support_removed(cell: Vector2i) -> void:
 
 func wake_resting_on(cell: Vector2i) -> void:
 	var arr: Array = resting.get(cell, [])
+	var awake := -1
 	for b in arr.duplicate():
-		request_wake(b)
+		awake = _request_wake(b, awake)
 
 
 ## Every body: freeze those whose chunk is gone, thaw those whose chunk came back.
