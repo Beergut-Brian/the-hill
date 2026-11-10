@@ -1132,6 +1132,7 @@ def make_excavator():
 def make_vehicles():
     make_front_loader()
     make_excavator()
+    make_vehicles2()
 
 
 # =============================================================================== buildings
@@ -1602,7 +1603,7 @@ def ruined_keep():
 
 
 def make_buildings():
-    for name, fn in (("barn", barn), ("house", house), ("lighthouse", lighthouse)):
+    for name, fn in (("barn", barn), ("house", house), ("lighthouse", lighthouse), ("water_tower", water_tower)):
         im, lit = fn()
         save(im, "buildings/%s.png" % name)
         save(lit, "buildings/%s_lit.png" % name, env=False)
@@ -1739,6 +1740,7 @@ def make_props():
     save(bs, "props/boulder.png")
     MANIFEST["boulder"] = {"file": "props/boulder.png", "frame": [26, 26], "pivot": [13, 13],
                            "rows": {"roll": {"row": 0, "frames": 4, "fps": 8}}}
+    make_props2()
 
 
 # =============================================================================== treasures
@@ -1916,6 +1918,7 @@ def make_treasures():
     save(sparkles(), "treasures/sparkle.png", env=False)
     MANIFEST["sparkle"] = {"file": "treasures/sparkle.png", "frame": [9, 9], "pivot": [4, 4],
                            "rows": {"sparkle": {"row": 0, "frames": 4, "fps": 8}}}
+    make_treasures2()
 
 
 # =============================================================================== fx (soft: light only)
@@ -1949,6 +1952,711 @@ def make_fx():
                       "cone": {"file": "fx/cone.png", "frame": [128, 64], "pivot": [0, 32]},
                       "window": {"file": "fx/window.png", "frame": [16, 16], "pivot": [8, 8]},
                       "note": "soft sprites for additive light only (pixel-rules exception)"}
+
+
+# =============================================================================== vehicles 2-4
+# Same rules as the Loader / Excavator: no faces, one round nose lamp + one square roof lamp, far apart.
+DUMP = hp.ramp(hp.hx("#3f86e0"), P)          # Dump Truck blue (hue 214)
+CRANE = hp.ramp(hp.hx("#1fbfb0"), P)         # Crane teal (hue 174, clear of P1 green 100-150)
+DRILL = hp.ramp(hp.hx("#8a5cd6"), P)         # Drill Rig purple (hue 262)
+VEH_ROWS = {"cream": {"row": 0, "frames": 4, "fps": 2}, "green": {"row": 1, "frames": 4, "fps": 2},
+            "red": {"row": 2, "frames": 4, "fps": 2}}
+
+
+def treads(d, box, tread, rollers):
+    """Excavator-style track: rounded belt, moving tread marks, round rollers."""
+    td, tl, tm, th = R["tyre"]
+    md, ml, mm, mh = R["metal"]
+    x0, y0, x1, y1 = box
+    d.rounded_rectangle(box, (y1 - y0) // 2, fill=A(tm))
+    d.line([x0 + 3, y0, x1 - 3, y0], fill=A(th))
+    d.rounded_rectangle([x0 + 3, y0 + 2, x1 - 3, y1 - 2], 2, fill=A(tl))
+    for x in range(x0 + 2 + tread * 2, x1 - 1, 4):
+        d.point((x, y0 + 1), fill=A(td))
+        d.point((x, y1), fill=A(td))
+    ry = (y0 + y1) // 2
+    rr = max(2, (y1 - y0) // 2 - 3)
+    for x in rollers:
+        d.ellipse([x - rr, ry - rr, x + rr, ry + rr], fill=A(mm))
+        d.point((x - 1, ry - rr + 1), fill=A(mh))
+
+
+def cab(im, box, glass_box, ramp_body, stripe, roof_lamp_x):
+    """Rounded cab, see-through glass, roof in the driver's colour, square roof lamp."""
+    vd, vl, vm, vh = ramp_body
+    d = ImageDraw.Draw(im)
+    x0, y0, x1, y1 = box
+    d.rounded_rectangle(box, 2, fill=A(vm))
+    d.line([x0 + 1, y0 + 1, x0 + 1, y1 - 1], fill=A(vh))
+    glass(im, glass_box)
+    d = ImageDraw.Draw(im)
+    d.rectangle([x0, glass_box[3] + 2, x1, glass_box[3] + 3], fill=A(vl))
+    d.rounded_rectangle([x0 - 1, y0 - 2, x1 + 1, y0], 1, fill=A(stripe))
+    d.line([x0, y0 - 2, x1 - 1, y0 - 2], fill=A(hp.ramp(stripe, P)[3]))
+    return roof_lamp(d, roof_lamp_x, y0 - 4)
+
+
+def head_for(glass_box):
+    """Loader convention: the ride frame (32x32, pivot [16,32]) has its top 1 px above the glass."""
+    return [(glass_box[0] + glass_box[2] + 1) // 2, glass_box[1] + 31]
+
+
+def vehicle_sheet(fn, W, H, frames):
+    sheet = Image.new("RGBA", (4 * W, 3 * H), CLEAR)
+    pts = {}
+    for ri, stripe in enumerate(("cream", "green", "red")):
+        for ci, args in enumerate(frames):
+            im, pts = fn(stripe, *args)
+            sheet.alpha_composite(im, (ci * W, ri * H))
+    return sheet, pts
+
+
+DUMP_GLASS = [41, 9, 51, 17]
+
+
+def dump_body(stripe, bob, spokes):
+    """64x40, facing right: cab at the front, long chassis, three axles. The bed is its own sprite."""
+    W, H = 64, 40
+    vd, vl, vm, vh = DUMP
+    md, ml, mm, mh = R["metal"]
+    sc = STRIPES[stripe]
+    body = Image.new("RGBA", (W, H), CLEAR)
+    d = ImageDraw.Draw(body)
+    d.rectangle([3, 24, 52, 28], fill=A(ml))                          # chassis rail
+    d.line([3, 24, 52, 24], fill=A(mm))
+    d.rounded_rectangle([2, 22, 34, 27], 2, fill=A(vm))               # rear mudguard deck
+    d.line([3, 22, 33, 22], fill=A(vh))
+    d.rectangle([3, 26, 33, 27], fill=A(vl))
+    d.rectangle([3, 21, 8, 24], fill=A(md))                           # bed hinge bracket
+    d.point((4, 22), fill=A(mh))
+    # hood: short and round, vents, ONE round nose lamp
+    d.rounded_rectangle([48, 15, 62, 30], 3, fill=A(vm))
+    d.line([50, 15, 60, 15], fill=A(vh))
+    for x in (52, 54):
+        d.line([x, 18, x, 21], fill=A(vl))
+    nl = nose_lamp(d, 56, 17)
+    rl = cab(body, [38, 6, 52, 30], DUMP_GLASS, DUMP, sc, 39)
+    d = ImageDraw.Draw(body)
+    d.rectangle([38, 23, 62, 24], fill=A(sc))                         # stripe along cab and hood
+    d.rectangle([38, 28, 62, 30], fill=A(vl))
+    d.rectangle([60, 25, 63, 27], fill=A(mm))                         # bumper
+    d.line([60, 25, 63, 25], fill=A(mh))
+    wl = Image.new("RGBA", (W, H), CLEAR)
+    wd = ImageDraw.Draw(wl)
+    for x in (5, 19, 45):
+        wheel(wd, [x, 26, x + 13, 39], spokes, DUMP)
+    im = Image.new("RGBA", (W, H), CLEAR)
+    im.alpha_composite(wl)
+    im.alpha_composite(body, (0, bob))
+    im.alpha_composite(wl.crop((0, 30, W, H)), (0, 30))
+    return outline(im), {"nose_lamp": [nl[0], nl[1] + bob], "roof_lamp": [rl[0], rl[1] + bob]}
+
+
+BED_L, BED_H = 32, 12
+
+
+def draw_bed(im, ox, oy, a, gate):
+    """Bed side view about its rear-bottom hinge (ox, oy); a = tip angle (negative = front up).
+    gate = the tail gate's own world angle (None = shut, in line with the bed)."""
+    d = ImageDraw.Draw(im)
+    vd, vl, vm, vh = DUMP
+    md, ml, mm, mh = R["metal"]
+    L, Hb = BED_L, BED_H
+    g0 = 3                                                              # tail gate thickness
+    d.polygon(rot([(g0, 0), (L, 0), (L, -Hb - 2), (L - 3, -Hb - 2), (L - 3, -Hb), (g0, -Hb)], a, ox, oy), fill=A(vm))
+    d.polygon(rot([(g0, -Hb), (L - 3, -Hb), (L - 3, -Hb + 1), (g0, -Hb + 1)], a, ox, oy), fill=A(vh))
+    d.polygon(rot([(L - 3, -Hb - 2), (L, -Hb - 2), (L, -Hb - 1), (L - 3, -Hb - 1)], a, ox, oy), fill=A(vh))
+    d.polygon(rot([(g0, -2), (L, -2), (L, 0), (g0, 0)], a, ox, oy), fill=A(vl))
+    for rx in (10, 17, 24):                                             # ribs
+        d.line(rot([(rx, -Hb + 3), (rx, -3)], a, ox, oy), fill=A(vl))
+        d.line(rot([(rx - 1, -Hb + 3), (rx - 1, -3)], a, ox, oy), fill=A(vh))
+    hx_, hy_ = rot([(0, -Hb)], a, ox, oy)[0]
+    ga = a if gate is None else gate
+    gate_pts = [(0, 0), (g0, 0), (g0, Hb), (0, Hb)]
+    d.polygon(rot(gate_pts, ga, hx_, hy_), fill=A(vm))
+    d.line(rot([(0, 1), (0, Hb - 1)], ga, hx_, hy_), fill=A(vh))
+    d.line(rot([(g0, 1), (g0, Hb)], ga, hx_, hy_), fill=A(vl))
+    d.ellipse([hx_ - 1.5, hy_ - 1.5, hx_ + 1.5, hy_ + 1.5], fill=A(ml))     # gate hinge pin
+    d.ellipse([ox - 1.5, oy - 1.5, ox + 1.5, oy + 1.5], fill=A(ml))         # bed hinge pin
+    d.point((round(ox - .5), round(oy - .5)), fill=A(md))
+
+
+def load_pile(level):
+    """Mixed blocks peeking above the flat bed's rim; bottom row ends 1 px above the bed's outline."""
+    BW, BH, ox, oy = 48, 40, 14, 37
+    f = Image.new("RGBA", (BW, BH), CLEAR)
+    d = ImageDraw.Draw(f)
+    r = rng("dump_load", level)
+    kinds = ("top", "clay", "stone")
+    rows = [[(18, 44)], [(17, 45), (21, 40)], [(17, 45), (19, 43), (22, 40), (26, 36)]][level]
+    floor = oy - BED_H - 2                                              # 23: the row above the bed outline
+    for k, (x0, x1) in enumerate(rows):
+        y1 = floor - 4 * k
+        x = x0 + r.randint(0, 1)
+        while x + 3 <= x1:
+            rmp = R[kinds[r.randrange(3)]]
+            d.rectangle([x, y1 - 3, x + 3, y1], fill=A(rmp[2]))
+            d.line([x, y1 - 3, x + 2, y1 - 3], fill=A(rmp[3]))
+            d.point((x, y1 - 2), fill=A(rmp[3]))
+            d.line([x + 3, y1 - 2, x + 3, y1], fill=A(rmp[1]))
+            d.line([x + 1, y1, x + 3, y1], fill=A(rmp[1]))
+            x += 4
+    return outline(f)
+
+
+def make_dump_truck():
+    W, H = 64, 40
+    sheet, pts = vehicle_sheet(dump_body, W, H, ((0, False), (1, False), (0, False), (0, True)))
+    save(sheet, "vehicles/dump_truck.png")
+    MANIFEST["dump_truck"] = {
+        "file": "vehicles/dump_truck.png", "frame": [W, H], "pivot": [32, 40], "box": [50, 32],
+        "rows": VEH_ROWS, "columns": {"idle": [0, 1], "drive": [2, 3]},
+        "head": head_for(DUMP_GLASS), "nose_lamp": pts["nose_lamp"], "roof_lamp": pts["roof_lamp"], "bed": [4, 23],
+        "note": "rows = stripe/roof colour: cream empty, green P1, red P2. Driver's ride frame pivot on `head`, "
+                "behind the body. The bed (and its load) is its own sprite with its pivot on `bed`."}
+    BW, BH, ox, oy = 48, 40, 14, 37
+    bs = Image.new("RGBA", (3 * BW, BH), CLEAR)
+    for i, (a, gate) in enumerate(((0, None), (-25, None), (-55, 15))):
+        f = Image.new("RGBA", (BW, BH), CLEAR)
+        draw_bed(f, ox, oy, a, gate)
+        bs.alpha_composite(outline(f), (i * BW, 0))
+    save(bs, "vehicles/dump_truck_bed.png")
+    MANIFEST["dump_truck_bed"] = {"file": "vehicles/dump_truck_bed.png", "frame": [BW, BH], "pivot": [ox, oy],
+                                  "pivot_note": "rear-bottom hinge of the bed",
+                                  "rows": {"tool": {"row": 0, "frames": 3, "fps": 0, "names": ["rest", "mid", "full"]}}}
+    ls = Image.new("RGBA", (3 * BW, BH), CLEAR)
+    for i in range(3):
+        ls.alpha_composite(load_pile(i), (i * BW, 0))
+    save(ls, "vehicles/dump_truck_load.png")
+    MANIFEST["dump_truck_load"] = {"file": "vehicles/dump_truck_load.png", "frame": [BW, BH], "pivot": [ox, oy],
+                                   "rows": {"load": {"row": 0, "frames": 3, "fps": 0, "names": ["small", "medium", "heaped"]}},
+                                   "note": "draw at `bed` with the bed's rest frame only (either side of the bed: "
+                                           "the pile sits above the rim)"}
+
+
+CRANE_GLASS = [15, 9, 27, 18]
+
+
+def crane_body(stripe, bob, tread):
+    """64x48, facing right: tracks, turntable deck, cab at the back over the counterweight, boom root ahead."""
+    W, H = 64, 48
+    vd, vl, vm, vh = CRANE
+    md, ml, mm, mh = R["metal"]
+    sc = STRIPES[stripe]
+    tr = Image.new("RGBA", (W, H), CLEAR)
+    d = ImageDraw.Draw(tr)
+    d.rectangle([14, 33, 48, 37], fill=A(ml))
+    d.rectangle([22, 32, 42, 33], fill=A(mm))                         # slew ring
+    treads(d, [8, 37, 55, 47], tread, (14, 22, 31, 40, 49))
+    body = Image.new("RGBA", (W, H), CLEAR)
+    d = ImageDraw.Draw(body)
+    d.rounded_rectangle([2, 19, 15, 33], 3, fill=A(vl))                # counterweight
+    d.line([4, 19, 13, 19], fill=A(vm))
+    for y in (24, 28):
+        d.line([3, y, 14, y], fill=A(vd))
+    d.rounded_rectangle([6, 22, 53, 33], 4, fill=A(vm))               # deck
+    d.line([9, 22, 50, 22], fill=A(vh))
+    d.rectangle([7, 31, 52, 33], fill=A(vl))
+    d.rectangle([7, 27, 52, 28], fill=A(sc))
+    nl = nose_lamp(d, 46, 23)
+    # gantry (A-frame) that carries the boom's pendant ropes
+    d.line([32, 22, 36, 12], fill=A(ml), width=2)
+    d.line([41, 22, 37, 12], fill=A(ml), width=2)
+    d.ellipse([34, 10, 39, 15], fill=A(mm))
+    d.point((36, 12), fill=A(md))
+    d.ellipse([37, 18, 43, 24], fill=A(ml))                           # boom root pin
+    d.point((40, 21), fill=A(md))
+    rl = cab(body, [12, 6, 30, 25], CRANE_GLASS, CRANE, sc, 26)
+    im = Image.new("RGBA", (W, H), CLEAR)
+    im.alpha_composite(tr)
+    im.alpha_composite(body, (0, bob))
+    return outline(im), {"nose_lamp": [nl[0], nl[1] + bob], "roof_lamp": [rl[0], rl[1] + bob]}
+
+
+def draw_boom(im, ox, oy, deg, L=58):
+    """Lattice boom from the root (ox, oy), `deg` up from forward. Returns the rope point at the tip."""
+    d = ImageDraw.Draw(im)
+    vd, vl, vm, vh = CRANE
+    md, ml, mm, mh = R["metal"]
+    a = math.radians(deg)
+    ux, uy = math.cos(a), -math.sin(a)
+    nx, ny = math.sin(a), math.cos(a)                                  # perpendicular, toward the underside
+    def at(t, side):
+        w = 4 - 2 * t
+        return (ox + ux * L * t + nx * w * side, oy + uy * L * t + ny * w * side)
+    for i in range(10):                                                 # lacing zigzag
+        t0, t1 = i / 10, (i + 1) / 10
+        d.line([at(t0, -1 if i % 2 else 1), at(t1, 1 if i % 2 else -1)], fill=A(mh))
+    d.line([at(0, -1), at(1, -1)], fill=A(vm), width=2)                # top chord, lit
+    d.line([at(0, -1), at(1, -1)], fill=A(vh), width=1)
+    d.line([at(0, 1), at(1, 1)], fill=A(vl), width=2)                  # bottom chord, shade
+    for t in (.33, .66):
+        d.line([at(t, -1), at(t, 1)], fill=A(vm), width=2)             # stiffener frames
+    d.ellipse([ox - 3, oy - 3, ox + 3, oy + 3], fill=A(vm))            # root lug + pin
+    d.ellipse([ox - 1.5, oy - 1.5, ox + 1.5, oy + 1.5], fill=A(ml))
+    cx, cy = ox + ux * (L + 1), oy + uy * (L + 1)
+    d.ellipse([cx - 3, cy - 3, cx + 3, cy + 3], fill=A(mm))           # tip sheave
+    d.arc([cx - 3, cy - 3, cx + 3, cy + 3], 180, 270, fill=A(mh))
+    d.ellipse([cx - 1, cy - 1, cx + 1, cy + 1], fill=A(md))
+    return [round(cx + 3), round(cy)]
+
+
+def hook_block():
+    """12x14, rope eye on top: a chunky round yellow block over a fat metal hook."""
+    f = Image.new("RGBA", (12, 14), CLEAR)
+    d = ImageDraw.Draw(f)
+    md, ml, mm, mh = R["metal"]
+    g = R["gold"]
+    d.rounded_rectangle([1, 1, 10, 6], 2, fill=A(g[2]))
+    d.line([2, 1, 9, 1], fill=A(g[3]))
+    d.point((2, 2), fill=A(WHITE))
+    d.line([2, 6, 9, 6], fill=A(g[1]))
+    d.rectangle([5, 3, 6, 4], fill=A(mm))                              # sheave pin
+    grid(f, [".....ee.....",
+             "............", "............", "............", "............", "............", "............",
+             "......ss....",
+             "..h...ss....",
+             "..mm...ss...",
+             "..mm...ml...",
+             "...mm.ml....",
+             "....mll....."], {"e": ml, "s": mm, "m": mm, "l": md, "h": mh})
+    return outline(f)
+
+
+def make_crane():
+    W, H = 64, 48
+    sheet, pts = vehicle_sheet(crane_body, W, H, ((0, 0), (1, 0), (0, 0), (0, 1)))
+    save(sheet, "vehicles/crane.png")
+    MANIFEST["crane"] = {
+        "file": "vehicles/crane.png", "frame": [W, H], "pivot": [32, 48], "box": [44, 38],
+        "rows": VEH_ROWS, "columns": {"idle": [0, 1], "drive": [2, 3]},
+        "head": head_for(CRANE_GLASS), "nose_lamp": pts["nose_lamp"], "roof_lamp": pts["roof_lamp"], "boom": [40, 21],
+        "note": "drive frames move the treads; the boom is its own sprite with its pivot on `boom`; "
+                "the rope runs straight down from the boom's `tips` point to the hook's pivot"}
+    BW, ox, oy = 80, 6, 74
+    bs = Image.new("RGBA", (3 * BW, BW), CLEAR)
+    tips = []
+    for i, deg in enumerate((20, 45, 70)):
+        f = Image.new("RGBA", (BW, BW), CLEAR)
+        tips.append(draw_boom(f, ox, oy, deg))
+        bs.alpha_composite(outline(f), (i * BW, 0))
+    save(bs, "vehicles/crane_boom.png")
+    MANIFEST["crane_boom"] = {"file": "vehicles/crane_boom.png", "frame": [BW, BW], "pivot": [ox, oy], "tips": tips,
+                              "rows": {"tool": {"row": 0, "frames": 3, "fps": 0, "names": ["low", "mid", "high"]}}}
+    save(hook_block(), "vehicles/crane_hook.png")
+    MANIFEST["crane_hook"] = {"file": "vehicles/crane_hook.png", "frame": [12, 14], "pivot": [6, 0],
+                              "pivot_note": "rope attach on top"}
+
+
+DRILL_GLASS = [10, 21, 24, 31]
+
+
+def drill_body(stripe, bob, tread):
+    """72x64, facing right: wide treads, cab at the back, striped mast at the front. The bit is its own sprite."""
+    W, H = 72, 64
+    vd, vl, vm, vh = DRILL
+    md, ml, mm, mh = R["metal"]
+    cr = R["wall"]
+    sc = STRIPES[stripe]
+    tr = Image.new("RGBA", (W, H), CLEAR)
+    d = ImageDraw.Draw(tr)
+    d.rectangle([10, 47, 52, 51], fill=A(ml))
+    treads(d, [3, 51, 54, 63], tread, (10, 18, 26, 34, 42, 50))
+    body = Image.new("RGBA", (W, H), CLEAR)
+    d = ImageDraw.Draw(body)
+    d.rounded_rectangle([4, 38, 55, 52], 4, fill=A(vm))               # deck
+    d.line([7, 38, 52, 38], fill=A(vh))
+    d.rectangle([5, 49, 54, 52], fill=A(vl))
+    d.rectangle([5, 44, 54, 45], fill=A(sc))
+    d.rounded_rectangle([27, 27, 49, 39], 3, fill=A(vm))              # engine housing
+    d.line([29, 27, 47, 27], fill=A(vh))
+    for x in (33, 36, 39, 42):
+        d.line([x, 30, x, 35], fill=A(vl))
+    d.rectangle([31, 17, 32, 27], fill=A(mm))                         # exhaust
+    d.point((31, 18), fill=A(mh))
+    d.rectangle([30, 16, 33, 17], fill=A(ml))
+    nl = nose_lamp(d, 47, 39)
+    # mast: two rails banded purple / cream, metal cross bracing, crown on top
+    d.line([42, 28, 57, 10], fill=A(ml), width=2)                     # raking brace
+    d.rectangle([52, 33, 58, 40], fill=A(vl))                         # mast foot bracket
+    d.line([52, 33, 58, 33], fill=A(vm))
+    for y in range(4, 33, 8):
+        d.line([59, y, 66, y + 8], fill=A(ml))
+        d.line([66, y, 59, y + 8], fill=A(ml))
+    for y in range(3, 42):
+        band = vm if ((y - 3) // 5) % 2 == 0 else cr[2]
+        bandh = vh if band == vm else cr[3]
+        for x0 in (57, 66):
+            d.point((x0, y), fill=A(bandh))
+            d.point((x0 + 1, y), fill=A(band))
+    d.line([62, 4, 62, 30], fill=A(md))                               # drive cable
+    d.rounded_rectangle([55, 0, 69, 4], 1, fill=A(vm))                # crown block
+    d.line([56, 0, 68, 0], fill=A(vh))
+    d.ellipse([60, 1, 64, 5], fill=A(mm))
+    d.rounded_rectangle([58, 30, 66, 37], 2, fill=A(vm))              # rotary drive head
+    d.line([59, 30, 65, 30], fill=A(vh))
+    d.rectangle([58, 35, 66, 37], fill=A(vl))
+    d.rectangle([60, 37, 64, 38], fill=A(mm))                         # chuck the bit hangs from
+    d.line([60, 37, 64, 37], fill=A(mh))
+    rl = cab(body, [7, 18, 27, 43], DRILL_GLASS, DRILL, sc, 9)
+    im = Image.new("RGBA", (W, H), CLEAR)
+    im.alpha_composite(tr)
+    im.alpha_composite(body, (0, bob))
+    return outline(im), {"nose_lamp": [nl[0], nl[1] + bob], "roof_lamp": [rl[0], rl[1] + bob]}
+
+
+def drill_bit(phase):
+    """24x32, pointing down, top centre = pivot. A fat corkscrew; phase 0..3 turns it a quarter."""
+    f = Image.new("RGBA", (24, 32), CLEAR)
+    p = f.load()
+    md, ml, mm, mh = R["metal"]
+    d = ImageDraw.Draw(f)
+    d.rectangle([9, 0, 14, 3], fill=A(mm))                             # collar
+    d.line([9, 0, 14, 0], fill=A(mh))
+    d.line([14, 1, 14, 3], fill=A(ml))
+    for y in range(4, 28):
+        w = 7 if y <= 20 else 7 - (y - 20) * 5 / 7
+        for x in range(round(12 - w), round(12 + w)):
+            t = (y + (x - 11.5) * .45 - phase * 2) % 8
+            if t < 3:
+                c = mh if x < 9 else (mm if x < 15 else ml)
+                if t < 1 and x < 15:
+                    c = mh if x >= 9 else WHITE if x == 7 else mh
+                if t >= 2:
+                    c = ml if x < 15 else md
+                p[x, y] = A(c)
+            elif 11 <= x <= 12:
+                p[x, y] = A(md if x == 12 else ml)
+    d.polygon([(9, 27), (14, 27), (12, 31), (11, 31)], fill=A(mm))   # point
+    d.line([10, 27, 11, 30], fill=A(mh))
+    return outline(f)
+
+
+def make_drill_rig():
+    W, H = 72, 64
+    sheet, pts = vehicle_sheet(drill_body, W, H, ((0, 0), (1, 0), (0, 0), (0, 1)))
+    save(sheet, "vehicles/drill_rig.png")
+    MANIFEST["drill_rig"] = {
+        "file": "vehicles/drill_rig.png", "frame": [W, H], "pivot": [36, 64], "box": [56, 48],
+        "rows": VEH_ROWS, "columns": {"idle": [0, 1], "drive": [2, 3]},
+        "head": head_for(DRILL_GLASS), "nose_lamp": pts["nose_lamp"], "roof_lamp": pts["roof_lamp"], "bit": [62, 39],
+        "note": "drive frames move the treads; the bit hangs from `bit` (its top-centre pivot); at rest its tip "
+                "is 6 px below the ground line"}
+    bs = Image.new("RGBA", (4 * 24, 32), CLEAR)
+    for i in range(4):
+        bs.alpha_composite(drill_bit(i), (i * 24, 0))
+    save(bs, "vehicles/drill_rig_bit.png")
+    MANIFEST["drill_rig_bit"] = {"file": "vehicles/drill_rig_bit.png", "frame": [24, 32], "pivot": [12, 0],
+                                 "rows": {"spin": {"row": 0, "frames": 4, "fps": 12}}}
+
+
+def make_vehicles2():
+    make_dump_truck()
+    make_crane()
+    make_drill_rig()
+
+
+# =============================================================================== treasures 2
+BONE = hp.ramp(hp.hx("#f4ecd8"), P)
+TEAL = hp.ramp(hp.hx("#3cc8c8"), P)
+ENAMEL = hp.ramp(hp.hx("#eef2f6"), P)
+
+
+def cap_at(d, x, y, r4):
+    """7x7 bottle cap seen from above: crimped rim, dished middle, glint."""
+    d.ellipse([x, y, x + 6, y + 6], fill=A(r4[1]))
+    d.ellipse([x, y, x + 5, y + 5], fill=A(r4[2]))
+    d.ellipse([x + 2, y + 2, x + 4, y + 4], fill=A(r4[1]))
+    d.point((x + 1, y + 1), fill=A(WHITE if r4 is not ENAMEL else r4[3]))
+    for px, py in ((x + 3, y), (x, y + 3), (x + 6, y + 3), (x + 3, y + 6)):
+        d.point((px, py), fill=A(r4[0]))
+
+
+def bottle_caps():
+    f = Image.new("RGBA", (16, 16), CLEAR)
+    d = ImageDraw.Draw(f)
+    cap_at(d, 8, 2, TEAL)
+    cap_at(d, 1, 4, R["gold"])
+    cap_at(d, 5, 8, ENAMEL)
+    return outline(f)
+
+
+def bike2():
+    f = Image.new("RGBA", (32, 16), CLEAR)
+    d = ImageDraw.Draw(f)
+    fr = R["pink"]
+    td = R["tyre"]
+    md = R["metal"]
+    for cx in (7, 24):
+        d.ellipse([cx - 6, 3, cx + 6, 15], outline=A(td[2]), width=2)
+        d.arc([cx - 5, 4, cx + 5, 14], 190, 260, fill=A(td[3]))
+        d.line([cx - 4, 9, cx + 4, 9], fill=A(md[1]))
+        d.line([cx, 5, cx, 13], fill=A(md[1]))
+        d.point((cx, 9), fill=A(md[3]))
+    d.line([7, 9, 14, 10, 12, 3], fill=A(fr[2]), width=2)             # chain stay, seat tube
+    d.line([12, 4, 21, 4], fill=A(fr[2]), width=2)                     # top tube
+    d.line([14, 10, 21, 5], fill=A(fr[1]), width=2)                    # down tube
+    d.line([7, 9, 12, 4], fill=A(fr[1]))                               # seat stay
+    d.line([21, 4, 24, 9], fill=A(md[2]), width=2)                     # fork
+    d.line([12, 4, 20, 4], fill=A(fr[3]))
+    d.rectangle([10, 1, 14, 2], fill=A(R["boots"][2]))                 # saddle
+    d.line([21, 4, 21, 1], fill=A(md[2]))                              # stem + bars
+    d.line([19, 1, 23, 1], fill=A(md[2]))
+    d.ellipse([12, 8, 16, 12], fill=A(md[2]))                          # crank
+    d.point((13, 9), fill=A(md[3]))
+    for x, y in ((17, 6), (10, 7)):                                     # old: a bit of rust
+        d.point((x, y), fill=A(R["barn"][1]))
+    return outline(f)
+
+
+def bathtub():
+    f = Image.new("RGBA", (48, 32), CLEAR)
+    d = ImageDraw.Draw(f)
+    e, g, md = ENAMEL, R["gold"], R["metal"]
+    for x in (7, 35):                                                   # gold claw feet
+        d.polygon([(x, 22), (x + 5, 22), (x + 6, 27), (x + 7, 29), (x - 1, 29), (x, 27)], fill=A(g[2]))
+        d.line([x, 22, x, 27], fill=A(g[3]))
+        d.line([x + 5, 23, x + 6, 28], fill=A(g[1]))
+        for k in (0, 3, 6):
+            d.point((x - 1 + k, 29), fill=A(g[1]))
+    d.rounded_rectangle([3, 8, 44, 26], 8, fill=A(e[1]))               # tub body: low crescent bottom-right
+    d.rounded_rectangle([3, 8, 42, 24], 8, fill=A(e[2]))
+    d.rounded_rectangle([6, 11, 15, 20], 4, fill=A(e[3]))              # high spot up-left
+    d.rounded_rectangle([1, 6, 46, 10], 2, fill=A(e[2]))               # roll-top rim
+    d.line([2, 6, 45, 6], fill=A(WHITE))
+    d.line([2, 10, 45, 10], fill=A(e[1]))
+    d.rectangle([4, 7, 43, 8], fill=A(e[0]))                           # a glimpse inside
+    d.line([4, 7, 43, 7], fill=A(e[1]))
+    d.rectangle([39, 1, 40, 6], fill=A(md[2]))                         # tap
+    d.rectangle([38, 1, 43, 2], fill=A(md[2]))
+    d.point((38, 1), fill=A(md[3]))
+    d.rectangle([42, 3, 43, 4], fill=A(md[1]))
+    d.point((9, 13), fill=A(WHITE))
+    return outline(f)
+
+
+def dino_skeleton():
+    """Long-neck dinosaur lying down: tail left, head resting on the right. Round snout, no teeth."""
+    f = Image.new("RGBA", (64, 32), CLEAR)
+    d = ImageDraw.Draw(f)
+    b = BONE
+    spine = []
+    for i in range(41):
+        t = i / 40
+        x = 2 + t * 52
+        y = 27 - 13 * math.sin(math.pi * min(1, t * 1.35)) if t < .74 else 20 - (t - .74) * 30
+        spine.append((x, y))
+    for (x0, y0), (x1, y1) in zip(spine, spine[1:]):                  # backbone
+        d.line([x0, y0, x1, y1], fill=A(b[1]), width=2)
+    for i in range(2, 40, 3):                                           # vertebrae knobs
+        x, y = spine[i]
+        r = .8 + 1.2 * math.sin(math.pi * min(1, i / 30))
+        d.ellipse([x - r, y - r - 1, x + r, y + r - 1], fill=A(b[2]))
+        d.point((round(x - .5), round(y - r - 1)), fill=A(b[3]))
+    for i in range(10, 26, 3):                                          # ribs
+        x, y = spine[i]
+        d.arc([x - 4, y - 2, x + 4, y + 14], 95, 175, fill=A(b[2]), width=2)
+    for lx in (12, 32):                                                 # folded legs
+        d.line([lx, 23, lx - 4, 28, lx + 3, 29], fill=A(b[2]), width=2)
+        d.ellipse([lx - 2, 21, lx + 2, 25], fill=A(b[3]))
+    hx_, hy_ = spine[-1]
+    d.ellipse([hx_ - 1, hy_ - 4, hx_ + 8, hy_ + 2], fill=A(b[2]))     # round friendly skull
+    d.ellipse([hx_, hy_ - 4, hx_ + 4, hy_ - 1], fill=A(b[3]))
+    d.ellipse([hx_ + 2, hy_ - 2, hx_ + 4, hy_], fill=A(b[0]))         # eye socket
+    d.line([hx_ + 4, hy_ + 1, hx_ + 7, hy_ + 1], fill=A(b[1]))        # closed smile line
+    d.point((4, 26), fill=A(WHITE))
+    return outline(f)
+
+
+def pirate_chest():
+    f = Image.new("RGBA", (32, 32), CLEAR)
+    d = ImageDraw.Draw(f)
+    w, g = R["wood"], R["gold"]
+    d.rectangle([4, 9, 27, 13], fill=A(w[0]))                          # inside of the open lid
+    for x, y, c in ((7, 10, 2), (12, 9, 3), (17, 10, 2), (22, 9, 2), (10, 12, 1), (20, 12, 1)):
+        d.ellipse([x - 2, y, x + 2, y + 3], fill=A(g[c]))              # coins peeking out
+    d.point((12, 9), fill=A(WHITE))
+    d.point((22, 9), fill=A(WHITE))
+    d.rounded_rectangle([2, 2, 29, 10], 4, fill=A(w[2]))               # lid, lifted
+    d.rectangle([2, 7, 29, 10], fill=A(w[2]))
+    d.line([5, 2, 26, 2], fill=A(w[3]))
+    d.line([3, 9, 28, 9], fill=A(w[1]))
+    planks(f, (2, 14, 29, 29), w, step=5, horiz=True, seed=11)         # box
+    d = ImageDraw.Draw(f)
+    d.rectangle([2, 27, 29, 29], fill=A(w[0]))
+    for x in (6, 24):                                                   # gold bands
+        d.rectangle([x, 2, x + 2, 10], fill=A(g[2]))
+        d.rectangle([x, 14, x + 2, 29], fill=A(g[2]))
+        d.line([x, 2, x, 29], fill=A(g[3]))
+        d.line([x + 2, 15, x + 2, 29], fill=A(g[1]))
+    d.rectangle([2, 14, 29, 15], fill=A(g[2]))
+    d.line([2, 14, 29, 14], fill=A(g[3]))
+    d.rounded_rectangle([13, 15, 18, 21], 1, fill=A(g[2]))            # lock plate
+    d.line([14, 15, 17, 15], fill=A(g[3]))
+    d.rectangle([15, 17, 16, 19], fill=A(w[0]))
+    return outline(f)
+
+
+def dragon_egg():
+    f = Image.new("RGBA", (32, 32), CLEAR)
+    d = ImageDraw.Draw(f)
+    pu = hp.ramp(hp.hx("#9a52d0"), P)
+    g = R["gold"]
+    def egg(rx, ry, cx=15.5, cy=17.5):
+        pts = []
+        for k in range(48):
+            a = 2 * math.pi * k / 48
+            s = math.sin(a)
+            yy = cy + ry * s
+            xx = cx + rx * math.cos(a) * (1 - .18 * (-s if s < 0 else 0)) * (1 + .06 * (s if s > 0 else 0))
+            pts.append((xx, yy))
+        return pts
+    d.polygon(egg(12, 14), fill=A(pu[1]))                              # low crescent bottom-right
+    d.polygon(egg(11.2, 13.2, 14.8, 16.8), fill=A(pu[2]))
+    d.polygon(egg(6.5, 7.5, 15, 18), fill=A(mix(pu[2], TEAL[2], .55)))  # faint inner glow, stepped
+    d.polygon(egg(4, 4.8, 15, 18.5), fill=A(TEAL[2]))
+    d.polygon(egg(2, 2.4, 15, 19), fill=A(TEAL[3]))
+    for x0 in range(5, 28, 6):                                          # teal zigzag band low on the shell
+        d.line([x0, 24, x0 + 3, 21, x0 + 6, 24], fill=A(TEAL[1]), width=1)
+    d.ellipse([7, 6, 12, 11], fill=A(pu[3]))                           # high spot up-left
+    d.point((8, 7), fill=A(WHITE))
+    for x, y in ((18, 7), (22, 12), (10, 15), (24, 19), (8, 21), (19, 27), (13, 26), (21, 22), (14, 10)):
+        d.point((x, y), fill=A(g[2]))                                   # gold speckles
+        d.point((x + 1, y), fill=A(g[3] if y < 16 else g[1]))
+    return outline(f)
+
+
+def make_treasures2():
+    fs = finds()
+    crop = {n: fs.crop((i * 16, 0, i * 16 + 16, 16)) for i, n in enumerate(("cap", "boot", "bike", "fossil"))}
+    for tid, im in (("bottle_caps", bottle_caps()), ("boot", crop["boot"]), ("bike", bike2()),
+                    ("bathtub", bathtub()), ("fossil", crop["fossil"]), ("dino_skeleton", dino_skeleton()),
+                    ("pirate_chest", pirate_chest()), ("dragon_egg", dragon_egg())):
+        save(im, "treasures/%s.png" % tid)
+        MANIFEST[tid] = {"file": "treasures/%s.png" % tid, "frame": list(im.size),
+                         "tiles": [im.width // 16, im.height // 16]}
+
+
+# =============================================================================== water tower, shelf
+def water_tower():
+    W, H = 96, 144
+    im, lit = Image.new("RGBA", (W, H), CLEAR), Image.new("RGBA", (W, H), CLEAR)
+    d, ld = ImageDraw.Draw(im), ImageDraw.Draw(lit)
+    mt, tk, rf, rk = R["metal"], R["wall"], R["roof"], R["rock"]
+    # back legs first (darker), then bracing, then the front legs
+    for x0, x1 in ((34, 38), (61, 57)):
+        d.line([x0, 141, x1, 72], fill=A(mt[0]), width=2)
+    def lx(y, side):
+        t = (141 - y) / (141 - 72)
+        return (14 + 12 * t) if side < 0 else (81 - 12 * t)
+    for ya, yb in ((78, 106), (106, 134)):
+        d.line([lx(ya, -1), ya, lx(yb, 1), yb], fill=A(mt[1]))
+        d.line([lx(ya, 1), ya, lx(yb, -1), yb], fill=A(mt[1]))
+    for y in (78, 106, 134):
+        d.line([lx(y, -1), y, lx(y, 1), y], fill=A(mt[2]), width=2)
+        d.line([lx(y, -1), y - 1, lx(y, 1), y - 1], fill=A(mt[3]))
+    for side in (-1, 1):
+        d.line([lx(141, side), 141, lx(72, side), 72], fill=A(mt[2]), width=3)
+        d.line([lx(141, side) - 1, 141, lx(72, side) - 1, 72], fill=A(mt[3] if side < 0 else mt[1]))
+    for x in (11, 34, 57, 78):                                         # concrete footings
+        d.rectangle([x, 138, x + 7, 143], fill=A(rk[2]))
+        d.line([x, 138, x + 7, 138], fill=A(rk[3]))
+        d.line([x, 143, x + 7, 143], fill=A(rk[1]))
+    # ladder from the ground up to the catwalk
+    for x in (42, 46):
+        d.line([x, 58, x, 143], fill=A(mt[3]))
+    for y in range(60, 142, 3):
+        d.line([43, y, 45, y], fill=A(mt[2]))
+    # tank: cream drum, lit from the left, two hoops
+    d.rounded_rectangle([16, 28, 79, 74], 10, fill=A(tk[1]))
+    d.rounded_rectangle([16, 28, 76, 71], 10, fill=A(tk[2]))
+    d.rectangle([19, 34, 22, 66], fill=A(tk[3]))
+    for y in (42, 56):
+        d.line([17, y, 78, y], fill=A(tk[1]))
+        d.line([17, y + 1, 78, y + 1], fill=A(tk[0]))
+    for x in (34, 52, 70):
+        for y in (38, 50, 62):
+            d.point((x, y), fill=A(tk[0]))                             # rivets
+    d.rounded_rectangle([53, 58, 60, 66], 1, fill=A(mt[1]))            # little hatch
+    d.line([54, 58, 59, 58], fill=A(mt[3]))
+    d.point((58, 62), fill=A(R["gold"][2]))
+    # catwalk ring and railing in front of the tank's foot
+    d.rectangle([9, 67, 86, 69], fill=A(mt[2]))
+    d.line([9, 67, 86, 67], fill=A(mt[3]))
+    d.line([9, 69, 86, 69], fill=A(mt[0]))
+    d.line([9, 60, 86, 60], fill=A(mt[2]))
+    for x in range(9, 87, 7):
+        d.line([x, 60, x, 66], fill=A(mt[1]))
+    # conical cap with an eave and a lamp on the finial
+    d.polygon([(11, 31), (48, 10), (84, 31)], fill=A(rf[2]))
+    d.polygon([(48, 10), (84, 31), (60, 31)], fill=A(rf[1]))
+    d.line([(11, 31), (48, 10)], fill=A(rf[3]))
+    d.rectangle([11, 30, 84, 32], fill=A(rf[0]))
+    d.rectangle([47, 5, 48, 10], fill=A(mt[1]))
+    d.ellipse([44, 0, 51, 6], fill=A(mt[1]))
+    d.ellipse([45, 1, 50, 5], fill=A(LAMP))
+    d.point((46, 2), fill=A(WHITE))
+    ld.ellipse([45, 1, 50, 5], fill=A(hp.hx("#fff6c8")))
+    d.rectangle([26, 62, 29, 64], fill=A(mt[1]))                       # catwalk work lamp
+    d.rectangle([27, 63, 29, 64], fill=A(LAMP))
+    ld.rectangle([27, 63, 29, 64], fill=A(LIT_WIN))
+    return finish(im, lit)
+
+
+SHELF_BOARDS = [20, 38, 56, 74, 92, 110]                               # top surface y of each board
+SHELF_TABS = ["top", "clay", "stone", "ice", "crys", "cav"]
+
+
+def star_pts(cx, cy, r, ri):
+    return [(cx + (r if k % 2 == 0 else ri) * math.sin(math.pi * k / 5),
+             cy - (r if k % 2 == 0 else ri) * math.cos(math.pi * k / 5)) for k in range(10)]
+
+
+def treasure_shelf():
+    W, H = 128, 112
+    im = Image.new("RGBA", (W, H), CLEAR)
+    d = ImageDraw.Draw(im)
+    w, g = R["wood"], R["gold"]
+    back = mix(w[1], w[0], .5)
+    # pediment: a gable crest behind the top board, gold star at its peak
+    d.polygon([(10, 20), (64, 5), (117, 20)], fill=A(w[2]))
+    d.polygon([(22, 19), (64, 9), (105, 19)], fill=A(w[1]))
+    d.line([(10, 19), (64, 4)], fill=A(w[3]))
+    d.line([(64, 4), (117, 19)], fill=A(w[1]))
+    sp = star_pts(64, 6.5, 6.5, 2.8)
+    d.polygon(sp, fill=A(g[2]))
+    d.polygon([sp[9], sp[0], sp[1], (64, 6.5)], fill=A(g[3]))
+    d.point((62, 3), fill=A(WHITE))
+    # carcass: back panel, side posts
+    d.rectangle([10, 22, 117, 109], fill=A(back))
+    for x in range(24, 117, 14):
+        d.line([x, 22, x, 109], fill=A(w[0]))
+    for x0 in (2, 118):
+        d.rectangle([x0, 18, x0 + 7, 111], fill=A(w[2]))
+        d.line([x0, 18, x0, 111], fill=A(w[3]))
+        d.line([x0 + 7, 19, x0 + 7, 111], fill=A(w[1]))
+        d.rectangle([x0, 16, x0 + 7, 17], fill=A(w[3]))                # post caps
+    for k, y in enumerate(SHELF_BOARDS):
+        x0, x1 = (2, 125) if k in (0, 5) else (10, 117)
+        d.rectangle([x0, y, x1, y + 1], fill=A(w[2]))
+        d.line([x0, y, x1, y], fill=A(w[3]))
+        if 0 < k < 5:
+            d.line([10, y + 2, 117, y + 2], fill=A(w[0]))              # shadow under the board
+        tb = R[SHELF_TABS[k]]
+        lo = 1 if SHELF_TABS[k] == "top" else 2                         # topsoil one step darker than the wood
+        d.rounded_rectangle([0, y - 4, 7, y + 1], 1, fill=A(tb[lo]))   # layer colour tab on the left end
+        d.line([1, y - 4, 6, y - 4], fill=A(tb[lo + 1]))
+        d.line([1, y + 1, 6, y + 1], fill=A(tb[lo - 1]))
+    return outline(im), {"shelves": [[10, y, 108] for y in SHELF_BOARDS]}
+
+
+def make_props2():
+    im, pts = treasure_shelf()
+    save(im, "props/treasure_shelf.png")
+    MANIFEST["treasure_shelf"] = dict({"file": "props/treasure_shelf.png", "frame": [128, 112], "pivot": [64, 112],
+                                       "shelves_note": "[x, y, w] per board, top (Topsoil) to bottom (The Bottom): "
+                                                       "left end of the board's top surface and usable width; "
+                                                       "16 px headroom above each"}, **pts)
 
 
 # =============================================================================== check

@@ -151,7 +151,12 @@ func _plan(p_seed: int) -> void:
 		_carved.append(pocket)
 		_calm.append(pocket.grow(3))
 	# Treasures: every row `count` times in its layer; the Buried Car beside the Clay landing.
+	# The first three (the ones that stay put) are placed here with the main rng, exactly as in the
+	# first playable; the pickups come after the hazards with their own rng (_plan_pickups), so
+	# adding treasure rows never moves the car, the boulders or the hazards.
 	for t: TreasureData in _treasures:
+		if not t.stays:
+			continue
 		var li := _layer_index(t.layer)
 		if li < 0:
 			continue
@@ -195,7 +200,30 @@ func _plan(p_seed: int) -> void:
 			_calm.append(r.grow(2))
 			made += 1
 	_plan_hazards(p_seed)
+	_plan_pickups(p_seed)
 	_carved.append(CAVERN)
+
+
+## The pickup treasures (TreasureData.stays false), by id so the order never depends on the folder.
+func _plan_pickups(p_seed: int) -> void:
+	var rng := RandomNumberGenerator.new()
+	rng.seed = p_seed + 4111
+	var rows := _treasures.filter(func(t: TreasureData) -> bool: return not t.stays)
+	rows.sort_custom(func(a: TreasureData, b: TreasureData) -> bool: return String(a.id) < String(b.id))
+	for t: TreasureData in rows:
+		var li := _layer_index(t.layer)
+		if li < 0:
+			continue
+		var l: LayerData = layer_rows[li]
+		for n in maxi(t.count, 1):
+			var r := _hazard_spot(rng, l, li, t.footprint, t.near_landing and n == 0)
+			if r.size == Vector2i.ZERO:
+				r = _hazard_spot(rng, l, li, t.footprint, false)
+			if r.size == Vector2i.ZERO:
+				continue
+			treasure_spots.append({"id": t.id, "rect": r, "layer": li})
+			_carved.append(Rect2i(r.position.x - 1, r.position.y - 1, r.size.x + 2, r.size.y + 1))
+			_calm.append(r.grow(3))
 
 
 ## data/hazards rows on their own random stream (the first-playable layout above never moves):

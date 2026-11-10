@@ -7,8 +7,12 @@ class_name Vehicle
 extends Node2D
 
 const DARK := Color(0.07, 0.06, 0.09)
-const COLORS := {&"front_loader": Color("f2b134"), &"excavator": Color("f2994a")}
-const SIZES := {&"front_loader": Vector2(28, 26), &"excavator": Vector2(40, 40)}
+const COLORS := {&"front_loader": Color("f2b134"), &"excavator": Color("f2994a"), &"dump_truck": Color("3f86e0"),
+		&"crane": Color("1fbfb0"), &"drill_rig": Color("8a5cd6")}
+const SIZES := {&"front_loader": Vector2(28, 26), &"excavator": Vector2(40, 40), &"dump_truck": Vector2(50, 32),
+		&"crane": Vector2(44, 38), &"drill_rig": Vector2(56, 48)}
+## Crane rope length (px below the boom tip) at rest.
+const ROPE := 12.0
 
 var data: VehicleData
 var facing := 1
@@ -99,13 +103,15 @@ static func tool_frame(tip: float, aim: float) -> int:
 ## Draws a vehicle at the canvas item's origin (wheels on y = 0) from the sprite sheets. driver:
 ## the driver's tint (transparent: empty; picks the green / red body row and ride head; `who`
 ## overrides). aim: -1 up .. 1 down, raises the bucket or arm. t: seconds (idle bob, wheels);
-## moving: the drive frames. Ids without art keep a plain box.
+## moving: the drive frames. state: VehicleAbility.draw_state() (bed, load, hook, reach, spin).
+## Ids without art keep a plain box.
 static func draw_vehicle(ci: CanvasItem, d: VehicleData, face: int, driver: Color, tip: float, aim: float,
-		t := 0.0, moving := false, who := -2) -> void:
+		t := 0.0, moving := false, who := -2, state := {}) -> void:
 	var id: StringName = d.id if d else &""
 	var file := "vehicles/%s.png" % id
 	if not SpriteArt.has(file):
 		_draw_box(ci, d, face)
+		_draw_tools_box(ci, d, face, state, t)
 		return
 	if who == -2:
 		who = who_of(driver)
@@ -131,6 +137,90 @@ static func draw_vehicle(ci: CanvasItem, d: VehicleData, face: int, driver: Colo
 		SpriteArt.draw(ci, "vehicles/front_loader_bucket.png", tf, 0, SpriteArt.point(file, "bucket") * f, flip)
 	elif id == &"excavator":
 		SpriteArt.draw(ci, "vehicles/excavator_arm.png", tf, 0, SpriteArt.point(file, "arm") * f, flip)
+	elif id == &"dump_truck":
+		_draw_bed(ci, file, f, flip, state)
+	elif id == &"crane":
+		_draw_crane(ci, file, f, flip, aim, state, t)
+	elif id == &"drill_rig":
+		var spin := float(state.get("spin", 0.0))
+		var bf := int(t * 14.0 * spin * 2.0) % 4 if spin > 0.05 else 0
+		var shake := Vector2(0, sin(t * 60.0)) * spin
+		SpriteArt.draw(ci, "vehicles/drill_rig_bit.png", bf, 0, (SpriteArt.point(file, "bit") + shake) * f, flip)
+
+
+## The Dump Truck's bed (tipping about its hinge) and the heap in it.
+static func _draw_bed(ci: CanvasItem, file: String, f: Vector2, flip: bool, state: Dictionary) -> void:
+	var at := SpriteArt.point(file, "bed") * f
+	var b := float(state.get("bed", 0.0))
+	var bf := 0 if b < 0.2 else (1 if b < 0.65 else 2)
+	if bf == 0 and float(state.get("load", 0.0)) > 0.0:
+		var l := float(state.load)
+		SpriteArt.draw(ci, "vehicles/dump_truck_load.png", 0 if l < 0.4 else (1 if l < 0.8 else 2), 0, at, flip)
+	SpriteArt.draw(ci, "vehicles/dump_truck_bed.png", bf, 0, at, flip)
+
+
+## The Crane's boom (frame from the aim), rope and hook; while hauling, the hook reaches for the
+## boulder (state.hook, vehicle-local) and brings it up.
+static func _draw_crane(ci: CanvasItem, file: String, f: Vector2, flip: bool, aim: float, state: Dictionary, t: float) -> void:
+	var boom_file := "vehicles/crane_boom.png"
+	var root := SpriteArt.point(file, "boom") * f
+	var bf := 2 if aim < -0.3 else (0 if aim > 0.3 else 1)
+	SpriteArt.draw(ci, boom_file, bf, 0, root, flip)
+	var tips: Array = SheetSprite.entry(boom_file).get("tips", [])
+	var tip := root + Vector2(0, -30)
+	if bf < tips.size():
+		tip = root + (Vector2(tips[bf][0], tips[bf][1]) - SpriteArt.pivot(boom_file)) * f
+	var hook := tip + Vector2(sin(t * 1.7) * 1.5, ROPE)
+	var carry := false
+	if state.has("hook"):
+		var target: Vector2 = state.hook
+		hook = tip.lerp(target, float(state.get("reach", 0.0)))
+		carry = true
+		if not bool(state.get("carry", false)):
+			_draw_boulder(ci, target)
+			carry = false
+	ci.draw_line(tip, hook, Color(0.2, 0.18, 0.2), 1.0)
+	if carry:
+		_draw_boulder(ci, hook + Vector2(0, 14))
+	SpriteArt.draw(ci, "vehicles/crane_hook.png", 0, 0, hook, flip)
+
+
+static func _draw_boulder(ci: CanvasItem, at: Vector2) -> void:
+	if SpriteArt.has("props/boulder.png"):
+		SpriteArt.draw(ci, "props/boulder.png", 0, 0, at)
+	else:
+		ci.draw_circle(at, 12.0, Color(0.62, 0.58, 0.54))
+
+
+## Tools for an id without art (tests, missing sheets): a box bed, a line boom, a bit.
+static func _draw_tools_box(ci: CanvasItem, d: VehicleData, face: int, state: Dictionary, t: float) -> void:
+	if d == null:
+		return
+	var s := body_size(d)
+	match d.id:
+		&"dump_truck":
+			var b := float(state.get("bed", 0.0))
+			var hinge := Vector2(-face * s.x * 0.45, -s.y + 6)
+			var a := -b * 0.9 * face
+			var w := Vector2(face * s.x * 0.55, 0).rotated(a)
+			var h := Vector2(0, -10).rotated(a)
+			ci.draw_colored_polygon(PackedVector2Array([hinge, hinge + w, hinge + w + h, hinge + h]), Color("5d6670"))
+		&"crane":
+			var root := Vector2(face * 6, -s.y + 6)
+			var tip := root + Vector2(face * 34, -30)
+			ci.draw_line(root, tip, Color("f2c94c"), 3.0)
+			var hook := tip + Vector2(0, ROPE)
+			if state.has("hook"):
+				hook = tip.lerp(state.hook, float(state.get("reach", 0.0)))
+			ci.draw_line(tip, hook, DARK, 1.0)
+			ci.draw_rect(Rect2(hook - Vector2(3, 0), Vector2(6, 6)), Color("c9ccd1"))
+		&"drill_rig":
+			var x := face * s.x * 0.4
+			var k := float(state.get("spin", 0.0))
+			for i in 4:
+				var y := -4.0 + i * 3.0
+				var off := sin(t * 30.0 * k + i) * 3.0
+				ci.draw_line(Vector2(x - 4 + off, y), Vector2(x + 4 - off, y + 2), Color("c9ccd1"), 2.0)
 
 
 ## A plain box for a vehicle id without art.

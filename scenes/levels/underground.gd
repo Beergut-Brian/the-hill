@@ -9,6 +9,8 @@ class_name Underground
 extends Node2D
 
 signal treasure_dug(id: StringName, player: int)
+## The Crane hauled boulder `index` (into boulders / generator.boulder_spots) out.
+signal boulder_hauled(index: int, player: int)
 
 const BLOCK_ORDER: Array[StringName] = [&"dirt", &"clay", &"stone", &"ice", &"crystal", &"edgestone", &"strangestone"]
 const BLOCK_DIR := "res://data/blocks/"
@@ -25,6 +27,12 @@ const GUSH_TICK := 0.1
 const GUSH_PER_TICK := 3
 const TREASURE_COLORS := {&"buried_car": Color("d9534f"), &"giant_tooth": Color("f4f1e6"), &"gnome_room": Color("8e6c4a")}
 const DARK := Color(0.07, 0.06, 0.09)
+## Each Water Tower up top drains this many water cells around every player underground per tick.
+const DRAIN_EVERY := 0.4
+const DRAIN_PER_TOWER := 2
+const DRAIN_REACH := 14
+## Stone blocks a hauled boulder gives (into the Crane's backpack).
+const BOULDER_BLOCKS := 4
 
 @export var world_seed := DEFAULT_SEED
 
@@ -52,6 +60,7 @@ var hazards: Hazards
 var residents: UndergroundResidents
 ## Which residents have been met (thaw, reveal); HillGame swaps in its saved Story.
 var story := Story.new()
+var _drain_t := 0.0
 
 
 func _ready() -> void:
@@ -248,7 +257,95 @@ func _found(id: StringName, player: int, rect: Rect2i) -> void:
 	var center := (Vector2(rect.position) + Vector2(rect.size) * 0.5) * 16.0
 	burst(center, Color("fff2a8"), 24, 160.0)
 	burst(center, Color("f2c94c"), 16, 90.0)
+	var td := Progress.treasure_data(id)
+	if td != null and not td.stays:
+		_pick_up(id, player, center)
 	treasure_dug.emit(id, player)
+
+
+## A pickup treasure: its prop (and any pieces) leaves the ground and the reveal pops it up over
+## the finder (or the nearest player), then it flies into their bag.
+func _pick_up(id: StringName, player: int, center: Vector2) -> void:
+	for prop in props.get(id, []):
+		_free_prop(prop, false)
+	props.erase(id)
+	var who: Node2D = _player_node(player)
+	if who == null:
+		var best := INF
+		for c in players_root.get_children() if players_root != null else []:
+			var d := (c as Node2D).global_position.distance_to(to_global(center))
+			if d < best:
+				best = d
+				who = c
+	var rv := TreasureReveal.new()
+	rv.id = id
+	rv.target = who
+	rv.position = center
+	world.add_child(rv)
+	world.add_light(rv, 90.0)
+
+
+func _player_node(p: int) -> Node2D:
+	if p < 0 or players_root == null:
+		return null
+	for c in players_root.get_children():
+		if c is HillPlayer and (c as HillPlayer).player == p:
+			return c
+	return null
+
+
+## Frees a treasure prop and drops its lamp (UndergroundLook's "Glow") from the world's lights.
+func _free_prop(prop: Variant, now: bool) -> void:
+	if not is_instance_valid(prop):
+		return
+	var n := prop as Node
+	for c in n.find_children("*", "Node2D", true, false):
+		world.remove_light(c)
+	world.remove_light(n as Node2D)
+	if now:
+		n.free()
+	else:
+		n.queue_free()
+
+
+## After loading a save: found pickups are gone from the ground, hauled boulders stay hauled.
+func after_load() -> void:
+	for id: StringName in props.keys():
+		var td := Progress.treasure_data(id)
+		if td != null and not td.stays and Progress.has_treasure(id):
+			for prop in props[id]:
+				_free_prop(prop, true)
+			props.erase(id)
+	for i in Progress.hauled:
+		if i >= 0 and i < boulders.size() and is_instance_valid(boulders[i]):
+			boulders[i].free()
+
+
+## The nearest boulder still in the ground within `reach` px of `pos`, as an index, or -1.
+func boulder_near(pos: Vector2, reach: float) -> int:
+	var best := -1
+	var bd := reach
+	for i in boulders.size():
+		var b := boulders[i]
+		if not is_instance_valid(b) or Progress.hauled.has(i):
+			continue
+		var d := b.global_position.distance_to(pos)
+		if d <= bd:
+			bd = d
+			best = i
+	return best
+
+
+## The Crane hauls boulder `i` out: it is gone for good (saved in Progress.hauled).
+func haul_boulder(i: int, player := -1) -> void:
+	if i < 0 or i >= boulders.size() or Progress.hauled.has(i):
+		return
+	Progress.hauled.append(i)
+	var b := boulders[i]
+	if is_instance_valid(b):
+		burst(b.position, Color(0.75, 0.7, 0.65), 14, 120.0)
+		b.queue_free()
+	boulder_hauled.emit(i, player)
 
 
 func _on_dig_blocked(cell: Vector2i, _block: StringName, _player: int) -> void:
@@ -264,6 +361,10 @@ func _on_prop_broke(prop: Node2D, pieces: Array) -> void:
 	if prop.has_meta(&"treasure"):
 		var id: StringName = prop.get_meta(&"treasure")
 		var bp := prop as BreakableProp
+		var td := Progress.treasure_data(id)
+		if td != null and not td.stays:
+			for piece in pieces:
+				(piece as Node).queue_free()
 		_found(id, -1, Rect2i(world.shape.cell_at(prop.position + Vector2(8, 8)), bp.footprint))
 
 
@@ -289,6 +390,31 @@ func _physics_process(delta: float) -> void:
 	for g: Dictionary in _gushes:
 		if g.t > 0.0:
 			_step_gush(g, delta)
+	_drain_t += delta
+	if _drain_t >= DRAIN_EVERY:
+		_drain_t = 0.0
+		drain(Progress.count_buildings(&"water_tower") * DRAIN_PER_TOWER)
+
+
+## Water Towers up top: removes up to `n` water cells near each player underground (nearest first,
+## the gush's refill still runs). Returns how many went.
+func drain(n: int) -> int:
+	if n <= 0 or players_root == null or players_root.get_child_count() == 0:
+		return 0
+	var cells := world.water_cells()
+	if cells.is_empty():
+		return 0
+	var gone := 0
+	for c in players_root.get_children():
+		var at := world.shape.cell_at(world.to_local((c as Node2D).global_position))
+		var near: Array = cells.filter(func(w: Vector2i) -> bool:
+			return absi(w.x - at.x) <= DRAIN_REACH and absi(w.y - at.y) <= DRAIN_REACH)
+		near.sort_custom(func(a: Vector2i, b: Vector2i) -> bool: return a.y < b.y)
+		for k in mini(n, near.size()):
+			world.set_water(near[k], false)
+			cells.erase(near[k])
+			gone += 1
+	return gone
 
 
 func _step_gush(g: Dictionary, delta: float) -> void:

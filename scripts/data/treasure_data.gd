@@ -14,3 +14,8 @@ extends Resource
 @export var count: int = 1
 ## For Hermes and the grown-up only, never on the kid's screen.
 @export var museum_text: String
+## True: the prop stays where it lies once found (the Buried Car, the Giant Tooth, the Gnome Room).
+## False: a pickup; it pops up over the finder and goes into the bag, then onto the shelf up top.
+@export var stays: bool = false
+## Placed a few tiles from the layer's landing (an early find), else anywhere in the layer.
+@export var near_landing: bool = false

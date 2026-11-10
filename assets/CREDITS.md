@@ -20,6 +20,10 @@ One line per file. Nothing enters `assets/` without a line here.
 | `sprites/buildings/*.png` (barn, house, garage, lighthouse, headframe + `_lit`; old_shed, crooked_watchtower, flooded_cabin, ruined_keep) | `art/tools/make_game_art.py` | Buildings and ruins at footprint size; drawn in code, no generative model | Project's own |
 | `sprites/props/tree.png`, `rock.png`, `stump.png`, `boulder.png` | `art/tools/make_game_art.py` | Scrub and props; drawn in code, no generative model | Project's own |
 | `sprites/treasures/*.png` (buried_car, giant_tooth, gnome_room, finds, sparkle) | `art/tools/make_game_art.py` | Treasures and small finds; drawn in code, no generative model | Project's own |
+| `sprites/vehicles/dump_truck.png`, `dump_truck_bed.png`, `dump_truck_load.png`, `crane.png`, `crane_boom.png`, `crane_hook.png`, `drill_rig.png`, `drill_rig_bit.png` | `art/tools/make_game_art.py` | Toy vehicles, no faces; drawn in code, no generative model | Project's own |
+| `sprites/buildings/water_tower.png`, `water_tower_lit.png` | `art/tools/make_game_art.py` | Generic water tower, no text or logo; drawn in code, no generative model | Project's own |
+| `sprites/props/treasure_shelf.png` | `art/tools/make_game_art.py` | Treasure display shelf; drawn in code, no generative model | Project's own |
+| `sprites/treasures/bottle_caps.png`, `boot.png`, `bike.png`, `bathtub.png`, `fossil.png`, `dino_skeleton.png`, `pirate_chest.png`, `dragon_egg.png` | `art/tools/make_game_art.py` | Treasures; drawn in code, no generative model | Project's own |
 | `sprites/fx/glow.png`, `cone.png`, `window.png` | `art/tools/make_game_art.py` | Soft light sprites for additive light; drawn in code, no generative model | Project's own |
 
 <!-- characters:begin (scripts/tools/sync_characters.sh writes this block) -->

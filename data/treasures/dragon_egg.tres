@@ -1,0 +1,11 @@
+[gd_resource type="Resource" script_class="TreasureData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/data/treasure_data.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = &"dragon_egg"
+layer = &"crystal"
+footprint = Vector2i(2, 2)
+unlocks = &""
+museum_text = "A big speckled egg, warm to the touch. The Dragon will want to know."

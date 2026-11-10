@@ -12,6 +12,28 @@
   ],
   "pivot_note": "bottom-left on the ground"
  },
+ "bathtub": {
+  "file": "treasures/bathtub.png",
+  "frame": [
+   48,
+   32
+  ],
+  "tiles": [
+   3,
+   2
+  ]
+ },
+ "bike": {
+  "file": "treasures/bike.png",
+  "frame": [
+   32,
+   16
+  ],
+  "tiles": [
+   2,
+   1
+  ]
+ },
  "block_icons": {
   "column": "id - 1",
   "file": "icons/blocks.png",
@@ -28,6 +50,28 @@
    "6": "edgestone",
    "7": "strangestone"
   }
+ },
+ "boot": {
+  "file": "treasures/boot.png",
+  "frame": [
+   16,
+   16
+  ],
+  "tiles": [
+   1,
+   1
+  ]
+ },
+ "bottle_caps": {
+  "file": "treasures/bottle_caps.png",
+  "frame": [
+   16,
+   16
+  ],
+  "tiles": [
+   1,
+   1
+  ]
  },
  "boulder": {
   "file": "props/boulder.png",
@@ -145,6 +189,114 @@
    }
   }
  },
+ "crane": {
+  "boom": [
+   40,
+   21
+  ],
+  "box": [
+   44,
+   38
+  ],
+  "columns": {
+   "drive": [
+    2,
+    3
+   ],
+   "idle": [
+    0,
+    1
+   ]
+  },
+  "file": "vehicles/crane.png",
+  "frame": [
+   64,
+   48
+  ],
+  "head": [
+   21,
+   40
+  ],
+  "nose_lamp": [
+   49,
+   26
+  ],
+  "note": "drive frames move the treads; the boom is its own sprite with its pivot on `boom`; the rope runs straight down from the boom's `tips` point to the hook's pivot",
+  "pivot": [
+   32,
+   48
+  ],
+  "roof_lamp": [
+   28,
+   3
+  ],
+  "rows": {
+   "cream": {
+    "fps": 2,
+    "frames": 4,
+    "row": 0
+   },
+   "green": {
+    "fps": 2,
+    "frames": 4,
+    "row": 1
+   },
+   "red": {
+    "fps": 2,
+    "frames": 4,
+    "row": 2
+   }
+  }
+ },
+ "crane_boom": {
+  "file": "vehicles/crane_boom.png",
+  "frame": [
+   80,
+   80
+  ],
+  "pivot": [
+   6,
+   74
+  ],
+  "rows": {
+   "tool": {
+    "fps": 0,
+    "frames": 3,
+    "names": [
+     "low",
+     "mid",
+     "high"
+    ],
+    "row": 0
+   }
+  },
+  "tips": [
+   [
+    64,
+    54
+   ],
+   [
+    51,
+    32
+   ],
+   [
+    29,
+    19
+   ]
+  ]
+ },
+ "crane_hook": {
+  "file": "vehicles/crane_hook.png",
+  "frame": [
+   12,
+   14
+  ],
+  "pivot": [
+   6,
+   0
+  ],
+  "pivot_note": "rope attach on top"
+ },
  "crooked_watchtower": {
   "door": [
    48,
@@ -158,6 +310,17 @@
   "pivot": [
    0,
    144
+  ]
+ },
+ "dino_skeleton": {
+  "file": "treasures/dino_skeleton.png",
+  "frame": [
+   64,
+   32
+  ],
+  "tiles": [
+   4,
+   2
   ]
  },
  "dragon": {
@@ -174,6 +337,201 @@
    "asleep": {
     "fps": 1,
     "frames": 2,
+    "row": 0
+   }
+  }
+ },
+ "dragon_egg": {
+  "file": "treasures/dragon_egg.png",
+  "frame": [
+   32,
+   32
+  ],
+  "tiles": [
+   2,
+   2
+  ]
+ },
+ "drill_rig": {
+  "bit": [
+   62,
+   39
+  ],
+  "box": [
+   56,
+   48
+  ],
+  "columns": {
+   "drive": [
+    2,
+    3
+   ],
+   "idle": [
+    0,
+    1
+   ]
+  },
+  "file": "vehicles/drill_rig.png",
+  "frame": [
+   72,
+   64
+  ],
+  "head": [
+   17,
+   52
+  ],
+  "nose_lamp": [
+   50,
+   42
+  ],
+  "note": "drive frames move the treads; the bit hangs from `bit` (its top-centre pivot); at rest its tip is 6 px below the ground line",
+  "pivot": [
+   36,
+   64
+  ],
+  "roof_lamp": [
+   11,
+   15
+  ],
+  "rows": {
+   "cream": {
+    "fps": 2,
+    "frames": 4,
+    "row": 0
+   },
+   "green": {
+    "fps": 2,
+    "frames": 4,
+    "row": 1
+   },
+   "red": {
+    "fps": 2,
+    "frames": 4,
+    "row": 2
+   }
+  }
+ },
+ "drill_rig_bit": {
+  "file": "vehicles/drill_rig_bit.png",
+  "frame": [
+   24,
+   32
+  ],
+  "pivot": [
+   12,
+   0
+  ],
+  "rows": {
+   "spin": {
+    "fps": 12,
+    "frames": 4,
+    "row": 0
+   }
+  }
+ },
+ "dump_truck": {
+  "bed": [
+   4,
+   23
+  ],
+  "box": [
+   50,
+   32
+  ],
+  "columns": {
+   "drive": [
+    2,
+    3
+   ],
+   "idle": [
+    0,
+    1
+   ]
+  },
+  "file": "vehicles/dump_truck.png",
+  "frame": [
+   64,
+   40
+  ],
+  "head": [
+   46,
+   40
+  ],
+  "nose_lamp": [
+   59,
+   20
+  ],
+  "note": "rows = stripe/roof colour: cream empty, green P1, red P2. Driver's ride frame pivot on `head`, behind the body. The bed (and its load) is its own sprite with its pivot on `bed`.",
+  "pivot": [
+   32,
+   40
+  ],
+  "roof_lamp": [
+   41,
+   3
+  ],
+  "rows": {
+   "cream": {
+    "fps": 2,
+    "frames": 4,
+    "row": 0
+   },
+   "green": {
+    "fps": 2,
+    "frames": 4,
+    "row": 1
+   },
+   "red": {
+    "fps": 2,
+    "frames": 4,
+    "row": 2
+   }
+  }
+ },
+ "dump_truck_bed": {
+  "file": "vehicles/dump_truck_bed.png",
+  "frame": [
+   48,
+   40
+  ],
+  "pivot": [
+   14,
+   37
+  ],
+  "pivot_note": "rear-bottom hinge of the bed",
+  "rows": {
+   "tool": {
+    "fps": 0,
+    "frames": 3,
+    "names": [
+     "rest",
+     "mid",
+     "full"
+    ],
+    "row": 0
+   }
+  }
+ },
+ "dump_truck_load": {
+  "file": "vehicles/dump_truck_load.png",
+  "frame": [
+   48,
+   40
+  ],
+  "note": "draw at `bed` with the bed's rest frame only (either side of the bed: the pile sits above the rim)",
+  "pivot": [
+   14,
+   37
+  ],
+  "rows": {
+   "load": {
+    "fps": 0,
+    "frames": 3,
+    "names": [
+     "small",
+     "medium",
+     "heaped"
+    ],
     "row": 0
    }
   }
@@ -308,6 +666,17 @@
     "row": 0
    }
   }
+ },
+ "fossil": {
+  "file": "treasures/fossil.png",
+  "frame": [
+   16,
+   16
+  ],
+  "tiles": [
+   1,
+   1
+  ]
  },
  "front_loader": {
   "box": [
@@ -694,6 +1063,17 @@
   ],
   "tileable": "horizontal"
  },
+ "pirate_chest": {
+  "file": "treasures/pirate_chest.png",
+  "frame": [
+   32,
+   32
+  ],
+  "tiles": [
+   2,
+   2
+  ]
+ },
  "rock": {
   "file": "props/rock.png",
   "pivot": "bottom-centre of each region",
@@ -817,6 +1197,50 @@
   "row": "open mask: 1 up, 2 right, 4 down, 8 left",
   "variants": 4
  },
+ "treasure_shelf": {
+  "file": "props/treasure_shelf.png",
+  "frame": [
+   128,
+   112
+  ],
+  "pivot": [
+   64,
+   112
+  ],
+  "shelves": [
+   [
+    10,
+    20,
+    108
+   ],
+   [
+    10,
+    38,
+    108
+   ],
+   [
+    10,
+    56,
+    108
+   ],
+   [
+    10,
+    74,
+    108
+   ],
+   [
+    10,
+    92,
+    108
+   ],
+   [
+    10,
+    110,
+    108
+   ]
+  ],
+  "shelves_note": "[x, y, w] per board, top (Topsoil) to bottom (The Bottom): left end of the board's top surface and usable width; 16 px headroom above each"
+ },
  "tree": {
   "file": "props/tree.png",
   "frame": [
@@ -896,5 +1320,18 @@
     "row": 0
    }
   }
+ },
+ "water_tower": {
+  "file": "buildings/water_tower.png",
+  "frame": [
+   96,
+   144
+  ],
+  "lit": "buildings/water_tower_lit.png",
+  "pivot": [
+   0,
+   144
+  ],
+  "pivot_note": "bottom-left on the ground"
  }
 }

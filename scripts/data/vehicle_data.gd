@@ -19,6 +19,10 @@ extends Resource
 @export var needs_treasure: StringName
 ## False: the Drill Rig parks at the shaft.
 @export var works_up_top: bool = true
-## &"engine" | &"horn" | &"dig" -> Audio cue.
+## What only this vehicle does (VehicleAbility): &"" none, &"tip" (Dump Truck: tips its load out
+## up top, reverses with a beep), &"hook" (Crane: hooks a nearby boulder and hauls it out),
+## &"auto_drill" (Drill Rig: A starts it drilling straight down on its own, A again stops).
+@export var ability: StringName = &""
+## &"engine" | &"horn" | &"dig" (+ &"tip", &"reverse", &"hook", &"spin" for abilities) -> Audio cue.
 @export var sounds: Dictionary
 @export var scene: PackedScene

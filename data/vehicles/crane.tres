@@ -1,0 +1,16 @@
+[gd_resource type="Resource" script_class="VehicleData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/data/vehicle_data.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = &"crane"
+order = 3
+dig_shape = Array[Vector2i]([Vector2i(0, -1), Vector2i(0, 0), Vector2i(0, 1)])
+dig_tier = 2
+clear_area = Vector2i(4, 2)
+speed = 90
+carry = 2.0
+needs_treasure = &""
+ability = &"hook"
+sounds = {&"engine": &"crane_engine", &"horn": &"crane_horn", &"dig": &"crane_dig", &"hook": &"crane_hook"}

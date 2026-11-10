@@ -9,6 +9,7 @@ const BACKPACK_START := 2
 const BACKPACK_PER_SIZE := 20
 const VEHICLE_DIR := "res://data/vehicles/"
 const BUILDING_DIR := "res://data/buildings/"
+const TREASURE_DIR := "res://data/treasures/"
 
 signal changed()
 
@@ -20,8 +21,11 @@ var buildings: Array = []
 var deepest := {0: 0, 1: 0}
 ## player -> &"hillville" | &"underground", where they were when the game last saved.
 var scene_of := {0: &"hillville", 1: &"hillville"}
+## Boulders the Crane hauled out (indices into the generator's boulder_spots); they stay gone.
+var hauled: Array[int] = []
 
 var _vehicle_rows: Array = []
+var _treasure_rows: Array = []
 var _building_rows := {}
 
 
@@ -31,6 +35,7 @@ func reset() -> void:
 	buildings.clear()
 	deepest = {0: 0, 1: 0}
 	scene_of = {0: &"hillville", 1: &"hillville"}
+	hauled.clear()
 	changed.emit()
 
 
@@ -48,6 +53,29 @@ func find_treasure(id: StringName, player: int = -1) -> bool:
 	Events.treasure_found.emit(id, player)
 	changed.emit()
 	return true
+
+
+## Every TreasureData row, sorted by id.
+func treasure_rows() -> Array:
+	if _treasure_rows.is_empty():
+		for f in DirAccess.get_files_at(TREASURE_DIR):
+			var file := f.trim_suffix(".remap")
+			if file.ends_with(".tres"):
+				_treasure_rows.append(load(TREASURE_DIR + file))
+		_treasure_rows.sort_custom(func(a: TreasureData, b: TreasureData) -> bool: return String(a.id) < String(b.id))
+	return _treasure_rows
+
+
+func treasure_data(id: StringName) -> TreasureData:
+	for t: TreasureData in treasure_rows():
+		if t.id == id:
+			return t
+	return null
+
+
+## The treasure rows of one layer id (the shelf's boards, the Museum's "left per layer").
+func treasures_in_layer(layer: StringName) -> Array:
+	return treasure_rows().filter(func(t: TreasureData) -> bool: return t.layer == layer)
 
 
 # --- vehicles ----------------------------------------------------------------------------------
@@ -93,6 +121,25 @@ func unlock_next_vehicle() -> StringName:
 	Events.vehicle_unlocked.emit(v.id)
 	changed.emit()
 	return v.id
+
+
+## The next vehicle in order whatever its treasure (what the next Garage will give), or null.
+func next_in_line() -> VehicleData:
+	for v: VehicleData in vehicle_rows():
+		if not vehicles.has(v.id):
+			return v
+	return null
+
+
+## Garages built that have not given a vehicle yet (one waited for its treasure, say the Giant
+## Tooth). Finding the treasure later lets that Garage open (BuildController.redeem_garages).
+func garages_waiting() -> int:
+	var given := 0
+	for v: StringName in vehicles:
+		var d := vehicle_data(v)
+		if d != null and d.order > 0:
+			given += 1
+	return maxi(0, count_buildings(&"garage") - given)
 
 
 # --- buildings ---------------------------------------------------------------------------------
@@ -156,7 +203,8 @@ func deepest_of(player: int) -> int:
 
 # --- save --------------------------------------------------------------------------------------
 
-## The contract's "treasures", "vehicles", "buildings" and "players" save values, JSON-safe.
+## The contract's "treasures", "vehicles", "buildings" and "players" save values (plus "hauled",
+## the Crane's boulders), JSON-safe.
 func to_save() -> Dictionary:
 	var bl: Array = []
 	for b in buildings:
@@ -169,6 +217,7 @@ func to_save() -> Dictionary:
 		"vehicles": vehicles.map(func(v: StringName) -> String: return String(v)),
 		"buildings": bl,
 		"players": pl,
+		"hauled": hauled.duplicate(),
 	}
 
 
@@ -184,6 +233,9 @@ func load_save(data: Dictionary) -> void:
 	for b in data.get("buildings", []):
 		var c: Array = b.get("cell", [0, 0])
 		buildings.append({"id": StringName(str(b.get("id", ""))), "cell": Vector2i(int(c[0]), int(c[1]))})
+	hauled.clear()
+	for h in data.get("hauled", []):
+		hauled.append(int(h))
 	var pl: Array = data.get("players", [])
 	for p in 2:
 		var row: Dictionary = pl[p] if p < pl.size() else {}

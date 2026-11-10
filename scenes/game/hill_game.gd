@@ -34,6 +34,8 @@ var players: Dictionary = {}       # int -> HillPlayer
 var story := Story.new()
 ## The residents up top (crew at the pile, the Caveman by his fire).
 var town: TownResidents
+## Up top right of the Caveman's fire: every treasure found, by layer.
+var shelf: TreasureShelf
 var vehicles: Dictionary = {}      # StringName -> Vehicle (the parked node; out of the tree while driven)
 var drivers: Dictionary = {}       # StringName -> player driving it
 
@@ -89,6 +91,7 @@ func _ready() -> void:
 	else:
 		Progress.reset()
 		Inventory.clear()
+	underground.after_load()
 	if underground.residents != null:
 		underground.residents.sync_story()
 	if hillville != null:
@@ -97,6 +100,10 @@ func _ready() -> void:
 		# Behind the players, in front of the buildings.
 		hillville.move_child(town, hillville.players_root().get_index())
 		town.setup(self, hillville)
+		shelf = TreasureShelf.new()
+		hillville.add_child(shelf)
+		hillville.move_child(shelf, hillville.buildings_root().get_index())
+		shelf.setup(self)
 	TimeOfDay.running = true
 	_spawn_vehicles()
 	_anchor = Node2D.new()
@@ -345,16 +352,39 @@ func _loader_spawn() -> Vector2:
 	return Vector2(1760, 0)
 
 
-## Every unlocked vehicle parked near the shaft (the Front Loader always).
+## Every unlocked vehicle parked up top: the Front Loader by the shaft; every other one in front of
+## the Garage that opened it (Garage N, in building order, stores vehicle N), else near the shaft.
+## The Drill Rig is too big for town: it always parks by the shaft as a landmark.
 func _spawn_vehicles() -> void:
 	var k := 0
 	for id: StringName in Progress.vehicles:
 		if vehicles.has(id):
 			continue
-		var pos := _loader_spawn() if id == LOADER else _loader_spawn() - Vector2(PARK_GAP * (k + 1), 0)
+		var pos := _loader_spawn()
 		if id != LOADER:
-			k += 1
+			var at := garage_spot(id)
+			if at == Vector2.INF:
+				k += 1
+				at = _loader_spawn() - Vector2(PARK_GAP * k, 0)
+			pos = at
 		park_new(id, pos)
+
+
+## In front of the Garage that stores vehicle `id` (its door plus the roll-out), or INF.
+func garage_spot(id: StringName) -> Vector2:
+	var d := Progress.vehicle_data(id)
+	if d == null or d.order <= 0 or not d.works_up_top:
+		return Vector2.INF
+	var n := 0
+	for b in Progress.buildings:
+		if b.id != &"garage":
+			continue
+		n += 1
+		if n == d.order:
+			var g := Progress.building_data(&"garage")
+			var w := (g.footprint.x if g != null else 3) * BuildController.PLOT
+			return Vector2(b.cell.x * BuildController.PLOT + w * 0.5 + ROLL_OUT_PX, 0)
+	return Vector2.INF
 
 
 func park_new(id: StringName, pos: Vector2, scene: StringName = HILLVILLE) -> Vehicle:
