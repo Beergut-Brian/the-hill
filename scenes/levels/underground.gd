@@ -19,7 +19,7 @@ const BOULDER_SIZE := 26.0
 ## Contract "Water gush": a breached pocket refills its emptied cells for this long.
 const GUSH_TIME := 2.0
 const GUSH_TICK := 0.1
-const GUSH_PER_TICK := 6
+const GUSH_PER_TICK := 3
 const TREASURE_COLORS := {&"buried_car": Color("d9534f"), &"giant_tooth": Color("f4f1e6"), &"gnome_room": Color("8e6c4a")}
 const DARK := Color(0.07, 0.06, 0.09)
 

@@ -117,12 +117,12 @@ func _plan(p_seed: int) -> void:
 	# The shaft mouth above the first landing (as in the prototype).
 	_carved.append(Rect2i(SHAFT_X, 1, 2, landings[0].position.y - 1))
 	_calm.append(Rect2i(86, 0, 30, 14))
-	# The big water pocket: right of the Clay landing, just below its floor, so a tunnel from
-	# the landing (or down from Topsoil) breaks into it.
+	# The big water pocket: right of the Clay landing, its top three rows level with the landing
+	# room, so a tunnel dug sideways from the landing breaks into it, spills and floods.
 	var clay := _layer_index(&"clay")
 	if clay >= 0:
 		var f := landing_floor(clay)
-		pocket = Rect2i(SHAFT_X + 10 + rng.randi_range(0, 3), f - 1, 12, 8)
+		pocket = Rect2i(SHAFT_X + 14 + rng.randi_range(0, 3), f - 3, 10, 8)
 		_carved.append(pocket)
 		_calm.append(pocket.grow(3))
 	# Treasures: every row `count` times in its layer; the Buried Car beside the Clay landing.
