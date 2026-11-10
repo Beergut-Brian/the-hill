@@ -444,11 +444,35 @@ func cave_in(pl: HillPlayer, block: StringName = &"") -> bool
 func free_player(p: int, by_mole := true) -> void
 ```
 
+Deep-layer hazards (Hazards lane, 2026-11-10), same node, same rule (nothing is taken):
+
+```gdscript
+const HOLE_FALL := 210.0   # px/s: the fastest anyone sinks down an ice hole's chute
+const LAVA_HOP := 360.0    # px/s up off a lava pool; hop_height() = LAVA_HOP^2 / 2g (about 66 px)
+signal slid(player: int)                     # a glide on ice began (whoosh, spray)
+signal dropped(player: int, hole: int)       # drifted into ice hole `hole` (generator.ice_holes)
+signal nested(player: int, hole: int)        # landed on the snow pile a layer down (pop)
+signal bounced(player: int)                  # launched off a lava pool (boing)
+func is_sliding(p: int) -> bool
+func is_dropping(p: int) -> bool
+func on_ice(pl: HillPlayer) -> bool          # BlockData.slippery underfoot, unless Story.ice_warm()
+func bounce(pl: HillPlayer) -> void
+func hop_height() -> float
+```
+
+The ice glide is applied inside the same `intent_source` wrapper (only `move.x` changes), so it
+works for pads, demos and tests alike, on foot and driving. `Hazards` runs its physics before the
+players (`process_physics_priority = -1`): the chute cap and the lava launch set `velocity` that
+the player's own step then keeps. Placement: HazardData kinds `&"ice_hole"` (size = the rink) and
+`&"lava_pocket"` (size = the room) on their own seeded stream, so no earlier placement moves:
+`generator.ice_holes` `[{rink, hole, nest, dir, layer}]`, `generator.lava_pockets`
+`[{room, pool, layer}]`. Lava is drawn by Hazards over the pool row, not a tile.
+
 A stun wraps the player's `intent_source` (whatever drives it: pad, demo, test); code that
 checks "has this player a source" treats a `Hazards` wrapper as none.
 
 Placement is data: `data/hazards/<id>.tres` (`HazardData`: `kind` = `&"boulder"` |
-`&"water_pocket"` | `&"cave_in"`, `layer`, `count`, `near_landing`, `size`). HillGenerator keeps
+`&"water_pocket"` | `&"cave_in"` | `&"ice_hole"` | `&"lava_pocket"`, `layer`, `count`, `near_landing`, `size`). HillGenerator keeps
 the first-playable layout (the big Clay pocket, Clay and Stone boulders, whose counts now come
 from these rows) and places the rest on its own seeded stream: `generator.pockets` (index 0 is
 the big pocket; every pocket gushes once when breached) and `generator.cave_ins`.

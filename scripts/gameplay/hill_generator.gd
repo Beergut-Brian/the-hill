@@ -30,6 +30,18 @@ var boulder_spots: Array[Rect2i] = []   # 2x2 cavities, the boulder sits on the 
 var pockets: Array[Rect2i] = []
 ## Cave-in zones: [{rect: Rect2i (loose ground), layer: int, block: StringName}], from data/hazards.
 var cave_ins: Array = []
+## W-13 ice holes: [{rink: Rect2i (air, its floor row is ice), hole: Rect2i (the chute's columns,
+## from the rink floor down to the nest), nest: Rect2i (air at the bottom, a layer down), dir: int
+## (+1 when the hole is at the rink's right end), layer: int}], from data/hazards kind ice_hole.
+var ice_holes: Array = []
+## W-14 lava pockets: [{room: Rect2i (air), pool: Rect2i (the bottom air row's middle: the bounce
+## pad), layer: int}], from data/hazards kind lava_pocket.
+var lava_pockets: Array = []
+## Cells forced to one tile whatever the noise says: [[Rect2i, tile], ...] (rink and nest floors).
+var _forced: Array = []
+## Columns of a hole: wide enough for every vehicle (the Drill Rig is 56 px).
+const HOLE_W := 4
+const NEST := Vector2i(8, 4)
 
 var _ids: Dictionary = {}           # block id -> palette index
 var _mix: Array = []                # per layer: [[tile, cumulative weight], ...] heaviest first
@@ -201,6 +213,7 @@ func _plan(p_seed: int) -> void:
 			made += 1
 	_plan_hazards(p_seed)
 	_plan_pickups(p_seed)
+	_plan_deep(p_seed)
 	_carved.append(CAVERN)
 
 
@@ -242,6 +255,8 @@ func _plan_hazards(p_seed: int) -> void:
 			continue
 		if h.kind == &"boulder" and (h.layer == &"clay" or h.layer == &"stone"):
 			continue
+		if h.kind == &"ice_hole" or h.kind == &"lava_pocket":
+			continue   # _plan_deep, on its own stream
 		var l: LayerData = layer_rows[li]
 		var size := Vector2i(2, 2) if h.kind == &"boulder" else h.size
 		for n in h.count:
@@ -260,6 +275,75 @@ func _plan_hazards(p_seed: int) -> void:
 				&"cave_in":
 					cave_ins.append({"rect": r, "layer": li, "block": _main_block(l)})
 					_calm.append(r.grow(2))
+
+
+## Ice holes and lava pockets on a third random stream, after everything else (so adding them
+## moved nothing that was already placed). Each keeps clear of every calm area.
+func _plan_deep(p_seed: int) -> void:
+	ice_holes.clear()
+	lava_pockets.clear()
+	_forced.clear()
+	var rng := RandomNumberGenerator.new()
+	rng.seed = p_seed + 104729
+	for h: HazardData in _hazards:
+		var li := _layer_index(h.layer)
+		if li < 0 or (h.kind != &"ice_hole" and h.kind != &"lava_pocket"):
+			continue
+		var l: LayerData = layer_rows[li]
+		var main := int(_ids.get(_main_block(l), 1))
+		for n in h.count:
+			for attempt in 8:
+				var r := _hazard_spot(rng, l, li, h.size, n < h.near_landing)
+				if r.size == Vector2i.ZERO:
+					continue
+				if h.kind == &"ice_hole":
+					if _try_ice_hole(r, li, main):
+						break
+				else:
+					var floor_r := Rect2i(r.position.x - 1, r.end.y, r.size.x + 2, 1)
+					lava_pockets.append({"room": r, "pool": Rect2i(r.position.x + 2, r.end.y - 1, r.size.x - 4, 1), "layer": li})
+					_carved.append(r)
+					_calm.append(r.grow(3))
+					_forced.append([floor_r, main])
+					break
+
+
+## A rink in layer li: ice floor, a HOLE_W-wide hole at the end away from the shaft whose chute
+## drops to a nest at the top of the next layer down. False (nothing placed) if the chute hits a
+## calm area.
+func _try_ice_hole(r: Rect2i, li: int, ice_tile: int) -> bool:
+	var dir := 1 if r.get_center().x > SHAFT_X else -1
+	var hx := r.end.x - HOLE_W if dir > 0 else r.position.x
+	var nest_y := r.end.y + 8
+	if li + 1 < layer_rows.size():
+		nest_y = (layer_rows[li + 1] as LayerData).depth_from + 2
+	if nest_y + NEST.y + 1 >= STRANGE_FROM:
+		return false
+	var hole := Rect2i(hx, r.end.y, HOLE_W, nest_y - r.end.y)
+	var nest := Rect2i(hx - (NEST.x - HOLE_W) / 2, nest_y, NEST.x, NEST.y)
+	if _hits_calm(r.grow(2)) or _hits_calm(hole.grow(1)) or _hits_calm(nest.grow(2)):
+		return false
+	ice_holes.append({"rink": r, "hole": hole, "nest": nest, "dir": dir, "layer": li})
+	_carved.append(r)
+	_carved.append(hole)
+	_carved.append(nest)
+	_calm.append(r.grow(2))
+	_calm.append(hole.grow(1))
+	_calm.append(nest.grow(2))
+	# The rink's floor is all ice (the layer has some stone); the nest's floor is solid.
+	var floor_x := r.position.x - 1 if dir > 0 else r.position.x + HOLE_W
+	_forced.append([Rect2i(floor_x, r.end.y, r.size.x - HOLE_W + 1, 1), ice_tile])
+	var under := layer_of_depth(nest.end.y)
+	_forced.append([Rect2i(nest.position.x - 1, nest.end.y, nest.size.x + 2, 1), int(_ids.get(_main_block(layer_rows[under]), 1))])
+	return true
+
+
+## The ice hole (index into ice_holes) whose chute or nest holds `cell`, or -1.
+func ice_hole_at(cell: Vector2i) -> int:
+	for i in ice_holes.size():
+		if (ice_holes[i].hole as Rect2i).has_point(cell) or (ice_holes[i].nest as Rect2i).has_point(cell):
+			return i
+	return -1
 
 
 func _hazard_spot(rng: RandomNumberGenerator, l: LayerData, li: int, size: Vector2i, near: bool) -> Rect2i:
@@ -330,6 +414,9 @@ func base_tile(cell: Vector2i) -> int:
 			if r == CAVERN and not _in_cavern(cell):
 				break
 			return 0
+	for f in _forced:
+		if (f[0] as Rect2i).has_point(cell):
+			return int(f[1])
 	if cell.y >= cave_min_depth and _noise.get_noise_2d(cell.x, cell.y) > cave_threshold:
 		var calm := false
 		for c in _calm:
