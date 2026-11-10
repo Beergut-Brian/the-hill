@@ -36,6 +36,8 @@ var player := 0
 var game: Node
 var world: TileWorld
 var locked := false
+## The stick this physics frame (zero while locked); the camera lead reads it (S-06).
+var move_intent := Vector2.ZERO
 var intent_source := Callable()
 var facing := 1
 var ride_offset := 0.0
@@ -215,6 +217,7 @@ func _physics_process(delta: float) -> void:
 	if locked:
 		velocity = Vector2.ZERO
 		_prev = {}
+		move_intent = Vector2.ZERO
 		a_press_frame = false
 		return
 	var it := intent()
@@ -225,6 +228,7 @@ func _physics_process(delta: float) -> void:
 	var x_press := _pressed(it, "book")
 	var y_press := _pressed(it, "horn")
 	_prev = it.duplicate()
+	move_intent = move
 	if not it.get("jump", false):
 		_b_used = false
 	if y_press:
