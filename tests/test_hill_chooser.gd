@@ -236,5 +236,5 @@ func test_the_stand_in_fixture_is_not_exported_or_in_the_real_roster() -> void:
 	assert_str(real).not_contains("tests/")
 	assert_str(real).not_contains("\"pip\"")
 	# The flag that loads it is ignored when the file is not there (an export).
-	assert_str(load("res://scenes/main.gd").roster_data_arg(PackedStringArray(["--roster-data=res://tests/nope.json"]))).is_equal("")
-	assert_str(load("res://scenes/main.gd").roster_data_arg(PackedStringArray(["--roster-data=" + STANDIN]))).is_equal(STANDIN)
+	assert_str(load("res://scripts/autoload/Debug.gd").roster_data_arg(PackedStringArray(["--roster-data=res://tests/nope.json"]))).is_equal("")
+	assert_str(load("res://scripts/autoload/Debug.gd").roster_data_arg(PackedStringArray(["--roster-data=" + STANDIN]))).is_equal(STANDIN)

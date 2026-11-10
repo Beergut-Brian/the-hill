@@ -259,6 +259,18 @@ Remove `p1_name` / `p2_name` from `data/menu_skin.tres` so the plates follow the
   scaled by `character_scale`; in game, build the player sprite from
   `Roster.info(Roster.pick(p)).pixel` (the front view; The Hill's own walk frames keyed by id until
   the library ships pixel sheets per character).
+  **In this repo:** the skin keeps its own podium scenes (`hill_menu_jeff.tscn` / `_chuck.tscn`,
+  `HillMenuCharacter` with `set_character(id)`) and clears `p1_name` / `p2_name`, so plates name
+  the pick. Players, drivers (the `ride` frame in the cab), sleepers in the bucket and the podiums all
+  draw `CharacterSheet.file_of(id)` (`scenes/players/character_sheet.gd`): the game's hand-made sheet
+  `assets/sprites/characters/<id>.png` when it has player rows (Jeff, Chuck), else a sheet built at
+  runtime from the roster `pixel.png` (idle, walk, air, dig_side, dig_down, ride, sleep; bob, lean,
+  squash, a drawn shovel), registered as the virtual sheet `roster/<id>.png`. A newly synced
+  character plays the same night with no art step; a hand-made sheet in `make_game_art.py` later
+  replaces the built one just by existing. Slot colour (rings, arrows, plate, vehicle stripe) stays
+  P1 green / P2 red whoever is picked. Shots with the test-only stand-in "Pip":
+  `--roster-data=res://tests/fixtures/roster_standin.json --p1-char=pip` (Debug.gd; ignored in an
+  export, which ships no `tests/`).
 
 ## Screenshots
 

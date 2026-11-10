@@ -15,6 +15,8 @@ extends RefCounted
 
 const FRAME := Vector2i(48, 32)
 const PIVOT := Vector2i(20, 32)
+## The ride frame's head is the front view's top shrunk by this (fits the cab window).
+const RIDE_SCALE := 0.7
 const DARK := Color("2b2a3f")
 const BLADE := Color("c9ccd6")
 const BLADE_LIT := Color("eef0f5")
@@ -145,9 +147,11 @@ static func build(src: Image) -> Image:
 	_shovel_up(sheet, 0, 4, w - 1, hand_y - 3)
 	_shovel_down(sheet, 1, 4, w + 3)
 	_shovel_down(sheet, 2, 4, w + 1)
-	# ride: head and shoulders at the frame top (the vehicle cab covers the rest).
-	var top := b.get_region(Rect2i(0, 0, w, mini(h, 16)))
-	sheet.blend_rect(top, Rect2i(Vector2i.ZERO, top.get_size()), Vector2i(PIVOT.x - w / 2, 5 * FRAME.y))
+	# ride: head and shoulders at the frame top, shrunk to a side-view head's size so the face (not
+	# just a big front-view hat) sits in the cab window; the cab covers the rest.
+	var top := b.get_region(Rect2i(0, 0, w, mini(h, 18)))
+	top.resize(maxi(1, roundi(w * RIDE_SCALE)), maxi(1, roundi(top.get_height() * RIDE_SCALE)), Image.INTERPOLATE_NEAREST)
+	sheet.blend_rect(top, Rect2i(Vector2i.ZERO, top.get_size()), Vector2i(PIVOT.x - top.get_width() / 2, 5 * FRAME.y))
 	# sleep: flopped flat (the bucket shows the top; "z z" puffs are drawn by the vehicle).
 	_put(sheet, 0, 6, _scaled(b, w + 4, 14))
 	_put(sheet, 1, 6, _scaled(b, w + 4, 13))

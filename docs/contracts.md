@@ -255,6 +255,9 @@ and prints the path. `--screenshot-after=<seconds>` CLI flag does it headlessly 
 `--shot-dir=`, `--screenshot-after=`, and for The Hill: `--proto` boots
 `scenes/proto/foundation_proto.tscn` (the Phase 1 risk prototype) instead of the lobby, and
 `--proto-auto` does the same with a scripted, input-free run-through (for shots and smoke boots).
+`--p1-char=<id>` / `--p2-char=<id>` (Roster, see below) pick the characters, and The Hill's
+`--roster-data=res://tests/fixtures/<file>.json` (Debug.gd) swaps in a test roster such as the
+stand-in "Pip"; it is ignored when the file is missing, so an export (no `tests/`) never honours it.
 `--demo` boots straight into the game with both players virtual and plays the first-playable
 path by script (clear scrub, ride down, dig to Clay, find the car, ride up, build a Barn and a
 Garage, the Excavator rolls out); it starts from a wiped save in a throwaway profile (`demo`).
