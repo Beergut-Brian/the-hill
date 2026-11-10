@@ -50,6 +50,12 @@ const BLOCK_DIR := "res://data/blocks/"
 const OUTLINE := Color(0.23, 0.16, 0.27)
 const CREAM := Color("f4e8c8")
 const GROUND_ROWS := 10
+## H-03: the Excavator digs ponds in free ground. Tiles deep a hollow can go, how long the water
+## takes to fill it (after a short wait), and the pond-dirt colour.
+const POND_DEEP := 2
+const POND_WAIT := 0.25
+const POND_FILL := 0.9
+const HOLLOW := Color("5b3a22")
 const REST_CAM := Vector2(SHAFT_X, -95.0)   # where the parallax anchors line up with the world
 const CLOUD_RANGE := Vector2(700.0, 4800.0)
 const WARM := Color(1.0, 0.78, 0.45)
@@ -95,6 +101,14 @@ var _ground_tex: Texture2D
 var _water_frame := 0
 var _water_t := 0.0
 var _sky_t := 1.0
+var _dug := PackedByteArray()          # H-03: tiles dug out of the ground per column (a pond)
+var _wet := PackedFloat32Array()       # 0..1 water in that hollow; < 0 waits to fill
+## H-05: 0..1 how far the pile leans after the wrecking ball (it springs back).
+var pile_lean := 0.0:
+	set(v):
+		pile_lean = v
+		if _pile != null:
+			_pile.queue_redraw()
 
 static var _block_colors := {}
 
@@ -279,7 +293,10 @@ func to_save() -> Dictionary:
 	var s := ""
 	for h in _h:
 		s += str(h)
-	return {"seed": layout_seed, "left": s}
+	var d := ""
+	for k in _dug:
+		d += str(k)
+	return {"seed": layout_seed, "left": s, "ponds": d}
 
 
 func load_save(data: Dictionary) -> void:
@@ -289,6 +306,10 @@ func load_save(data: Dictionary) -> void:
 	var s := str(data.get("left", ""))
 	for c in mini(s.length(), COLS):
 		_h[c] = mini(_h0[c], int(s[c]))
+	var d := str(data.get("ponds", ""))
+	for c in mini(d.length(), COLS):
+		_dug[c] = clampi(int(d[c]), 0, POND_DEEP)
+		_wet[c] = 1.0
 	_redraw_all()
 
 
@@ -324,7 +345,7 @@ func ground_clear(cell_x: int, width: int) -> bool:
 		if cell_owner(cell) != &"":
 			return false
 		for k in 3:
-			if _h[cell * 3 + k] > 0:
+			if _h[cell * 3 + k] > 0 or _dug[cell * 3 + k] > 0:
 				return false
 	return true
 
@@ -393,6 +414,10 @@ func _generate() -> void:
 	_wide.resize(COLS)
 	_kind.fill(0)
 	_h.fill(0)
+	_dug.resize(COLS)
+	_dug.fill(0)
+	_wet.resize(COLS)
+	_wet.fill(0.0)
 	_wide.fill(0)
 	_cells_kind.clear()
 	for z in ZONES:
@@ -437,6 +462,138 @@ func _redraw_all() -> void:
 	for l in [_ruins, _shaft, _pile, _scrub, _ground, _pond]:
 		if l != null:
 			l.queue_redraw()
+
+
+# --- H-03: dug ponds --------------------------------------------------------------------------
+
+## Tiles dug out of tile column c (0 = flat ground).
+func pond_depth(c: int) -> int:
+	return _dug[c] if c >= 0 and c < COLS else 0
+
+
+## 0..1 water in the hollow of column c.
+func pond_water(c: int) -> float:
+	return clampf(_wet[c], 0.0, 1.0) if c >= 0 and c < COLS else 0.0
+
+
+## Columns a dug pond covers (tests / demo).
+func pond_columns() -> Array[int]:
+	var out: Array[int] = []
+	for c in COLS:
+		if _dug[c] > 0:
+			out.append(c)
+	return out
+
+
+## May tile column c be dug into a pond? Free yard (no ruin, shaft, pile, the old pond), no scrub
+## and no placed building on it.
+func pond_ok(c: int) -> bool:
+	if c < 0 or c >= COLS or _h[c] > 0:
+		return false
+	if cell_owner(c / 3) != &"":
+		return false
+	for b: Dictionary in Progress.buildings:
+		var d := Progress.building_data(b.id)
+		var w := d.footprint.x if d != null else 1
+		if c >= b.cell.x * 3 and c < (b.cell.x + w) * 3:
+			return false
+	return true
+
+
+## The Excavator's A up top on bare ground: digs `wide` columns ahead of the bucket one tile
+## deeper (up to POND_DEEP); the dirt goes to the pile and water seeps in to fill the hollow.
+## 0 when there is scrub to scoop first, or nothing here may be dug (the old pond splashes).
+## Returns tiles dug.
+func dig_pond(at: Vector2, facing: int, wide: int, player := -1) -> int:
+	var dir := 1 if facing >= 0 else -1
+	var c0 := floori(at.x / TILE)
+	for i in wide + 1:
+		if scrub_at(c0 + i * dir) > 0:
+			return 0
+	var n := 0
+	var full := 0
+	var first := c0 + dir
+	for i in wide:
+		var c := first + i * dir
+		if not pond_ok(c):
+			continue
+		if _dug[c] >= POND_DEEP:
+			full += 1
+			continue
+		_dug[c] += 1
+		_wet[c] = minf(_wet[c], 0.0) - POND_WAIT / POND_FILL
+		n += 1
+		var cx := c * TILE + TILE * 0.5
+		for k in 3:
+			_fx.append({"k": "p", "pos": Vector2(cx, _dug[c] * TILE - 4.0), "vel": Vector2(randf_range(-60, 60) + dir * 40, randf_range(-230, -120)),
+					"life": 0.0, "max": 0.7, "col": Color("8a5a2b"), "r": randf_range(2.5, 4.0), "g": 620.0, "sq": true})
+	if n > 0:
+		Inventory.add(&"dirt", n)
+		puff(Vector2((first + dir * (wide - 1) * 0.5) * TILE + TILE * 0.5, 0), Color("e0c89a"), 8)
+		Audio.play("scoop")
+		_pond.queue_redraw()
+		_wake_fx()
+		return n
+	if full > 0:
+		# Already a full pond: the bucket splashes in it.
+		_splash(Vector2((first + dir * (wide - 1) * 0.5) * TILE + TILE * 0.5, -2.0))
+		Audio.play("splash")
+		return -1
+	return 0
+
+
+func _splash(at: Vector2) -> void:
+	for i in 10:
+		_fx.append({"k": "p", "pos": at + Vector2(randf_range(-14, 14), 0), "vel": Vector2(randf_range(-70, 70), randf_range(-220, -110)),
+				"life": 0.0, "max": 0.6, "col": Color(0.55, 0.8, 1.0), "r": randf_range(2.0, 3.5), "g": 600.0})
+	_wake_fx()
+
+
+## Water seeping into new hollows (from _tick).
+func _fill_ponds(delta: float) -> void:
+	var changed := false
+	var started := false
+	for c in COLS:
+		if _dug[c] == 0 or _wet[c] >= 1.0:
+			continue
+		var was := _wet[c]
+		_wet[c] = minf(1.0, _wet[c] + delta / POND_FILL)
+		changed = true
+		if was <= 0.0 and _wet[c] > 0.0:
+			started = true
+			if c % 2 == 0:
+				_fx.append({"k": "p", "pos": Vector2(c * TILE + TILE * 0.5, _dug[c] * TILE - 2.0), "vel": Vector2(0, -40),
+						"life": 0.0, "max": 0.8, "col": Color(0.75, 0.92, 1.0, 0.9), "r": 2.0, "g": -20.0})
+	if started:
+		Audio.play("flood")
+		_wake_fx()
+	if changed:
+		_pond.queue_redraw()
+
+
+## H-05: the wrecking ball knocks the pile: it leans away, blocks tumble off the top, it springs back.
+func knock_pile(dir: int) -> void:
+	var n := 0
+	for b in BLOCK_ORDER:
+		n += Inventory.count(b)
+	var top := -minf(float(PILE_ROWS), ceilf(n / 4.0)) * TILE
+	var cx := PILE_X + PILE_BASE * TILE * 0.5
+	for b in BLOCK_ORDER:
+		if Inventory.count(b) <= 0:
+			continue
+		for i in 3:
+			_fx.append({"k": "p", "pos": Vector2(cx + randf_range(-20, 20), top + 4.0), "vel": Vector2(dir * randf_range(60, 160), randf_range(-240, -120)),
+					"life": 0.0, "max": 0.8, "col": block_color(b), "r": 4.0, "g": 640.0, "sq": true})
+	puff(Vector2(cx, 0), Color("e0c89a"), 8)
+	_wake_fx()
+	var t := create_tween()
+	t.tween_property(self, "pile_lean", dir * 1.0, 0.12).set_ease(Tween.EASE_OUT)
+	t.tween_property(self, "pile_lean", 0.0, 0.9).set_trans(Tween.TRANS_ELASTIC).set_ease(Tween.EASE_OUT)
+
+
+## Pile x span (the wrecking ball's target).
+func pile_span() -> Vector2:
+	return Vector2(PILE_X, PILE_X + PILE_BASE * TILE)
 
 
 # --- fx ----------------------------------------------------------------------------------------
@@ -648,6 +805,7 @@ func _tick(delta: float) -> void:
 	if _sky_t >= 0.25:
 		_sky_t = 0.0
 		_apply_time()
+	_fill_ponds(delta)
 	_water_t += delta
 	if _water_t >= 0.33:
 		_water_t = 0.0
@@ -721,6 +879,7 @@ func _draw_ground(ci: CanvasItem) -> void:
 
 ## The pond: A water over the dirt (shallow at the edges, deeper in the middle).
 func _draw_pond(ci: CanvasItem) -> void:
+	_draw_dug(ci)
 	var wt := HillvilleArt.tex("tiles/water.png")
 	if wt == null:
 		ci.draw_rect(Rect2(POND.position.x, -3, POND.size.x, 17), Color(0.25, 0.55, 0.85, 0.8))
@@ -741,6 +900,40 @@ func _draw_pond(ci: CanvasItem) -> void:
 			ci.draw_texture_rect_region(wt, Rect2(x, -4, TILE, TILE), Rect2(f * TILE, 0, TILE, TILE))
 			if mid:
 				ci.draw_texture_rect_region(wt, Rect2(x, 12, TILE, TILE), Rect2(f * TILE, TILE, TILE, TILE))
+
+
+## H-03: dug hollows (dark dirt with a lip), and the water rising in them.
+func _draw_dug(ci: CanvasItem) -> void:
+	var wt := HillvilleArt.tex("tiles/water.png")
+	for c in COLS:
+		var d := _dug[c]
+		if d == 0:
+			continue
+		var x := c * TILE
+		var deep := d * TILE
+		var l := _dug[c - 1] if c > 0 else 0
+		var r := _dug[c + 1] if c + 1 < COLS else 0
+		ci.draw_rect(Rect2(x, -1, TILE, deep + 1), HOLLOW)
+		ci.draw_rect(Rect2(x, deep - 3, TILE, 4), HOLLOW.darkened(0.25))
+		if l < d:
+			ci.draw_rect(Rect2(x, l * TILE, 3, deep - l * TILE), HOLLOW.darkened(0.35))
+		if r < d:
+			ci.draw_rect(Rect2(x + TILE - 3, r * TILE, 3, deep - r * TILE), HOLLOW.darkened(0.35))
+		var w := clampf(_wet[c], 0.0, 1.0)
+		if w <= 0.0:
+			continue
+		var top := lerpf(float(deep), -4.0, w)
+		var h := deep - top
+		var f := (c / 2 + _water_frame) % 2
+		if wt != null:
+			ci.draw_texture_rect_region(wt, Rect2(x, top, TILE, minf(TILE, h)), Rect2(f * TILE, 0, TILE, minf(TILE, h)))
+			var y := top + TILE
+			while y < deep:
+				var hh := minf(TILE, deep - y)
+				ci.draw_texture_rect_region(wt, Rect2(x, y, TILE, hh), Rect2(f * TILE, TILE, TILE, hh))
+				y += TILE
+		else:
+			ci.draw_rect(Rect2(x, top, TILE, h), Color(0.25, 0.55, 0.85, 0.85))
 
 
 func _draw_scrub(ci: CanvasItem) -> void:
@@ -820,7 +1013,7 @@ func _draw_pile(ci: CanvasItem) -> void:
 		for k in w:
 			if i >= squares.size():
 				return
-			var rect := Rect2(x0 + k * TILE, -(r + 1) * TILE, TILE, TILE)
+			var rect := Rect2(x0 + k * TILE + pile_lean * (r + 1) * 5.0, -(r + 1) * TILE, TILE, TILE)
 			if icons != null:
 				var col: int = ICON_COL.get(squares[i], 0)
 				ci.draw_texture_rect_region(icons, rect, Rect2(col * TILE, 0, TILE, TILE))
