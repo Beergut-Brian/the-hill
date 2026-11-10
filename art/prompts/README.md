@@ -7,7 +7,7 @@ How to brief a later art lane or an image model for this game's art. Rules live 
 | --- | --- |
 | `tiles.md` | The eight block types, tunnel walls, fluids, surface |
 | `characters.md` | Jeff, Chuck, and the four residents once their bibles are approved |
-| `vehicles.md` | The five construction vehicles and their faces |
+| `vehicles.md` | The five construction vehicles and their lights |
 | `buildings.md` | Town buildings, the ruins, scrub props |
 | `treasures.md` | Treasures, sparkle, block icons |
 

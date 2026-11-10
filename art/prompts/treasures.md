@@ -14,7 +14,7 @@ player green or red, and never the dominant colour of the layer they are buried 
 | Topsoil | Bottle cap | 10x10 | `A round gold bottle cap with a crimped edge and a darker centre.` |
 | Topsoil | Boot | 14x14 | `One old brown lace-up boot with a floppy tongue and a hole in the toe.` |
 | Topsoil | Bike | 32x22 | `A small child's bicycle, sky blue frame, cream tyres, a bell.` |
-| Clay | Buried car | 64x32 | `A rounded little old-fashioned car in faded sky blue, dusty, one headlight eye closed as if asleep.` Breaks into 4 chunks |
+| Clay | Buried car | 64x32 | `A rounded little old-fashioned car in faded sky blue, dusty, one headlight cracked.` Breaks into 4 chunks |
 | Clay | Bathtub | 32x20 | `A white claw-foot bathtub with gold feet and one tap.` |
 | Clay | Fossil | 16x16 | `A cream spiral shell fossil set in a small slab.` |
 | Stone | Giant tooth | 16x24 | `A huge cream pointed tooth with two roots.` |

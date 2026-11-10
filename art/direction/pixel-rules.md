@@ -111,7 +111,7 @@ to carry the identity alone, and it does.
 | Vehicle | idle wobble | 2 | body shifts 1 px on its wheels; exhaust puff is a 3-frame particle |
 | Vehicle | drive | 2 | wheel spokes swap; body bobs in code |
 | Vehicle | tool (bucket, arm, tip, hook, drill) | 3 | rest, mid, full. Drill bit spins on 2 frames |
-| Vehicle | face | 4 states | happy, blink, effort, surprised. One frame each, swapped on the hood |
+| Vehicle | lamp | 2 states | off, on (dusk, night, underground) |
 | Building | unfold | 3 | flat pack, half up (squashed wide), overshoot; then the placed sprite. Plus one lit-window variant for dusk |
 | Tile | water surface, lava surface | 2 | 3 fps |
 | Tile | Strangestone | 4 | rune colour cycles; the tile itself does not move |
@@ -122,18 +122,18 @@ to carry the identity alone, and it does.
 | FX | dig particles | 1 | 2x2 px squares in the block's `mid` and `high`, moved in code |
 | FX | dust, puff | 3 | cream circles, 2 shades |
 
-## Vehicle face style
+## Vehicle style: no faces
 
-- **The headlights are the eyes.** Two round white lamps, 7 px across, on the side of the hood facing
-  travel, each with a dark 3x4 px pupil and one white glint pixel. Pupils sit toward the direction of
-  travel. A 1 px `low` ring of body colour is the lamp housing.
-- **The bumper line is the mouth**: a 1 px dark line about 10 px wide with the ends turned up one pixel.
-  Two 2x2 `pink` cheek squares just outside the eyes.
-- Four states only: **happy** (default), **blink** (lids in the body `low`), **effort** (eyes squeezed
-  to arcs, mouth a short flat line, used while scooping or drilling), **surprised** (pupils small, mouth
-  a 3x3 ring, used for the horn and for falls). A parked, empty vehicle is happy with half lids. No
-  angry or sad vehicle faces, ever.
-- At dusk the eyes are the lights: the white lamps turn pale yellow and that is the whole effect.
+- **No eyes, mouths, cheeks or expressions on any vehicle, in any option** (Kaden, round 2).
+- **Headlights are lights.** One round lamp at the nose of the hood (about 6 px, metal rim, pale warm
+  yellow lens, one white glint) plus one small square work light on the front of the cab roof. Pale warm
+  yellow by day. At dusk, at night and underground they are the vehicle's real light source (a cone
+  of light ahead). Never two round lamps side by side on the side view: that reads as eyes.
+- **Friendly through shape and colour**: big rounded bodies, oversized round wheels, toy proportions
+  (cab about a third of the length), one saturated body colour each (never green or red), a cream
+  stripe and roof that tint to the driver's colour, chunky bucket teeth with rounded tips.
+- **Personality comes from motion and sound**, not a face: idle bounce of 1 px on the wheels, exhaust
+  puffs, the bucket "nods" when it picks something up, a horn toot.
 - Bodies are big rounded boxes on big round wheels, one body colour per vehicle, none of them green or
   red: Front Loader yellow, Excavator orange, Dump Truck blue, Crane teal, Drill Rig steel with purple.
 - **Stripe and cab roof** are cream when empty and turn the driver's green or red when a player is in.

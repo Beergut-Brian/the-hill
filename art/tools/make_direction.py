@@ -33,12 +33,17 @@ def _pad(im):
     return c
 
 
-def backdrop(im, P, horizon, peak_x, sun_x):
-    hp.sky(im, P, horizon)
+def backdrop(im, P, horizon, peak_x, sun_x, sky_fill=None, sun=True, sun_y=20, sun_col=None):
+    """sky_fill: flat colour instead of the sky gradient (for scripts that paint their own sky)."""
     d = ImageDraw.Draw(im)
-    s = P["c"]["sun"]
-    d.ellipse([sun_x - 13, 20, sun_x + 13, 46], fill=A(s))
-    d.ellipse([sun_x - 10, 23, sun_x + 10, 43], fill=A(WHITE))
+    if sky_fill is None:
+        hp.sky(im, P, horizon)
+    else:
+        d.rectangle([0, 0, im.width, horizon], fill=A(sky_fill))
+    if sun:
+        s = sun_col or P["c"]["sun"]
+        d.ellipse([sun_x - 13, sun_y, sun_x + 13, sun_y + 26], fill=A(s))
+        d.ellipse([sun_x - 10, sun_y + 3, sun_x + 10, sun_y + 23], fill=A(WHITE))
     hl = P["ramps"]["hill"]
     w = im.width
     # the Hill itself, with the Ruined Keep waiting on the peak
@@ -147,14 +152,16 @@ def scene_layers(P):
     return im
 
 
-def scene_hillville(P):
+def scene_hillville(P, sky_fill=None, sun=True, sun_x=560, sun_y=20, sun_col=None, clouds=True):
+    """Optional arguments exist for art/tools/make_day_night.py; the defaults are the round 1 mock."""
     im = Image.new("RGBA", (W, H), A(P["c"]["sky2"]))
     G = 17
     gy = G * T
-    backdrop(im, P, gy, 400, 560)
-    im.alpha_composite(hp.cloud(P, 46), (60, 40))
-    im.alpha_composite(hp.cloud(P, 34), (250, 22))
-    im.alpha_composite(hp.cloud(P, 40), (450, 64))
+    backdrop(im, P, gy, 400, sun_x, sky_fill, sun, sun_y, sun_col)
+    if clouds:
+        im.alpha_composite(hp.cloud(P, 46), (60, 40))
+        im.alpha_composite(hp.cloud(P, 34), (250, 22))
+        im.alpha_composite(hp.cloud(P, 40), (450, 64))
     wd = hp.World(40, 23)
     wd.fill([(0, None), (G, "top"), (G + 4, "clay")])
     wd.dig(20, G, 21, 22)
@@ -321,7 +328,7 @@ def card(P):
 
 
 def scene_rules(P):
-    """Reference sheet for pixel-rules.md: the two players at 1x, 2x and 6x, the ramp, the vehicle face."""
+    """Reference sheet for pixel-rules.md: the two players at 1x, 2x and 6x, the ramp, the faceless vehicle."""
     bgc = hp.hx("#26262e")
     im = Image.new("RGBA", (W, H), A(bgc))
     d = ImageDraw.Draw(im)
@@ -367,13 +374,13 @@ def scene_rules(P):
     hp.text(im, 474, 142, "high spot up-left, low", hp.hx("#c8c8d4"))
     hp.text(im, 474, 152, "crescent down-right,", hp.hx("#c8c8d4"))
     hp.text(im, 474, 162, "1 px outline all round", hp.hx("#c8c8d4"))
-    # vehicle face
+    # vehicle: no face
     d.rectangle([350, 186, 632, 296], fill=A(P["c"]["sky2"]))
     d.rectangle([350, 284, 632, 296], fill=A(R["top"][2]))
     put(im, hp.loader(P), 356, 284)
     put(im, hp.loader(P, stripe=hp.GREEN, driver=hp.jeff(P, shovel=False)), 450, 284)
     put(im, hp.loader(P, stripe=hp.RED, driver=hp.chuck(P)), 540, 284)
-    hp.text(im, 350, 300, "vehicle face: headlight eyes + bumper smile on the hood.", WHITE)
+    hp.text(im, 350, 300, "NO FACE: HEADLAMPS ARE LIGHTS.", WHITE)
     hp.text(im, 350, 312, "empty: cream stripe. driven: the player's colour.", hp.hx("#c8c8d4"))
     hp.text(im, 350, 328, "tiles: no outline, lit edges. sprites: 1 px outline.", hp.hx("#c8c8d4"))
     for i, k in enumerate(hp.LAYERS):
@@ -445,6 +452,9 @@ def palettes_md(pals):
 
 def main():
     os.makedirs(OUT, exist_ok=True)
+    if "--rules-only" in sys.argv:
+        up(scene_rules(hp.build(hp.PALETTES["a"]))).save(os.path.join(OUT, "pixel-rules.png"))
+        return
     pals = [hp.build(hp.PALETTES[k]) for k in "abc"]
     grid = Image.new("RGB", (W * 3, H * 3))
     for i, P in enumerate(pals):

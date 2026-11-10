@@ -656,8 +656,8 @@ def chuck(P, flip=False):
 
 # ---------------------------------------------------------------- vehicles
 def loader(P, stripe=None, driver=None, load=None):
-    """Front Loader, facing right. The face lives on the engine hood: two round
-    headlight eyes and a bumper smile. 90x52, wheels touch the bottom row."""
+    """Front Loader, facing right. No face: the hood has vent slots and one round
+    nose headlamp, the cab roof has one square work light. 90x52, wheels touch the bottom row."""
     R = P["ramps"]
     vd, vl, vm, vh = R["veh"]
     md, ml, mm, mh = R["metal"]
@@ -683,20 +683,15 @@ def loader(P, stripe=None, driver=None, load=None):
     d.rectangle([7 + o, 37, 65 + o, 40], fill=A(vl))
     sc = stripe or R["wall"][2]
     d.rectangle([7 + o, 33, 65 + o, 35], fill=A(sc))
-    # hood with the face
+    # hood: rounded, highlight lines, vent slots, ONE nose headlamp (never two lamps side by side)
     d.rounded_rectangle([40 + o, 15, 68 + o, 33], 4, fill=A(vm))
     d.line([43 + o, 15, 65 + o, 15], fill=A(vh))
     d.line([42 + o, 16, 60 + o, 16], fill=A(vh))
-    for cx in (50, 61):
-        d.ellipse([cx - 4 + o, 18, cx + 4 + o, 26], fill=A(vl))
-        d.ellipse([cx - 3 + o, 19, cx + 3 + o, 25], fill=A(WHITE))
-        d.rectangle([cx + o, 21, cx + 2 + o, 24], fill=A(P["outline"]))
-        d.point((cx + o, 21), fill=A(WHITE))
-    d.line([51 + o, 29, 60 + o, 29], fill=A(P["outline"]))
-    d.point((50 + o, 28), fill=A(P["outline"]))
-    d.point((61 + o, 28), fill=A(P["outline"]))
-    d.rectangle([45 + o, 27, 46 + o, 28], fill=A(P["c"]["pink"]))
-    d.rectangle([65 + o, 27, 66 + o, 28], fill=A(P["c"]["pink"]))
+    for x in (47, 51, 55):
+        d.line([x + o, 20, x + o, 27], fill=A(vl))
+    d.ellipse([62 + o, 22, 68 + o, 28], fill=A(ml))
+    d.ellipse([63 + o, 23, 67 + o, 27], fill=A((255, 236, 150)))
+    d.point((64 + o, 23), fill=A(WHITE))
     # exhaust
     d.rectangle([43 + o, 6, 45 + o, 15], fill=A(mm))
     d.line([43 + o, 6, 43 + o, 15], fill=A(mh))
@@ -715,6 +710,8 @@ def loader(P, stripe=None, driver=None, load=None):
     d.rounded_rectangle([11 + o, 1, 40 + o, 5], 2, fill=A(stripe or vl))
     d.line([13 + o, 1, 38 + o, 1], fill=A(vh if not stripe else WHITE))
     d.rectangle([24 + o, 0, 27 + o, 0], fill=A(P["c"]["lava"]))
+    d.rectangle([35 + o, 2, 38 + o, 4], fill=A(ml))                      # square work light
+    d.rectangle([36 + o, 3, 38 + o, 4], fill=A((255, 236, 150)))
     # wheels
     for cx, cy, r in ((21, 40, 12), (55, 42, 10)):
         d.ellipse([cx - r + o, cy - r, cx + r + o, cy + r], fill=A(tm))
