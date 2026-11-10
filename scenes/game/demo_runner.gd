@@ -114,7 +114,8 @@ func _physics_process(delta: float) -> void:
 func _hook_players() -> void:
 	for p in [P1, P2]:
 		var node: HillPlayer = game.player_node(p)
-		if node != null and not node.intent_source.is_valid():
+		# Hazards wraps whatever drives a player underground; its wrapper counts as "no source".
+		if node != null and (not node.intent_source.is_valid() or node.intent_source.get_object() is Hazards):
 			node.intent_source = intent_for.bind(p)
 
 
@@ -426,7 +427,7 @@ func _car_dig_x() -> float:
 
 func _gushed() -> bool:
 	var ug: Underground = game.underground
-	return ug.is_gushing() or bool(ug._gush.done)
+	return ug.big_pocket_gushed()
 
 
 func _garage_ready() -> bool:

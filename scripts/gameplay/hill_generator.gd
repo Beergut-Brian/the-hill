@@ -26,6 +26,10 @@ var landings: Array[Rect2i] = []    # per layer: the room's air
 var pocket := Rect2i()              # the big Clay water pocket
 var treasure_spots: Array = []      # [{id: StringName, rect: Rect2i (footprint cells), layer: int}]
 var boulder_spots: Array[Rect2i] = []   # 2x2 cavities, the boulder sits on the floor
+## Every water pocket; pockets[0] is the big Clay pocket (`pocket`), the rest come from data/hazards.
+var pockets: Array[Rect2i] = []
+## Cave-in zones: [{rect: Rect2i (loose ground), layer: int, block: StringName}], from data/hazards.
+var cave_ins: Array = []
 
 var _ids: Dictionary = {}           # block id -> palette index
 var _mix: Array = []                # per layer: [[tile, cumulative weight], ...] heaviest first
@@ -63,6 +67,27 @@ func configure(layers: Array, ids: Dictionary, treasures: Array = []) -> void:
 	cave_min_depth = 6
 
 var _treasures: Array = []
+var _hazards: Array = []            # HazardData rows
+
+## Near a landing: this many tiles left or right of the shaft, this many rows under the room.
+const NEAR_X := Vector2i(10, 30)
+const NEAR_Y := 16
+
+
+## HazardData rows (data/hazards). Without them the generator keeps the first-playable layout.
+func configure_hazards(rows: Array) -> void:
+	_hazards = rows.duplicate()
+	_hazards.sort_custom(func(a: HazardData, b: HazardData) -> bool: return String(a.id) < String(b.id))
+
+
+func _hazard_count(layer: StringName, kind: StringName, fallback: int) -> int:
+	var n := 0
+	var any := false
+	for h: HazardData in _hazards:
+		if h.layer == layer and h.kind == kind:
+			n += h.count
+			any = true
+	return n if any else fallback
 
 
 func setup(p_shape: WorldShape, p_seed: int) -> void:
@@ -156,8 +181,9 @@ func _plan(p_seed: int) -> void:
 			continue
 		var l: LayerData = layer_rows[li]
 		var made := 0
+		var want := _hazard_count(id, &"boulder", 4)
 		for attempt in 40:
-			if made >= 4:
+			if made >= want:
 				break
 			var x := rng.randi_range(EDGE + 3, WIDTH - EDGE - 6)
 			var y := rng.randi_range(l.depth_from + 4, l.depth_to - 4)
@@ -168,7 +194,82 @@ func _plan(p_seed: int) -> void:
 			_carved.append(r)
 			_calm.append(r.grow(2))
 			made += 1
+	_plan_hazards(p_seed)
 	_carved.append(CAVERN)
+
+
+## data/hazards rows on their own random stream (the first-playable layout above never moves):
+## boulders in layers other than Clay and Stone, extra water pockets, cave-in zones. `near_landing`
+## of each row go within NEAR_X / NEAR_Y of the layer's landing, the rest anywhere in the layer.
+func _plan_hazards(p_seed: int) -> void:
+	pockets.clear()
+	cave_ins.clear()
+	if pocket.size != Vector2i.ZERO:
+		pockets.append(pocket)
+	var rng := RandomNumberGenerator.new()
+	rng.seed = p_seed + 7919
+	for h: HazardData in _hazards:
+		var li := _layer_index(h.layer)
+		if li < 0:
+			continue
+		if h.kind == &"boulder" and (h.layer == &"clay" or h.layer == &"stone"):
+			continue
+		var l: LayerData = layer_rows[li]
+		var size := Vector2i(2, 2) if h.kind == &"boulder" else h.size
+		for n in h.count:
+			var r := _hazard_spot(rng, l, li, size, n < h.near_landing)
+			if r.size == Vector2i.ZERO:
+				continue
+			match h.kind:
+				&"boulder":
+					boulder_spots.append(r)
+					_carved.append(r)
+					_calm.append(r.grow(2))
+				&"water_pocket":
+					pockets.append(r)
+					_carved.append(r)
+					_calm.append(r.grow(3))
+				&"cave_in":
+					cave_ins.append({"rect": r, "layer": li, "block": _main_block(l)})
+					_calm.append(r.grow(2))
+
+
+func _hazard_spot(rng: RandomNumberGenerator, l: LayerData, li: int, size: Vector2i, near: bool) -> Rect2i:
+	var floor_y := landing_floor(li)
+	for attempt in 60:
+		var x: int
+		var y: int
+		if near:
+			var off := rng.randi_range(NEAR_X.x, NEAR_X.y)
+			x = SHAFT_X + 1 + off if rng.randf() < 0.5 else SHAFT_X - off - size.x
+			y = rng.randi_range(floor_y + 2, floor_y + NEAR_Y)
+		else:
+			x = rng.randi_range(EDGE + 3, WIDTH - EDGE - 4 - size.x)
+			y = rng.randi_range(l.depth_from + 4, mini(l.depth_to, STRANGE_FROM) - 4 - size.y)
+		var r := Rect2i(x, y, size.x, size.y)
+		if y + size.y >= mini(l.depth_to, STRANGE_FROM) or x < EDGE + 2 or r.end.x > WIDTH - EDGE - 2:
+			continue
+		if not _hits_calm(r.grow(2)):
+			return r
+	return Rect2i()
+
+
+static func _main_block(l: LayerData) -> StringName:
+	var best: StringName = &"dirt"
+	var w := -1.0
+	for k in l.block_mix:
+		if float(l.block_mix[k]) > w:
+			w = float(l.block_mix[k])
+			best = StringName(str(k))
+	return best
+
+
+## The cave-in zone (index into cave_ins) whose loose ground holds `cell`, or -1.
+func cave_in_at(cell: Vector2i) -> int:
+	for i in cave_ins.size():
+		if (cave_ins[i].rect as Rect2i).has_point(cell):
+			return i
+	return -1
 
 
 func _layer_index(id: StringName) -> int:
@@ -234,6 +335,9 @@ func _mix_tile(cell: Vector2i) -> int:
 
 
 func base_water(cell: Vector2i) -> bool:
+	for p in pockets:
+		if p.has_point(cell):
+			return true
 	return pocket.has_point(cell)
 
 

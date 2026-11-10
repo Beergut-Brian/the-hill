@@ -1,5 +1,6 @@
 ## Gathers and applies every save key of the contract ("Save keys"): "world", "inventory",
-## Progress's four keys ("treasures", "vehicles", "buildings", "players"), "hillville" and "seed".
+## Progress's four keys ("treasures", "vehicles", "buildings", "players"), "hillville", "seed" and
+## "residents" (HillGame.story).
 ## Autosaves every AUTOSAVE_EVERY seconds of play; HillGame also saves after every ride and on
 ## Game.quit_requested. Every save ends with Save.flush().
 class_name HillSave
@@ -30,6 +31,9 @@ func gather() -> void:
 	if hv != null and hv.has_method("to_save"):
 		Save.set_value("hillville", hv.to_save())
 	Save.set_value("time_of_day", TimeOfDay.to_save())
+	var st = game.get("story")
+	if st is Story:
+		Save.set_value("residents", st.to_save())
 
 
 func save_now() -> void:
@@ -61,6 +65,10 @@ func apply() -> void:
 	var td = Save.get_value("time_of_day")
 	if td is Dictionary:
 		TimeOfDay.load_save(td)
+	var st = game.get("story")
+	var rd = Save.get_value("residents")
+	if st is Story and rd is Dictionary:
+		st.load_save(rd)
 	var build: Node = game.build
 	if build != null and build.has_method("rebuild"):
 		build.rebuild()

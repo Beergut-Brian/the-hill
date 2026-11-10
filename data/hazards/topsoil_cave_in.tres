@@ -1,0 +1,12 @@
+[gd_resource type="Resource" script_class="HazardData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/data/hazard_data.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+kind = &"cave_in"
+id = &"topsoil_cave_in"
+layer = &"topsoil"
+count = 3
+near_landing = 1
+size = Vector2i(6, 4)

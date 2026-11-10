@@ -8,6 +8,8 @@ The id of every row equals its file stem (`dirt.tres` has `id = &"dirt"`).
 - `treasures/`  TreasureData: one-of-a-kind finds and what they unlock. No sprites yet.
 - `buildings/`  BuildingData: buildable buildings and the ruins to restore. No scenes yet.
 - `vehicles/`   VehicleData: Front Loader .. Drill Rig, ordered 0..4.
+- `hazards/`    HazardData: how many boulders, water pockets and cave-ins each layer gets, and how
+                many of them sit near the layer's landing (Gameplay lane added the first rows, 2026-11-10).
 
 Schemas live in `scripts/data/`; the rules are in `docs/contracts.md`.
 Costs name block ids, never code. A ruin may only cost blocks from layers at or above the

@@ -399,6 +399,42 @@ Save key `"time_of_day"`.
 Water stays conserved while it flows, but a breached pocket **gushes** for `GUSH_TIME` (about
 2 s): its emptied cells refill from the source, so a tunnel floods and floats the player up.
 
+### Hazards and residents (Gameplay lane, 2026-11-10)
+
+Nothing underground can hurt a player or take anything from them (backpack, capacity, vehicle,
+pile, progress). `Underground.hazards` (`Hazards`, `scripts/gameplay/hazards.gd`):
+
+```gdscript
+const STUN := 0.7          # a bonk: input reads idle this long; gravity still works
+const TRAP_MAX := 4.0      # a trapped player is always free by then (the Mole usually at ~1.6 s)
+signal bonked(player: int)
+signal floated(player: int)                  # entered water (the world's buoyancy lifts)
+signal rumbled(player: int, zone: int)       # dug into a cave-in zone; the ceiling drops in 0.4 s
+signal trapped(player: int, pocket: Rect2i)  # air around the body filled with the layer's block
+signal freed(player: int, by_mole: bool)
+func is_stunned(p: int) -> bool
+func is_trapped(p: int) -> bool
+func cave_in(pl: HillPlayer, block: StringName = &"") -> bool
+func free_player(p: int, by_mole := true) -> void
+```
+
+A stun wraps the player's `intent_source` (whatever drives it: pad, demo, test); code that
+checks "has this player a source" treats a `Hazards` wrapper as none.
+
+Placement is data: `data/hazards/<id>.tres` (`HazardData`: `kind` = `&"boulder"` |
+`&"water_pocket"` | `&"cave_in"`, `layer`, `count`, `near_landing`, `size`). HillGenerator keeps
+the first-playable layout (the big Clay pocket, Clay and Stone boulders, whose counts now come
+from these rows) and places the rest on its own seeded stream: `generator.pockets` (index 0 is
+the big pocket; every pocket gushes once when breached) and `generator.cave_ins`.
+
+Residents: `Underground.residents` (`UndergroundResidents`) and `HillGame.town`
+(`TownResidents`, in Hillville). Residents have no collision. Their saved state is
+`HillGame.story` (`Story`, `scripts/gameplay/story.gd`), one `ResidentState` per id
+(`mole`, `gnome_foreman`, `caveman`, `dragon`), saved under `"residents"`. The Caveman's thaw
+(`Story.thaw_caveman`: met and ARRIVED) and the Dragon's first meeting (`Story.meet_dragon`:
+ENCOUNTERED only; she needs 2 encounters to arrive) each fire once per save and emit
+`Events.resident_encountered` (and `resident_arrived` for the Caveman).
+
 ### Data schemas (`scripts/data/*.gd`, rows in `data/`)
 
 All are `Resource` classes with `@export` fields; ids are `StringName` and equal the file stem.
