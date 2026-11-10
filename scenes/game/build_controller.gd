@@ -167,7 +167,7 @@ func _rows(locked: bool) -> Array:
 		if not file.ends_with(".tres"):
 			continue
 		var d := Progress.building_data(StringName(file.get_basename()))
-		if d == null or d.is_ruin or not d.can_show_in_book(Progress.treasures, 0):
+		if d == null or d.is_ruin or d.from_ruin != &"" or not d.can_show_in_book(Progress.treasures, 0):
 			continue
 		var waits := d.needs_vehicle != &"" and not Progress.has_vehicle(d.needs_vehicle)
 		if waits != locked:
@@ -179,6 +179,38 @@ func _rows(locked: bool) -> Array:
 		ia = ORDER.size() if ia < 0 else ia
 		ib = ORDER.size() if ib < 0 else ib
 		return ia < ib if ia != ib else String(a.id) < String(b.id))
+	return rows
+
+
+## Restore cards: one per ruin whose resident is waiting (ARRIVED), drawn as the building it
+## becomes at the ruin's restore cost (a copy of the restored row). The ruin the player stands at
+## comes first, so opening the book "on the ruin" focuses its card.
+func restore_rows(player := -1) -> Array:
+	var st = game.get("story") if game != null else null
+	if not (st is Story):
+		return []
+	var rows: Array = []
+	var here := &""
+	var hv := _hv()
+	if player >= 0 and hv != null and _pn(player) != null:
+		var x := _feet(player).x
+		for rid in hv.ruin_ids():
+			var r: Rect2 = hv.ruin_rect(rid)
+			if x > r.position.x - PLOT and x < r.end.x + PLOT:
+				here = rid
+	for rid: StringName in [&"old_shed", &"crooked_watchtower", &"flooded_cabin", &"ruined_keep"]:
+		var ruin := Progress.building_data(rid)
+		if ruin == null or not Rules.can_restore(ruin, (st as Story).state(ruin.resident), true):
+			continue
+		var home := Progress.building_data(ruin.restores_into)
+		if home == null:
+			continue
+		var card: BuildingData = home.duplicate()
+		card.cost = ruin.cost.duplicate()
+		if rid == here:
+			rows.push_front(card)
+		else:
+			rows.append(card)
 	return rows
 
 
@@ -276,7 +308,7 @@ func _open_book(p: int) -> void:
 	var book := BuildBook.new()
 	book.player = p
 	book.controller = self
-	book.rows = book_rows()
+	book.rows = restore_rows(p) + book_rows()
 	book.locked = locked_rows()
 	_book_parent().add_child(book)
 	s.book = book
@@ -293,6 +325,9 @@ func _close_book(p: int) -> void:
 func _pick(p: int, id: StringName) -> void:
 	var d := Progress.building_data(id)
 	if d == null:
+		return
+	if d.from_ruin != &"":
+		_restore(p, d.from_ruin)
 		return
 	var bk = _s(p).book
 	if bk != null and is_instance_valid(bk) and bk.focused_locked():
@@ -312,6 +347,20 @@ func _pick(p: int, id: StringName) -> void:
 	s.paid = d.cost.duplicate()
 	_update_ghost(p)
 	g.bump()
+
+
+## A restore card: pay the ruin's cost from the pile, then HillGame rebuilds it plank by plank.
+func _restore(p: int, ruin_id: StringName) -> void:
+	var ruin := Progress.building_data(ruin_id)
+	if ruin == null or game == null or not game.has_method("restore_ruin"):
+		return
+	if not Inventory.can_afford(ruin.cost):
+		_s(p).book.shake()
+		_honk(p)
+		return
+	Audio.play("build_pick")
+	_close_book(p)
+	game.restore_ruin(ruin_id)
 
 
 func _pick_up(p: int, idx: int) -> void:

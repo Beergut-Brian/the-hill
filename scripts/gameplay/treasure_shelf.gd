@@ -21,6 +21,10 @@ var layer_ids: Array[StringName] = [&"topsoil", &"clay", &"stone", &"ice", &"cry
 var fresh := {}
 
 var _t := 0.0
+## The Museum stands (the Caveman's): the shelf sits on a dock beside it, full boards get a star
+## and he polishes one found treasure at a time (polishing: its id, a twinkle).
+var museum := false
+var polishing: StringName = &""
 
 signal placed(id: StringName)
 
@@ -37,6 +41,42 @@ func setup(p_game: Node) -> void:
 		for l: LayerData in u.layers():
 			layer_ids.append(l.id)
 	Events.treasure_found.connect(_on_found)
+
+
+## Moves the shelf onto a little dock right of the Museum (its footprint rect, Hillville px).
+func museum_at(home: Rect2) -> void:
+	museum = true
+	position = Vector2(home.end.x + 66.0, 0)
+	queue_redraw()
+
+
+## Board indices whose every treasure is found (the Museum's gold stars).
+func full_boards() -> Array:
+	var out: Array = []
+	var s := slots()
+	for i in s.size():
+		var row: Array = s[i]
+		if row.is_empty():
+			continue
+		if row.all(func(e: Dictionary) -> bool: return e.found):
+			out.append(i)
+	return out
+
+
+## The Caveman rubs a found treasure: it twinkles (TownResidents calls this).
+func polish() -> StringName:
+	var found: Array = []
+	for row in slots():
+		for e in row:
+			if e.found:
+				found.append(e.id)
+	polishing = found[int(_t * 7.0) % found.size()] if not found.is_empty() else &""
+	return polishing
+
+
+## Where the Caveman stands to polish `polishing` (Hillville-local feet).
+func polish_spot() -> Vector2:
+	return position + Vector2(-52.0, 0)
 
 
 func _exit_tree() -> void:
@@ -122,6 +162,12 @@ func _slot_pos(id: StringName) -> Vector2:
 
 
 func _draw() -> void:
+	if museum:
+		# The dock: planks on posts over the pond.
+		draw_rect(Rect2(-74, -3, 148, 6), Color(0.23, 0.16, 0.27))
+		draw_rect(Rect2(-73, -2, 146, 4), Color("a47148"))
+		for x in [-66.0, -20.0, 20.0, 66.0]:
+			draw_rect(Rect2(x - 2, 2, 4, 14), Color("6b4a32"))
 	var tex := SpriteArt.texture(FILE)
 	if tex != null:
 		SpriteArt.draw(self, FILE, 0, 0, Vector2.ZERO)
@@ -139,6 +185,16 @@ func _draw() -> void:
 			var b: Array = boards[i]
 			var room: float = b[1] / float(row.size()) - 2.0
 			_draw_icon(id, at, room, row[k].found)
+			if museum and id == polishing and row[k].found:
+				var a := _t * 8.0
+				for j in 2:
+					var p := at + Vector2(cos(a + j * PI) * 7.0, -7.0 + sin(a + j * PI) * 6.0)
+					draw_line(p - Vector2(2.5, 0), p + Vector2(2.5, 0), Color(1, 1, 1), 1.0)
+					draw_line(p - Vector2(0, 2.5), p + Vector2(0, 2.5), Color(1, 1, 1), 1.0)
+		if museum and full_boards().has(i):
+			var b: Array = boards[i]
+			var c: Vector2 = (b[0] as Vector2) + Vector2(b[1] + 6.0, -6.0)
+			PictoBubble.picture(self, &"star", c, 11.0)
 
 
 func _draw_icon(id: StringName, feet: Vector2, room: float, found: bool) -> void:
