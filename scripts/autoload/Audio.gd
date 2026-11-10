@@ -128,7 +128,9 @@ func _ready() -> void:
 	set_volume("SFX", Save.get_setting("sound_volume", 1.0))
 	set_volume("Voice", Save.get_setting("sound_volume", 1.0))
 	# Let the mix thread drop its playbacks before the engine counts leaks at exit.
-	Game.quit_requested.connect(_release)
+	Game.quit_requested.connect(func() -> void:
+		if Game.quit_exits:   # tests call Game.quit() without exiting: keep playing then
+			_release())
 
 
 func _setup_buses() -> void:
