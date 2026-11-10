@@ -23,3 +23,4 @@ backdrop = 1
 backdrop_scene = ExtResource("5_world")
 sunburst_over_world = 0.35
 blur = 2.0
+round_card_title = "DIG IN!"
