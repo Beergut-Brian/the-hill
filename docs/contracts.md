@@ -485,6 +485,7 @@ class_name BuildingData extends Resource    # data/buildings/<id>.tres
 @export var is_ruin: bool = false           # a ruin: unclearable, unbuildable, restored instead of built
 @export var resident: StringName            # ruins only: who it is for
 @export var restores_into: StringName       # ruins only: the BuildingData id it becomes
+@export var from_ruin: StringName           # restored rows only (lost_and_found, gnome_village, museum, dragon_perch): never a card of its own
 func can_show_in_book(found_treasures: Array, resident_phase: int) -> bool
 
 class_name VehicleData extends Resource     # data/vehicles/<id>.tres
@@ -527,6 +528,28 @@ static func can_restore(ruin: BuildingData, state: ResidentState, afford: bool) 
 static func restore_cost_is_fair(ruin: BuildingData, met_depth: int, blocks: Array) -> bool   # content test
 ```
 
+### Resident arcs (Gameplay lane, 2026-11-10)
+
+`Story` (`scripts/gameplay/story.gd`) drives every arc; up top `HillGame.ruins` (`RuinSites`) and
+`HillGame.town` (`TownResidents`) read it, underground `Underground.residents`.
+
+```gdscript
+const RUIN_OF := {mole: &"old_shed", gnome_foreman: &"crooked_watchtower", caveman: &"flooded_cabin", dragon: &"ruined_keep"}
+const HOME_OF := {mole: &"lost_and_found", gnome_foreman: &"gnome_village", caveman: &"museum", dragon: &"dragon_perch"}
+var extras: Dictionary                      # saved as "resident_arcs" (e.g. "found_waiting")
+func steal_shovel() -> bool                 # Mole encounter; 3 -> ARRIVED
+func free_crew() -> bool                    # Gnome Room opened -> Foreman ARRIVED
+func thaw_caveman() -> bool                 # -> ARRIVED
+func meet_dragon() -> bool                  # first meeting -> ENCOUNTERED
+func wake_dragon() -> bool                  # second meeting -> ARRIVED
+func restore(id) -> bool                    # ARRIVED -> RESTORED, Events.ruin_restored(ruin, id)
+func ice_warm() -> bool                     # Dragon RESTORED
+func HillGame.restore_ruin(ruin_id) -> bool # Rules.can_restore, Inventory.spend, rebuild, Story.restore
+```
+
+The build book's restore cards come from `BuildController.restore_rows(player)`: copies of the
+restored row at the ruin's cost. Restored buildings are not in `Progress.buildings`.
+
 ### The gnome-crew rule
 
 On load, once the Gnome Village stands: `away = now - Save "gnome_stamp"` (unix seconds).
@@ -549,7 +572,7 @@ never idling. A pile appears at the shaft with the march clip; never a number.
 
 `"world"` (`TileWorld.to_save()`), `"inventory"`, `"treasures"` (found ids), `"buildings"`
 (`[{id, cell:[x,y]}]`), `"vehicles"` (unlocked ids), `"players"` (`[{deepest, scene}]`),
-`"gnome_stamp"`, `"residents"` (`{id: ResidentState.to_save()}`), `"seed"`, and `"hillville"`
+`"gnome_stamp"` (unix seconds, written on every save), `"residents"` (`{id: ResidentState.to_save()}`), `"resident_arcs"` (`Story.extras`), `"seed"`, and `"hillville"`
 (`Hillville.to_save()`: which scrub is cleared), `"time_of_day"` (`TimeOfDay.to_save()`). `"treasures"`, `"vehicles"`, `"buildings"`
 and `"players"` are `Progress.to_save()`'s keys. Placed buildings are rebuilt from `"buildings"`.
 

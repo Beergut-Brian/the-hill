@@ -68,6 +68,7 @@ var _h := PackedByteArray()           # tiles left per column
 var _h0 := PackedByteArray()          # tiles at generation
 var _wide := PackedByteArray()        # 1: this rock column joins the one to its right
 var _silhouette := {}                 # ruin id -> true once its resident was encountered
+var _restored := {}                   # ruin id -> true once rebuilt (RuinSites draws the new building)
 var _fx: Array = []
 var _cells_kind := {}                 # cell -> zone/ruin StringName
 
@@ -346,6 +347,19 @@ func show_silhouette(ruin_id: StringName, shown := true) -> void:
 	_silhouette[ruin_id] = shown
 	if _ruins != null:
 		_ruins.queue_redraw()
+
+
+## A restored ruin is no longer drawn (RuinSites stands the new building there) and its door
+## light stays on.
+func set_ruin_restored(ruin_id: StringName, on := true) -> void:
+	_restored[ruin_id] = on
+	if _ruins != null:
+		_ruins.queue_redraw()
+	_apply_time()
+
+
+func is_ruin_restored(ruin_id: StringName) -> bool:
+	return _restored.get(ruin_id, false)
 
 
 ## A dust puff (Hillville-local), used by scoops and buildings.
@@ -675,7 +689,10 @@ func _apply_time() -> void:
 		_head_glow.modulate = Color(WARM, 0.55 * lights)
 	for id in _door_glows:
 		var sp: Sprite2D = _door_glows[id]
-		sp.modulate = Color(WARM, (0.9 if _silhouette.get(id, false) else 0.4) * lights)
+		if _restored.get(id, false):
+			sp.modulate = Color(WARM, 0.0)   # RuinSites lights the new building's door
+		else:
+			sp.modulate = Color(WARM, (0.9 if _silhouette.get(id, false) else 0.4) * lights)
 
 
 func _draw_sky(ci: CanvasItem) -> void:
@@ -814,6 +831,8 @@ func _draw_pile(ci: CanvasItem) -> void:
 
 func _draw_ruins(ci: CanvasItem) -> void:
 	for r in RUINS:
+		if _restored.get(r.id, false):
+			continue
 		var rect := ruin_rect(r.id)
 		var tx := HillvilleArt.tex("buildings/%s.png" % r.id)
 		var fr := HillvilleArt.frame(String(r.id))

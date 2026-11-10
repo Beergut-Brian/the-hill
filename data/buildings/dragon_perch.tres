@@ -1,0 +1,10 @@
+[gd_resource type="Resource" script_class="BuildingData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/data/building_data.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = &"dragon_perch"
+footprint = Vector2i(3, 3)
+effect = &"warm_ice"
+from_ruin = &"ruined_keep"
