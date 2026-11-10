@@ -7,7 +7,15 @@
 ##              beep for a second before it turns round. The elevator dump tips the bed too.
 ##   hook       Crane: underground, A near a boulder (HOOK_REACH) drops the hook, lifts the boulder
 ##              and hauls it out for good (BOULDER_BLOCKS stone into the bag). Else A digs 3 tall.
-##              Up top it clears 4x2 and opens the tall buildings in the build book.
+##              Up top it opens the tall buildings in the build book, and A swings the wrecking
+##              ball (H-05): at the end of the swing it bonks whatever is in front: a building leans
+##              right over and springs back, the pile leans and blocks tumble off (nothing is lost),
+##              scrub (stumps, rocks, trees) is knocked clear 4x2. Up + A by a building lifts it
+##              on the hook (the boom telescopes up over it) and A sets it down: the build book's
+##              move, seen as a crane lift. Riding the elevator down in it is the fast cable ride
+##              (CraneRide).
+##   pond       Excavator (H-03): up top, A on bare ground (no scrub ahead) digs 3 columns ahead of
+##              the bucket a tile deeper (2 at most) and the hollow fills with water: a pond.
 ##   auto_drill Drill Rig: underground, A starts it drilling 5 wide straight down on its own; A again
 ##              (or hopping out, or hitting the unbreakable bottom) stops it. Up top it only spins
 ##              up and puffs: it is too big to work there.
@@ -26,6 +34,14 @@ const HOOK_UP := 0.55
 const DRILL_EVERY := 0.16
 const DRILL_STUCK := 0.8
 const SHAKE_PX := 2.0
+## H-05 wrecking ball: one swing, the bonk at BALL_HIT, reach ahead of the cab, rope length.
+const BALL_SWING := 0.75
+const BALL_HIT := 0.3
+const BALL_REACH := 84.0
+const BALL_ROPE := 34.0
+## How high a lifted building rides (px) and how fast it goes up.
+const LIFT_PX := 26.0
+const LIFT_TIME := 0.3
 
 var pl: HillPlayer
 var data: VehicleData
@@ -41,6 +57,9 @@ var _paid := false
 ## Crane: -1 idle, else seconds into the haul.
 var hooking := -1.0
 var hook_from := Vector2.ZERO     # hook target (vehicle-local px) while hooking
+var ball := -1.0                  # seconds into a wrecking-ball swing, -1 idle
+var lift := 0.0                   # 0..1 a carried building off the ground
+var _carrying := false
 ## Drill Rig
 var drilling := false
 var spin := 0.0
@@ -51,6 +70,10 @@ var _shake := 0.0
 signal tipped(blocks: int)
 signal hauled(index: int)
 signal drill_changed(on: bool)
+## H-05: the wrecking ball bonked these (StringName: &"building", &"pile", &"scrub").
+signal ball_hit(what: Array)
+## H-03: the Excavator dug this many pond tiles.
+signal pond_dug(tiles: int)
 
 
 static func make(p: HillPlayer, d: VehicleData) -> VehicleAbility:
@@ -81,7 +104,9 @@ func step(delta: float, it: Dictionary, a_press: bool) -> void:
 	_beep = move_toward(_beep, 0.0, delta * 3.0)
 	match kind:
 		&"tip": _step_tip(delta, it)
-		&"hook": _step_hook(delta)
+		&"hook":
+			_step_hook(delta)
+			_step_ball(delta)
 		&"auto_drill": _step_drill(delta, a_press)
 
 
@@ -99,6 +124,20 @@ func on_dig(move: Vector2) -> bool:
 				return true
 			if not up_top():
 				return try_hook()
+			if ball < 0.0:
+				start_ball()
+			return true
+		&"pond":
+			if up_top():
+				var hv: Node = pl.game.get("hillville") if pl.game != null else null
+				if hv != null and hv.has_method("dig_pond"):
+					var n: int = hv.dig_pond(pl.global_position, pl.facing, data.clear_area.x, pl.player)
+					if n != 0:
+						pl.bump()
+						if n > 0:
+							Audio.play(_cue(&"dig", "excavator_dig"))
+							pond_dug.emit(n)
+						return true
 		&"auto_drill":
 			if up_top():
 				Audio.play(_cue(&"spin", "drill_rig_spin"))
@@ -238,6 +277,122 @@ func hook_reach() -> float:
 	return 1.0 - (hooking - HOOK_DOWN) / HOOK_UP
 
 
+## Crane up top: A belongs to the wrecking ball, unless the player pushes up (lift a building)
+## or already carries one (set it down). HillPlayer asks before the build controller's A.
+func claims_a(move: Vector2, build: Object) -> bool:
+	if kind != &"hook" or not up_top():
+		return false
+	if build != null and build.has_method("has_ghost") and build.has_ghost(pl.player):
+		return false
+	return move.y > -0.5
+
+
+func start_ball() -> void:
+	ball = 0.0
+	Audio.play("swing")
+
+
+## Pendulum angle (radians, + = toward facing) of the ball at `k` seconds into the swing.
+static func ball_angle(k: float) -> float:
+	if k < 0.0:
+		return sin(Time.get_ticks_msec() * 0.0017) * 0.06
+	var u := k / BALL_SWING
+	if u < 0.15:
+		return -0.6 * u / 0.15
+	if u < 0.4:
+		return lerpf(-0.6, 1.3, smoothstep(0.0, 1.0, (u - 0.15) / 0.25))
+	var w := (u - 0.4) / 0.6
+	return 1.3 * cos(w * PI * 1.5) * (1.0 - w)
+
+
+func _step_ball(delta: float) -> void:
+	# Lifting: the carried building rises on the hook.
+	var hv: Node = pl.game.get("hillville") if pl.game != null else null
+	var g := carried()
+	var carrying := g != null
+	if carrying and not _carrying:
+		Audio.play(_cue(&"hook", "crane_hook"))
+	_carrying = carrying
+	lift = move_toward(lift, 1.0 if carrying else 0.0, delta / LIFT_TIME)
+	if ball < 0.0:
+		return
+	var was := ball
+	ball += delta
+	if was < BALL_HIT and ball >= BALL_HIT:
+		_ball_hit(hv)
+	if ball >= BALL_SWING:
+		ball = -1.0
+
+
+## The placed building this crane carries on the hook, or null.
+func carried() -> Building:
+	if kind != &"hook" or not up_top() or pl.game == null:
+		return null
+	var build: Object = pl.game.get("build")
+	if build == null or not build.has_method("ghost_of"):
+		return null
+	var g: Building = build.ghost_of(pl.player)
+	return g if g != null and is_instance_valid(g) and g.index >= 0 else null
+
+
+## Px the build controller lifts this player's ghost off the ground.
+func lift_px() -> float:
+	return LIFT_PX * ease(lift, -2.0) if kind == &"hook" else 0.0
+
+
+## The bonk: everything in the swing's reach ahead of the cab.
+func _ball_hit(hv: Node) -> void:
+	if hv == null:
+		return
+	var x := pl.global_position.x
+	var a := x + pl.facing * 8.0
+	var b := x + pl.facing * BALL_REACH
+	var lo := minf(a, b)
+	var hi := maxf(a, b)
+	var what: Array = []
+	if hv.has_method("buildings_root"):
+		for n in hv.buildings_root().get_children():
+			var bd := n as Building
+			if bd == null or bd.ghost or bd.data == null:
+				continue
+			var x0 := bd.global_position.x
+			if x0 + bd.size_px().x >= lo and x0 <= hi:
+				knock_building(bd, pl.facing)
+				what.append(&"building")
+	if hv.has_method("pile_span"):
+		var sp: Vector2 = hv.pile_span()
+		var on_pile := 0
+		for blk in Hillville.BLOCK_ORDER:
+			on_pile += Inventory.count(blk)
+		if sp.y >= lo and sp.x <= hi and on_pile > 0:
+			hv.knock_pile(pl.facing)
+			what.append(&"pile")
+	if hv.has_method("scoop"):
+		var n: int = hv.scoop(pl.global_position, pl.facing, data.clear_area, pl.player)
+		if n > 0:
+			what.append(&"scrub")
+			if n >= HillPlayer.BIG_SCOOP:
+				ScreenKick.kick(pl.player, 1.5 + 0.25 * mini(n, 6), 0.22)
+	if what.has(&"building") or what.has(&"pile"):
+		Audio.play("bonk")
+		ScreenKick.kick(pl.player, 3.0, 0.25)
+	pl.bump()
+	ball_hit.emit(what)
+
+
+## A bonk, never damage: the building leans right over away from the ball and springs back.
+static func knock_building(bd: Building, dir: int) -> void:
+	var t := bd.create_tween()
+	t.tween_property(bd, "skew", dir * 0.45, 0.12).set_ease(Tween.EASE_OUT)
+	t.tween_interval(0.2)
+	t.tween_property(bd, "skew", 0.0, 1.2).set_trans(Tween.TRANS_ELASTIC).set_ease(Tween.EASE_OUT)
+	var hv := bd.get_parent()
+	while hv != null and not hv.has_method("puff"):
+		hv = hv.get_parent()
+	if hv != null:
+		hv.puff(bd.position + Vector2(bd.size_px().x * (0.5 + dir * 0.5), 0), Color(0.85, 0.75, 0.6), 8)
+
+
 # --- Drill Rig ---------------------------------------------------------------------------------
 
 func set_drilling(on: bool) -> void:
@@ -307,6 +462,13 @@ func draw_state() -> Dictionary:
 				s.hook = hook_from
 				s.reach = hook_reach()
 				s.carry = hooking >= HOOK_DOWN
+			elif up_top():
+				var g := carried()
+				if g != null:
+					s.lift = pl.to_local(g.global_position + Vector2(g.size_px().x * 0.5, -g.size_px().y))
+				else:
+					s.ball = ball_angle(ball)
+					s.face = pl.facing
 		&"auto_drill":
 			s.spin = spin
 	return s
