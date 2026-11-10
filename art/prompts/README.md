@@ -10,6 +10,7 @@ How to brief a later art lane or an image model for this game's art. Rules live 
 | `vehicles.md` | The five construction vehicles and their lights |
 | `buildings.md` | Town buildings, the ruins, scrub props |
 | `treasures.md` | Treasures, sparkle, block icons |
+| `styles-d-e.md` | Style blocks for the round 2 options (D Terraria-leaning, E Picture book), only if one is picked |
 
 ## How to use it
 
