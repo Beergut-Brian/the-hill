@@ -8,7 +8,7 @@ const P1 := 0
 const P2 := 1
 const COLOR := { P1: Color("3cc24a"), P2: Color("e4393c") }
 const PREFIX := { P1: "p1_", P2: "p2_" }
-const ACTIONS := ["move_left", "move_right", "move_up", "move_down", "action", "jump"]
+const ACTIONS := ["move_left", "move_right", "move_up", "move_down", "action", "jump", "book", "horn"]
 ## Device id for a keyboard or --demo player: no pad events are rebound.
 const VIRTUAL := -2
 ## Solo (playtest only): Select + Start held together this long, in real seconds, toggles it.
