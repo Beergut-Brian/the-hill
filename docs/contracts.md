@@ -153,7 +153,14 @@ func get_volume(bus: String) -> float
 Audio creates the `Music` and `SFX` buses at start if the project has no bus layout, and applies
 the saved volumes.
 
-Every action must call `Audio.play`. Missing cue files log a warning, never crash.
+Every action must call `Audio.play`. Missing cue files log a warning (once per cue), never crash.
+While `synth_missing` is on (the default), a missing SFX cue plays a short synth beep whose pitch
+comes from the cue name, so placeholder builds are never silent; a real file replaces it by existing.
+
+```gdscript
+var synth_missing: bool = true                       # false: missing cues are silent
+func has_cue(cue: String) -> bool                    # a real file exists for this SFX cue
+```
 
 Menu cues (Audio lane supplies the files): `ui_move`, `ui_confirm`, `ui_back`, `player_join`,
 `player_ready`, `player_unready`, `count_tick`, `round_start`, `pause`, `solo_on`, `solo_off`.
@@ -162,6 +169,13 @@ Menu cues (Audio lane supplies the files): `ui_move`, `ui_confirm`, `ui_back`, `
 
 F3 toggles the overlay (fps, state, player count). F12 saves `user://screenshots/<timestamp>.png`
 and prints the path. `--screenshot-after=<seconds>` CLI flag does it headlessly for the Reviewer.
+
+### Boot flags (user args, after `--`; an exported binary takes them directly)
+
+`--demo` (skip the lobby, two virtual players), `--solo`, `--profile=<id>`, `--shots=`,
+`--shot-dir=`, `--screenshot-after=`, and for The Hill: `--proto` boots
+`scenes/proto/foundation_proto.tscn` (the Phase 1 risk prototype) instead of the lobby, and
+`--proto-auto` does the same with a scripted, input-free run-through (for shots and smoke boots).
 
 ## Launcher handshake
 
