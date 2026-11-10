@@ -52,6 +52,7 @@ const CAPS := {
 	"*_horn": [0.15, 1], "horn": [0.15, 1], "honk": [0.3, 1], "dump_truck_reverse": [0.6, 1],
 	"backpack_full": [1.5, 1], "*_dig": [0.1, 2], "book_*": [0.1, 1],
 	"drill_rig_spin": [0.25, 1], "scoop": [0.1, 2], "rock_crack": [0.08, 2], "tree_fall": [0.2, 2],
+	"lighthouse_on": [1.0, 1],
 }
 ## Cues that duck the music: [dB, hold seconds].
 const DUCKS := {
@@ -59,6 +60,7 @@ const DUCKS := {
 	"build_place": [-4.0, 1.0], "elevator": [-4.0, 1.4], "light_on": [-6.0, 1.2],
 	"resident_arrive": [-6.0, 1.2], "payoff_*": [-10.0, 2.0], "dragon_yawn": [-6.0, 1.4],
 	"cave_in": [-4.0, 0.8],
+	"lighthouse_on": [-6.0, 1.4],
 }
 const BARK_DUCK_DB := -5.0
 ## Gap after any bark before the next one, and before the same character + cue again.

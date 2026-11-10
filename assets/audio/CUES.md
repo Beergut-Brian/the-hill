@@ -2,7 +2,9 @@
 
 Every file here is made by `assets/audio/tools/make_cues.py` (seeded synth, Python stdlib + ffmpeg)
 except the three music tracks. Rebuild: `python3 assets/audio/tools/make_cues.py` (all, ~1 min on 5
-cores), or name stems. `--preview handoff/sfx_preview.ogg` stitches the preview.
+cores), or name stems. `--preview handoff/sfx_preview.ogg` stitches the preview (`--preview-set lane2`:
+the hill-audio-2 preview of the cues that lane wired: engines at three pitches, horns, scoop, lighthouse_on,
+snores by depth).
 
 Loudness: SFX and placeholder barks -16 LUFS integrated (short cues measured looped 10x), minus the trim
 column; true peak <= -1 dBTP; nothing above 9.5 kHz. Engine loops -24 LUFS (a bed under the SFX), music
@@ -49,7 +51,7 @@ Menu cues (`ui_move`, `ui_confirm`, `player_join`, `ui_back`, ...) stay with the
 | crane_hook | sfx/crane_hook.ogg | the hook grabs | chain rattle, clank | +0 | 0.05, 3 |
 | dump_truck_tip | sfx/dump_truck_tip.ogg | the bed tips (design name `tip`) | hydraulic down-whine, rattle of blocks | +0 | 0.05, 3 |
 | bucket_tip | sfx/bucket_tip.ogg | a bucket tips onto the pile | whine, rattle | +0 | 0.05, 3 |
-| scoop | sfx/scoop_1.ogg, sfx/scoop_2.ogg | a bucket scoops | hydraulic whine, clods | +0 | 0.1, 2 |
+| scoop | sfx/scoop_1.ogg, sfx/scoop_2.ogg | a vehicle bucket scoops scrub up top (HillPlayer._scoop) | hydraulic whine, clods | +0 | 0.1, 2 |
 | pile_dump | sfx/pile_dump_1.ogg, sfx/pile_dump_2.ogg | blocks land on the shaft pile | rattle | +0 | 0.1, 2 |
 | horn | sfx/horn.ogg | generic horn fallback | kazoo honk | +0 | 0.15, 1 |
 | honk | sfx/honk.ogg | can't afford it (book stays open) | soft clown bwah | -2 | 0.3, 1 |
@@ -116,7 +118,7 @@ Menu cues (`ui_move`, `ui_confirm`, `player_join`, `ui_back`, ...) stay with the
 | caveman_laugh | sfx/caveman_laugh.ogg | the Caveman laughs | ho ho ho | +0 | 0.05, 3 |
 | caveman_hoot | sfx/caveman_hoot.ogg | the Caveman hoots | oo-OO! | +0 | 0.05, 3 |
 | caveman_huh | sfx/caveman_huh.ogg | the Caveman is baffled | huh? | +0 | 0.05, 3 |
-| dragon_snore | sfx/dragon_snore_1.ogg, sfx/dragon_snore_2.ogg | underground while she sleeps, louder by depth; gentle camera sway at the Bottom | in-breath and a fluttery purr | -2 | 1.5, 1 |
+| dragon_snore | sfx/dragon_snore_1.ogg, sfx/dragon_snore_2.ogg | while she sleeps: on `UndergroundResidents.dragon_snored` within her reach (her clock owns the gentle sway), on HillAudio's 5.5 s distant clock further up; louder by depth (LayerData.snore_volume) | in-breath and a fluttery purr | -2 | 1.5, 1 |
 | dragon_purr | sfx/dragon_purr.ogg | the Dragon purrs | low purr | +0 | 0.05, 3 |
 | dragon_yawn | sfx/dragon_yawn.ogg | the Dragon yawns (reveal) | sleepy aaah-mm (ducks) | +0 | 0.05, 3 |
 | dragon_flap | sfx/dragon_flap.ogg | her wings flap | soft whumps | +0 | 0.05, 3 |
@@ -132,6 +134,7 @@ Menu cues (`ui_move`, `ui_confirm`, `player_join`, `ui_back`, ...) stay with the
 | resident_cheer | sfx/resident_cheer.ogg | picture bubble: cheer | yay + sparkle | +0 | 0.05, 3 |
 | resident_arrive | sfx/resident_arrive.ogg | a resident waits at the shaft (Events.resident_arrived) | ding-dong + arpeggio (ducks) | +0 | 0.05, 3 |
 | ruin_rumble | sfx/ruin_rumble.ogg | a ruin shakes before the restore | rumble | +0 | 0.05, 3 |
+| lighthouse_on | sfx/lighthouse_on.ogg | a Lighthouse is placed and lights the next layer down (Events.building_placed, 0.35 s after the clunk; B-07) | switch click, lamp hum, rising bell sweep, chord, falling glints (ducks) | +0 | 1.0, 1 |
 | light_on | sfx/light_on.ogg | the restored building's light comes on (Events.ruin_restored) | click + warm chord (ducks) | +0 | 0.05, 3 |
 | plank | sfx/plank_1.ogg, sfx/plank_2.ogg, sfx/plank_3.ogg, sfx/plank_4.ogg | each plank of a restore (design name `restore_plank`) | hammer knock, four rising variants | -2 | 0.06, 2 |
 | payoff_mole | sfx/payoff_mole.ogg | Mole's arc pays off (0.7 s after light_on) | fanfare + mole hello (ducks) | +1 | 0.05, 3 |
