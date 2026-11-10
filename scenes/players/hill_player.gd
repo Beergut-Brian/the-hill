@@ -39,6 +39,8 @@ var facing := 1
 var ride_offset := 0.0
 ## The vehicle being driven, null on foot.
 var vehicle: VehicleData
+## What only that vehicle does (tip, hook, auto_drill), or null.
+var ability: VehicleAbility
 ## block id -> count. Emptied into Inventory by the elevator going up.
 var backpack: Dictionary = {}
 ## A was pressed this physics frame (the elevator reads it: A skips the door wait).
@@ -121,6 +123,8 @@ func keep_block(block: StringName) -> bool:
 func take_backpack() -> Dictionary:
 	var out := backpack
 	backpack = {}
+	if ability != null and not out.is_empty():
+		ability.on_dump()
 	return out
 
 
@@ -142,6 +146,7 @@ func bump() -> void:
 ## Starts driving `d` (the game removed the parked node).
 func drive(d: VehicleData) -> void:
 	vehicle = d
+	ability = VehicleAbility.make(self, d)
 	_apply_shape()
 	_squash = 1.0
 
@@ -149,6 +154,9 @@ func drive(d: VehicleData) -> void:
 ## Back on foot; returns what was driven.
 func stop_driving() -> VehicleData:
 	var d := vehicle
+	if ability != null:
+		ability.stop()
+	ability = null
 	vehicle = null
 	_apply_shape()
 	_squash = 1.0
@@ -213,6 +221,8 @@ func _physics_process(delta: float) -> void:
 		_b_used = false
 	if y_press:
 		honk()
+	if ability != null:
+		ability.step(delta, it, a_press)
 	var build := _build()
 	if build != null and build.captures(player):
 		if x_press:
@@ -233,9 +243,11 @@ func _physics_process(delta: float) -> void:
 	up_direction = -g.normalized() if g != Vector2.ZERO else Vector2.UP
 	var side := Vector2(-up_direction.y, up_direction.x)
 	if absf(move.x) > 0.2:
-		facing = 1 if move.x > 0.0 else -1
+		var want := 1 if move.x > 0.0 else -1
+		if ability == null or ability.allow_turn(want, delta):
+			facing = want
 	_aim = move.y if absf(move.y) > 0.3 else 0.0
-	var speed := vehicle.speed if vehicle != null else WALK
+	var speed := vehicle.speed * (ability.speed_scale() if ability != null else 1.0) if vehicle != null else WALK
 	velocity = side * move.x * speed + up_direction * velocity.dot(up_direction)
 	var lift := Vector2.ZERO
 	if world != null:
@@ -322,10 +334,16 @@ func aim_of(move: Vector2) -> Vector2i:
 
 
 func _dig(move: Vector2) -> void:
+	if ability != null and ability.on_dig(move):
+		return
+	dig_now(move)
+
+
+## One dig (or scoop up top) toward `move`; true when it removed something.
+func dig_now(move: Vector2) -> bool:
 	_swing = 1.0
 	if world == null:
-		_scoop()
-		return
+		return _scoop() > 0
 	var targets := dig_cells(aim_of(move))
 	var tier := vehicle.dig_tier if vehicle != null else 0
 	var cells: Array[Vector2i] = []
@@ -338,7 +356,7 @@ func _dig(move: Vector2) -> void:
 		cells.append(c)
 	if cells.is_empty():
 		swung.emit(targets[0] if not targets.is_empty() else Vector2i.ZERO)
-		return
+		return false
 	if vehicle != null and vehicle.sounds.has(&"dig"):
 		Audio.play(String(vehicle.sounds[&"dig"]))
 	var offsets: Array[Vector2i] = []
@@ -346,9 +364,10 @@ func _dig(move: Vector2) -> void:
 		offsets.append(c - cells[0])
 	world.dig(cells[0], offsets, player)
 	_squash = maxf(_squash, 0.4)
+	return true
 
 
-func _scoop() -> void:
+func _scoop() -> int:
 	var hv: Node = game.get("hillville") if game != null else null
 	var area := vehicle.clear_area if vehicle != null else Vector2i.ONE
 	var n := 0
@@ -358,6 +377,7 @@ func _scoop() -> void:
 		Audio.play("swing")
 		swung.emit(Vector2i.ZERO)
 	_squash = 1.0
+	return n
 
 
 ## Cells a dig toward `aim` reaches: the body's cross-section in front (so the body fits the hole;
@@ -436,7 +456,10 @@ func _draw() -> void:
 	var c: Color = Players.COLOR.get(player, Color.WHITE)
 	if vehicle != null:
 		var moving := absf(velocity.x) > 10.0 and is_on_floor()
-		Vehicle.draw_vehicle(self, vehicle, facing, c, _swing * 0.6, _aim, _t, moving, player)
+		var st := ability.draw_state() if ability != null else {}
+		Vehicle.draw_vehicle(self, vehicle, facing, c, _swing * 0.6, _aim, _t, moving, player, st)
+		if ability != null:
+			ability.draw_over(self)
 		var sleeper: int = game.sleeper_in(vehicle.id) if game != null and game.has_method("sleeper_in") else -1
 		if sleeper >= 0:
 			Vehicle.draw_sleeper(self, vehicle, facing, sleeper, 0.0, _t)
