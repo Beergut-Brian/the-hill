@@ -372,11 +372,13 @@ func dig_cells(aim: Vector2i) -> Array[Vector2i]:
 	var anchor: Vector2i
 	if aim.y != 0:
 		var y := p.y + 4.0 if aim.y > 0 else p.y - size.y - 6.0
-		var x := -hw + 2.0
-		while x <= hw - 2.0 + 0.01:
+		# Every column the body rests on, even by a pixel (else a body a hair off the grid
+		# stands on the one column it did not dig and never falls).
+		var x := -hw + 0.5
+		while x <= hw - 0.5 + 0.01:
 			_add_unique(out, s.cell_at(Vector2(p.x + x, y)))
-			x += minf(8.0, maxf(1.0, hw * 2.0 - 4.0))
-		_add_unique(out, s.cell_at(Vector2(p.x + hw - 2.0, y)))
+			x += minf(8.0, maxf(1.0, hw * 2.0 - 1.0))
+		_add_unique(out, s.cell_at(Vector2(p.x + hw - 0.5, y)))
 		anchor = s.cell_at(Vector2(p.x, y))
 	else:
 		var first: Array[Vector2i] = []
