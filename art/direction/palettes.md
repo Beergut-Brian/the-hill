@@ -22,7 +22,7 @@ Shadow hue 265°, light hue 55°, 10° shift per step. Outline `#3a2a44`.
 | Stone | `#414276` | `#5b6693` | `#7f93b8` | `#aec7df` | `#45495c` | `#373a4a` |
 | Ice | `#677ea1` | `#8fafc9` | `#c4ecfb` | `#d8fbff` | `#4f8fc4` | `#3f729d` |
 | Crystal | `#572c93` | `#7444b8` | `#a865e6` | `#db98fa` | `#553f73` | `#44325c` |
-| The Bottom | `#6c1d4c` | `#862e54` | `#a8455f` | `#d57d86` | `#542c3d` | `#432331` |
+| The Bottom | `#6c1d4c` | `#862e54` | `#a8455f` | `#d57d95` | `#542c3d` | `#432331` |
 | Strangestone | `#06354a` | `#0e515d` | `#1a7472` | `#53b6a3` | `#16353a` | `#122a2e` |
 | Edgestone | `#60504b` | `#786e66` | `#96918a` | `#cac7bf` | `#4b4846` | `#3c3a38` |
 
@@ -67,12 +67,12 @@ Shadow hue 290°, light hue 45°, 16° shift per step. Outline `#4a3030`.
 
 | Layer | deep | low | mid | high | wall | wall dark |
 | --- | --- | --- | --- | --- | --- | --- |
-| Topsoil | `#512428` | `#643c32` | `#7c5e44` | `#b8a87e` | `#44352f` | `#362a26` |
-| Clay | `#8b2c45` | `#ac403f` | `#d47a58` | `#efc28d` | `#754a45` | `#5e3b37` |
+| Topsoil | `#512b24` | `#643c32` | `#7c5e44` | `#b8a87e` | `#44352f` | `#362a26` |
+| Clay | `#8b3a2c` | `#ac4f3f` | `#d47a58` | `#efc28d` | `#754c45` | `#5e3d37` |
 | Stone | `#4d496d` | `#616786` | `#8090a6` | `#b0c8d2` | `#4d505b` | `#3e4049` |
 | Ice | `#78819b` | `#9eb0bf` | `#cfe6ec` | `#e8fdfc` | `#6a93b0` | `#55768d` |
 | Crystal | `#7a4385` | `#8c5ba4` | `#9b7bcb` | `#d4a9e9` | `#625170` | `#4e415a` |
-| The Bottom | `#790f08` | `#953d11` | `#b87a1e` | `#ddbd5c` | `#65432a` | `#513622` |
+| The Bottom | `#791908` | `#953d11` | `#b87a1e` | `#ddbd5c` | `#65432a` | `#513622` |
 | Strangestone | `#182743` | `#223f53` | `#2f5f66` | `#6aaaa1` | `#233238` | `#1c282d` |
 | Edgestone | `#6d5754` | `#86786e` | `#a69f90` | `#d2cdbf` | `#5b5753` | `#494642` |
 
@@ -96,7 +96,7 @@ Player pop (CIE76 ΔE; under 25 would be a fail, 40+ is comfortable):
 | Layer | green on tile | green on wall | red on tile | red on wall |
 | --- | --- | --- | --- | --- |
 | Topsoil | 79 | 90 | 60 | 73 |
-| Clay | 93 | 93 | 35 | 57 |
+| Clay | 93 | 91 | 35 | 58 |
 | Stone | 86 | 90 | 84 | 80 |
 | Ice | 79 | 87 | 92 | 93 |
 | Crystal | 124 | 103 | 84 | 76 |
@@ -117,12 +117,12 @@ Shadow hue 240°, light hue 50°, 12° shift per step. Outline `#16131f`.
 
 | Layer | deep | low | mid | high | wall | wall dark |
 | --- | --- | --- | --- | --- | --- | --- |
-| Topsoil | `#37120f` | `#4c281b` | `#6a4a2e` | `#b39967` | `#2a1b15` | `#221611` |
-| Clay | `#6a0900` | `#93320b` | `#cc7420` | `#ecbd57` | `#522814` | `#422010` |
+| Topsoil | `#37150f` | `#4c281b` | `#6a4a2e` | `#b39967` | `#2a1b15` | `#221611` |
+| Clay | `#6a1000` | `#93320b` | `#cc7420` | `#ecbd57` | `#522814` | `#422010` |
 | Stone | `#171749` | `#282c65` | `#43568c` | `#799dc7` | `#1e2038` | `#181a2d` |
 | Ice | `#243c7c` | `#4073ad` | `#6cc4f0` | `#96f1ff` | `#1f4f90` | `#193f73` |
 | Crystal | `#0f0a6c` | `#381a96` | `#7a35d0` | `#bf69ee` | `#2b1b53` | `#221642` |
-| The Bottom | `#420738` | `#5c1140` | `#80224a` | `#c0566e` | `#331125` | `#290e1e` |
+| The Bottom | `#420738` | `#5c1140` | `#80224a` | `#c05672` | `#331125` | `#290e1e` |
 | Strangestone | `#001225` | `#042434` | `#0c4048` | `#3c9f98` | `#07161d` | `#061217` |
 | Edgestone | `#4e3f3b` | `#6c615b` | `#96918a` | `#cccac0` | `#3c3938` | `#302e2d` |
 

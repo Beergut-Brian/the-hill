@@ -397,8 +397,8 @@ def checks(P):
                 vals.append(hp.delta_e(pc, bgc))
         worst = min(worst, min(vals))
         rows.append((k, vals))
-    tres = [n for n in SURFACE if hp.reserved_hue(P["c"][n])] + \
-           [k for k in hp.LAYERS if hp.reserved_hue(P["ramps"][k][2])]
+    tres = [n for n in SURFACE + hp.LAYERS if any(hp.reserved_hue(c) for c in P["ramps"][n])] + \
+           [k + " wall" for k in hp.LAYERS if any(hp.reserved_hue(c) for c in P["back"][k])]
     return rows, worst, tres
 
 

@@ -44,17 +44,27 @@ def _toward(h, target_deg, deg):
     return h + math.copysign(min(abs(d), deg / 360), d)
 
 
+def _keep_out(h, h0):
+    """Stop a hue shift at the door of a player's reserved band (green 100-150, red 345-8)."""
+    d, d0 = (h % 1) * 360, (h0 % 1) * 360
+    if (d >= 345 or d <= 8) and 8 < d0 < 345:
+        return (9 if d0 < 180 else 344) / 360
+    if 100 <= d <= 150 and not 100 <= d0 <= 150:
+        return (99 if d0 < 100 else 151) / 360
+    return h
+
+
 def ramp(c, P):
     """Four shades (deep, low, mid, high) with hue shift: shadows lean to the
     palette's shadow hue, highlights to its light hue. Never plain darken."""
     h, s, v = _hsv(c)
     k = P["k"]
-    hh = _toward(h, k["hi_hue"], k["deg"]) if s > .03 else h
+    hh = _keep_out(_toward(h, k["hi_hue"], k["deg"]), h) if s > .03 else h
     hi = _rgb(hh, s * (1 - k["hi_desat"]), v + (1 - v) * k["hi_lift"] + .04)
     out = []
     lh, ls, lv = h, s, v
     for _ in range(2):
-        lh = _toward(lh, k["sh_hue"], k["deg"]) if ls > .03 else lh
+        lh = _keep_out(_toward(lh, k["sh_hue"], k["deg"]), h) if ls > .03 else lh
         ls = min(1, ls + k["sh_sat"])
         lv = lv * (1 - k["sh_drop"])
         out.append(_rgb(lh, ls, lv))
@@ -65,7 +75,7 @@ def backwall(c, P):
     """Dug-out tunnel wall behind a layer: same hue family, darker, calmer."""
     h, s, v = _hsv(c)
     k = P["k"]
-    h = _toward(h, k["sh_hue"], 10) if s > .03 else h
+    h = _keep_out(_toward(h, k["sh_hue"], 10), h) if s > .03 else h
     bg = _rgb(h, s * k["bg_sat"], v * k["bg_val"])
     h2, s2, v2 = _hsv(bg)
     return bg, _rgb(h2, s2, v2 * .8)
