@@ -152,7 +152,7 @@ func test_next_free_skips_taken_and_wraps() -> void:
 
 
 func test_next_free_with_nobody_free_stays() -> void:
-	Roster.data_path = "res://data/roster.json"
+	Roster.data_path = "res://tests/fixtures/roster_two.json"     # Jeff and Chuck only
 	_launch([])
 	assert_str(Roster.next_free(P1, 1)).is_equal("jeff")
 	assert_str(Roster.next_free(P2, -1)).is_equal("chuck")
