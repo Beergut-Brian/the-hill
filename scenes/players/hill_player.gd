@@ -381,6 +381,8 @@ func _scoop() -> int:
 	var n := 0
 	if hv != null and hv.has_method("scoop"):
 		n = hv.scoop(global_position, facing, area, player)
+	if n > 0 and vehicle != null:
+		Audio.play("scoop")    # GAME.md `scoop`: the bucket's hydraulic whine (the scrub plays its own)
 	if n >= BIG_SCOOP:
 		# V-07: a big scoop (a tree, or a vehicle's wide bucket) thumps the view a little.
 		ScreenKick.kick(player, 1.5 + 0.25 * mini(n, 6), 0.22)
