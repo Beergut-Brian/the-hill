@@ -416,6 +416,14 @@ Save key `"time_of_day"`.
   the shaft to that landing (`CraneRide.DROP`, 1.1 s; the whole ride stays under 2 s). They stay
   locked until they land; `ride_finished` fires when they come in at the mouth, `CraneRide.landed`
   when each one touches down.
+- **Pick a layer on the way down (Camera lane, 2026-11-10, S-04):** while the cage goes down,
+  up / down (edge presses of any rider's stick) moves the pick: pictures beside the shaft
+  (`LayerPick`: the sun over Hillville on top, then every layer down to the deepest rider's) and
+  a gold cage beside the picked one. It starts at the deepest layer; it never goes deeper than
+  that; up past the top layer picks Hillville and the cage comes back up (riders step out where
+  they were, `ride_finished(riders, &"hillville")`, no dump, no save). Each press keeps the cage
+  going `PICK_LINGER` (0.7 s) longer, never past `PICK_MAX` (4 s). `HillElevator.pick_of(p)`,
+  `nudge_pick(p, dir)`. Rides up are unchanged.
 - Going up empties the riders' backpacks into the shaft pile.
 - Every ride autosaves (also every 60 s, and on `Game.quit_requested`).
 - A vehicle rides with its driver.
@@ -753,6 +761,15 @@ static func wants_split(was_split: bool, same_scene: bool, offset: Vector2, scre
 | Same scene, past `split_at` of one screen on either axis | Split |
 | Between the two | Whatever it was |
 | Different scenes | Split, each half its own scene |
+
+**The Hill's camera feel (Camera lane, 2026-11-10, S-06 / S-07):** `CameraLead` (in the play scene,
+after the director each frame) leads each camera that follows one player a little ahead of where
+they dig or drive (underground only) and eases back when they stop, and zooms out a little in
+the Dump Truck and the Crane. It only moves the camera's position (so the scene's camera limits
+hold) and zoom; the split rules above are untouched. The shared camera (one view, two players)
+gets no lead and the wider zoom of the two. All values are in `data/camera.tres` (`CameraTuning`):
+base zoom 2.0 (S-07, until the TV check), lead 64 x 40 world px, vehicle zoom 0.85x (1.7).
+`ScreenKick` shakes use the camera offset and stack on top.
 
 Split is always player 0 left, player 1 right, with a divider in the two players' colours. Each
 scene lives in its own world (own physics space), so two scenes never collide with each other.
