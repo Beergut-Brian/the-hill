@@ -1,0 +1,12 @@
+[gd_resource type="Resource" script_class="HazardData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/data/hazard_data.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+kind = &"lava_pocket"
+id = &"crystal_lava_pocket"
+layer = &"crystal"
+count = 4
+near_landing = 1
+size = Vector2i(10, 6)

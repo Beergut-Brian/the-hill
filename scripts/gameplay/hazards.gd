@@ -7,6 +7,15 @@
 ##   after a short rumble: the air around the player fills with the layer's block, leaving them in
 ##   a pocket. `trapped` fires; the Mole (UndergroundResidents) digs them out. Whatever happens,
 ##   a trapped player is free within TRAP_MAX seconds (the pocket's fill is dug out).
+## - Slide (W-11): on ice (BlockData.slippery) the stick's left/right only nudges a glide that
+##   keeps going when let go and turns slowly, on foot or driving, so the player and every vehicle
+##   skate, with spray and speed streaks at the feet. Not once the Dragon Perch warms the ice.
+## - Ice hole (W-13): an ice rink (generator.ice_holes) ends in a hole; a slide carries the player
+##   in and they drift down its chute at no more than HOLE_FALL px/s with snowflakes, a layer down,
+##   onto a snow pile in the nest (a soft pop). Nothing is lost; they dig on from there.
+## - Lava (W-14): a lava pocket's pool (generator.lava_pockets) is a bounce pad: standing on it
+##   launches the player LAVA_HOP px/s up (a hop of at most hop_height(), about 4 tiles), with a
+##   boing and an orange splash. It never hurts and never ends anything.
 ## Stun hooks the player's `intent_source` (wrapping whatever source it had); the player script is
 ## not changed. All timers run in physics time.
 class_name Hazards
@@ -17,6 +26,10 @@ signal floated(player: int)
 signal rumbled(player: int, zone: int)
 signal trapped(player: int, pocket: Rect2i)
 signal freed(player: int, by_mole: bool)
+signal slid(player: int)
+signal dropped(player: int, hole: int)
+signal nested(player: int, hole: int)
+signal bounced(player: int)
 
 const STUN := 0.7
 ## Falling at least this fast (px/s) onto a head is a bonk.
@@ -29,6 +42,17 @@ const IDLE := {"move": Vector2.ZERO, "dig": false, "jump": false, "book": false,
 const GOLD := Color("ffd23f")
 const OUTLINE := Color("3a2a44")
 const BUBBLE := Color(0.75, 0.92, 1.0, 0.9)
+## Ice: how fast (stick units per second) a glide catches up with a push, and how slowly it lets go.
+const ICE_PUSH := 3.0
+const ICE_GRIP := 0.7
+## The fastest a player sinks down an ice hole's chute (px/s): a drift, not a fall.
+const HOLE_FALL := 210.0
+## Lava: the launch speed (px/s up) and the pause before the same player bounces again.
+const LAVA_HOP := 360.0
+const LAVA_COOL := 0.3
+const SNOW := Color(0.94, 0.97, 1.0)
+const LAVA := Color("ff8a2a")
+const LAVA_TOP := Color("ffc94a")
 
 var u: Underground
 var _stun := {}          # player -> seconds left
@@ -39,13 +63,26 @@ var _bubble_t := {}      # player -> seconds until the next bubble puff
 var _pending: Array = [] # [{p, t, zone}]
 var _traps := {}         # player -> {t, filled: Array[Vector2i], pocket: Rect2i}
 var _zones_used := {}    # cave-in zone index -> true (each zone caves in once per visit)
+var _glide := {}         # player -> the left/right the ice is carrying them with (-1..1)
+var _sliding := {}       # player -> true while the ice carries them (on ice, or airborne off it)
+var _slide_cd := {}      # player -> seconds until the next slide whoosh
+var _drop := {}          # player -> ice hole index while drifting down its chute
+var _hop_cd := {}        # player -> seconds until the next lava bounce
+var _hop_t := {}         # player -> seconds since the last lava bounce (for the splash ring)
+var art: Node2D
 
 
 func setup(p_u: Underground) -> void:
 	u = p_u
 	name = "Hazards"
 	z_index = 6
+	# Before the players: the chute drift and the lava launch set velocity they then move by.
+	process_physics_priority = -1
 	u.world.tile_dug.connect(_on_tile_dug)
+	art = _DeepArt.new()
+	art.name = "DeepHazardArt"
+	art.set("hazards", self)
+	u.world.add_child(art)
 
 
 # --- queries -----------------------------------------------------------------------------------
@@ -76,6 +113,61 @@ func pocket_of(p: int) -> Rect2i:
 	return _traps[p].pocket if _traps.has(p) else Rect2i()
 
 
+func is_sliding(p: int) -> bool:
+	return bool(_sliding.get(p, false))
+
+
+func glide_of(p: int) -> float:
+	return float(_glide.get(p, 0.0))
+
+
+func is_dropping(p: int) -> bool:
+	return _drop.has(p)
+
+
+## Seconds since player p last bounced off lava (INF if never).
+func since_bounce(p: int) -> float:
+	return float(_hop_t.get(p, INF))
+
+
+## The highest a lava bounce lifts anyone (px), from LAVA_HOP and the world's gravity.
+func hop_height() -> float:
+	var g := u.world.shape.gravity if u != null and u.world != null and u.world.shape != null else 980.0
+	return LAVA_HOP * LAVA_HOP / (2.0 * g)
+
+
+func ice_slips() -> bool:
+	return u == null or u.story == null or not u.story.ice_warm()
+
+
+## True when a slippery block is under any part of the player's feet.
+func on_ice(pl: HillPlayer) -> bool:
+	if not pl.is_on_floor():
+		return false
+	var feet := u.world.to_local(pl.global_position)
+	var hw := pl.body_size().x * 0.5 - 1.0
+	for dx in [-hw, 0.0, hw]:
+		var c := u.world.shape.cell_at(feet + Vector2(dx, 3.0))
+		var def := u.world.tile_def(u.world.get_tile(c))
+		if def is BlockData and (def as BlockData).slippery:
+			return true
+		# Teetering over an ice hole's lip still slides (so a wide vehicle tips in, not stops).
+		var i := u.generator.ice_hole_at(c)
+		if i >= 0 and (u.generator.ice_holes[i].hole as Rect2i).has_point(c):
+			return true
+	return false
+
+
+## The lava pocket whose pool the player's feet stand in, or -1.
+func lava_under(pl: HillPlayer) -> int:
+	var feet := u.world.to_local(pl.global_position)
+	var c := u.world.shape.cell_at(feet + Vector2(0, -4.0))
+	for i in u.generator.lava_pockets.size():
+		if (u.generator.lava_pockets[i].pool as Rect2i).has_point(c):
+			return i
+	return -1
+
+
 # --- frame -------------------------------------------------------------------------------------
 
 func _physics_process(delta: float) -> void:
@@ -87,6 +179,14 @@ func _physics_process(delta: float) -> void:
 		_stun[p] = maxf(0.0, float(_stun[p]) - delta)
 	for p in _cool.keys():
 		_cool[p] = maxf(0.0, float(_cool[p]) - delta)
+	for p in _slide_cd.keys():
+		_slide_cd[p] = maxf(0.0, float(_slide_cd[p]) - delta)
+	for p in _hop_cd.keys():
+		_hop_cd[p] = maxf(0.0, float(_hop_cd[p]) - delta)
+	for p in _hop_t.keys():
+		_hop_t[p] = float(_hop_t[p]) + delta
+	_check_holes(ps)
+	_check_lava(ps)
 	_check_bonks(ps)
 	_check_water(ps, delta)
 	for i in range(_pending.size() - 1, -1, -1):
@@ -132,14 +232,109 @@ func _intent_of(pl: HillPlayer) -> Dictionary:
 	if is_stunned(pl.player):
 		return IDLE.duplicate()
 	var src: Callable = _orig.get(pl.player, Callable())
+	var it: Dictionary
 	if src.is_valid():
-		return src.call()
-	# The player's own pad: read it through the player with no source set.
-	var mine := pl.intent_source
-	pl.intent_source = Callable()
-	var it := pl.intent()
-	pl.intent_source = mine
-	return it
+		it = src.call()
+	else:
+		# The player's own pad: read it through the player with no source set.
+		var mine := pl.intent_source
+		pl.intent_source = Callable()
+		it = pl.intent()
+		pl.intent_source = mine
+	return _ice(pl, it)
+
+
+# --- slide (W-11) ------------------------------------------------------------------------------
+
+## On ice the left/right the player asks for only steers a glide: it keeps going after letting go
+## and swings round slowly. Off ice (on a floor) the glide is exactly the stick again.
+func _ice(pl: HillPlayer, it: Dictionary) -> Dictionary:
+	var p := pl.player
+	var raw: Vector2 = it.get("move", Vector2.ZERO)
+	var eff := float(_glide.get(p, raw.x))
+	var was := is_sliding(p)
+	var dt := get_physics_process_delta_time()
+	var icy := ice_slips() and on_ice(pl)
+	if icy:
+		var pushing := absf(raw.x) > 0.2 and (absf(eff) < 0.05 or signf(raw.x) == signf(eff)) and absf(raw.x) >= absf(eff)
+		eff = move_toward(eff, raw.x, (ICE_PUSH if pushing else ICE_GRIP) * dt)
+		_sliding[p] = absf(eff) > 0.15 and absf(eff - raw.x) > 0.15
+	elif was and not pl.is_on_floor():
+		# Still carried by the slide through the air (off a ledge, into a hole), fading slowly.
+		eff = move_toward(eff, raw.x, ICE_GRIP * dt)
+	else:
+		eff = raw.x
+		_sliding[p] = false
+	# A glide that runs into a wall stops there (never pinned against it).
+	if absf(eff) > 0.0 and pl.is_on_wall() and pl.get_wall_normal().x * eff < 0.0 and absf(raw.x) < 0.2:
+		eff = 0.0
+		_sliding[p] = false
+	_glide[p] = eff
+	if is_sliding(p) and not was and absf(eff) > 0.45 and float(_slide_cd.get(p, 0.0)) <= 0.0:
+		_slide_cd[p] = 0.8
+		Audio.play("dragon_whoosh")
+		var feet := u.world.to_local(pl.global_position)
+		u.burst(feet + Vector2(0, -2), SNOW, 10, 90.0)
+		pl.bump()
+		slid.emit(p)
+	if is_equal_approx(eff, raw.x):
+		return it
+	var out := it.duplicate()
+	out.move = Vector2(eff, raw.y)
+	return out
+
+
+# --- ice hole (W-13) and lava (W-14) -----------------------------------------------------------
+
+func _check_holes(ps: Array[HillPlayer]) -> void:
+	for pl in ps:
+		var p := pl.player
+		var size := pl.body_size()
+		var mid := u.world.to_local(pl.global_position) + Vector2(0, -size.y * 0.5)
+		var cell := u.world.shape.cell_at(mid)
+		var i := u.generator.ice_hole_at(cell)
+		if i >= 0 and pl.velocity.y > HOLE_FALL:
+			pl.velocity.y = HOLE_FALL
+		var in_chute := i >= 0 and (u.generator.ice_holes[i].hole as Rect2i).has_point(cell)
+		if in_chute and not _drop.has(p) and not pl.is_on_floor():
+			_drop[p] = i
+			Audio.play("float_up")
+			u.burst(mid, SNOW, 14, 70.0)
+			dropped.emit(p, i)
+		elif _drop.has(p) and pl.is_on_floor():
+			var hole := int(_drop[p])
+			_drop.erase(p)
+			_glide[p] = 0.0
+			_sliding[p] = false
+			Audio.play("pop")
+			var feet := u.world.to_local(pl.global_position)
+			u.burst(feet, SNOW, 22, 120.0)
+			pl.bump()
+			nested.emit(p, hole)
+
+
+func _check_lava(ps: Array[HillPlayer]) -> void:
+	for pl in ps:
+		var p := pl.player
+		if float(_hop_cd.get(p, 0.0)) > 0.0 or not pl.is_on_floor() or pl.velocity.y < -1.0:
+			continue
+		if lava_under(pl) < 0:
+			continue
+		bounce(pl)
+
+
+## Launches pl straight up off a lava pad: LAVA_HOP px/s, never more. Takes nothing.
+func bounce(pl: HillPlayer) -> void:
+	var p := pl.player
+	_hop_cd[p] = LAVA_COOL
+	_hop_t[p] = 0.0
+	pl.velocity = Vector2(pl.velocity.x, -LAVA_HOP)
+	pl.bump()
+	Audio.play("dragon_boing")
+	var feet := u.world.to_local(pl.global_position)
+	u.burst(feet, LAVA, 16, 140.0)
+	u.burst(feet, LAVA_TOP, 8, 90.0)
+	bounced.emit(p)
 
 
 # --- bonk --------------------------------------------------------------------------------------
@@ -358,22 +553,54 @@ class _StarsFx extends Node2D:
 	func _ready() -> void:
 		z_index = 8
 
+	func _busy() -> bool:
+		if not is_instance_valid(hazards):
+			return false
+		var p := player.player
+		return hazards.is_stunned(p) or hazards.is_sliding(p) or hazards.is_dropping(p) or hazards.since_bounce(p) < 0.45
+
 	func _process(delta: float) -> void:
 		_t += delta
-		if is_instance_valid(hazards) and hazards.is_stunned(player.player):
+		if _busy():
 			queue_redraw()
 		elif _t > 0.0:
 			_t = 0.0
 			queue_redraw()
 
 	func _draw() -> void:
-		if not is_instance_valid(hazards) or not hazards.is_stunned(player.player):
+		if not _busy():
 			return
-		var h := player.body_size().y
-		for k in 4:
-			var a := _t * 7.0 + k * TAU / 4.0
-			var at := Vector2(cos(a) * 11.0, -h - 6.0 + sin(a) * 3.5)
-			Hazards.draw_star(self, at, 4.0, GOLD)
+		var p := player.player
+		var size := player.body_size()
+		var h := size.y
+		if hazards.is_stunned(p):
+			for k in 4:
+				var a := _t * 7.0 + k * TAU / 4.0
+				var at := Vector2(cos(a) * 11.0, -h - 6.0 + sin(a) * 3.5)
+				Hazards.draw_star(self, at, 4.0, GOLD)
+		if hazards.is_sliding(p) and not hazards.is_dropping(p):
+			# Skating: speed streaks behind and an ice spray kicked up at the feet.
+			var dir := signf(hazards.glide_of(p))
+			for k in 3:
+				var y := -h * (0.25 + 0.25 * k)
+				var len := 10.0 + 4.0 * sin(_t * 20.0 + k * 2.0)
+				var x0 := -dir * (size.x * 0.5 + 3.0 + k * 2.0)
+				draw_line(Vector2(x0, y), Vector2(x0 - dir * len, y), Color(1, 1, 1, 0.75), 2.0)
+			for k in 5:
+				var f := fmod(_t * 3.0 + k * 0.2, 1.0)
+				var at := Vector2(-dir * (size.x * 0.5 + f * 14.0), -2.0 - sin(f * PI) * 7.0)
+				draw_circle(at, 1.8 * (1.0 - f) + 0.6, Hazards.SNOW)
+		if hazards.is_dropping(p):
+			# Drifting down: snowflakes rising past (we sink), the arms-up float of a feather.
+			for k in 6:
+				var f := fmod(_t * 0.9 + k / 6.0, 1.0)
+				var at := Vector2(sin(k * 2.3 + _t * 2.0) * (size.x * 0.5 + 8.0), -h * 1.2 + (1.0 - f) * -10.0 + f * h * 1.4)
+				Hazards.draw_flake(self, at, 3.0, Color(1, 1, 1, 0.9))
+		var since := hazards.since_bounce(p)
+		if since < 0.45:
+			# Boing: an orange ring springs out under the feet.
+			var k := since / 0.45
+			draw_arc(Vector2(0, -2), 6.0 + k * 18.0, PI, TAU, 14, Color(Hazards.LAVA_TOP, 1.0 - k), 3.0)
 
 
 static func draw_star(ci: CanvasItem, at: Vector2, r: float, col: Color) -> void:
@@ -387,3 +614,106 @@ static func draw_star(ci: CanvasItem, at: Vector2, r: float, col: Color) -> void
 		outline.append(at + (q - at) * 1.35)
 	ci.draw_colored_polygon(outline, OUTLINE)
 	ci.draw_colored_polygon(pts, col)
+
+
+static func draw_flake(ci: CanvasItem, at: Vector2, r: float, col: Color) -> void:
+	for k in 3:
+		var a := k * PI / 3.0
+		var d := Vector2(cos(a), sin(a)) * r
+		ci.draw_line(at - d, at + d, col, 1.5)
+
+
+# --- the lava pools, ice-hole lips and snow nests, drawn in the world ---------------------------
+
+class _DeepArt extends Node2D:
+	var hazards: Hazards
+	var _t := 0.0
+
+	func _ready() -> void:
+		z_index = 3
+
+	func _process(delta: float) -> void:
+		_t += delta
+		queue_redraw()
+
+	func _draw() -> void:
+		if not is_instance_valid(hazards) or hazards.u == null:
+			return
+		var g := hazards.u.generator
+		for lp in g.lava_pockets:
+			_lava(lp.pool)
+		for ih in g.ice_holes:
+			_hole(ih)
+
+	## A bright, juicy orange pool on the floor of the bottom row: a wobbly top, bubbles, glints.
+	func _lava(pool: Rect2i) -> void:
+		var x0 := pool.position.x * 16.0
+		var x1 := pool.end.x * 16.0
+		var base := pool.end.y * 16.0
+		# A warm glow above it.
+		for k in 3:
+			draw_rect(Rect2(x0 - 6 - k * 4, base - 22 - k * 6, x1 - x0 + 12 + k * 8, 22 + k * 6), Color(1.0, 0.55, 0.15, 0.07))
+		var top := PackedVector2Array()
+		var n := int((x1 - x0) / 4.0)
+		for i in n + 1:
+			var x := x0 + (x1 - x0) * i / n
+			top.append(Vector2(x, base - 9.0 + sin(_t * 3.0 + x * 0.12) * 1.6))
+		var poly := top.duplicate()
+		poly.append(Vector2(x1, base))
+		poly.append(Vector2(x0, base))
+		draw_colored_polygon(poly, Hazards.LAVA)
+		draw_polyline(top, Hazards.LAVA_TOP, 2.0)
+		draw_polyline(top, Hazards.OUTLINE, 1.0)
+		# Short yellow dashes, like orange juice.
+		for i in int((x1 - x0) / 14.0):
+			var x := x0 + 6.0 + i * 14.0 + fmod(_t * 6.0, 14.0) * 0.3
+			draw_line(Vector2(x, base - 4.0), Vector2(x + 5.0, base - 4.0), Color("ffe27a"), 1.5)
+		# Bubbles that rise and pop.
+		for i in 4:
+			var f := fmod(_t * 0.7 + i * 0.37, 1.0)
+			var x := x0 + (x1 - x0) * fmod(0.17 + i * 0.29, 1.0)
+			draw_circle(Vector2(x, base - 9.0 - f * 8.0), 2.5 * (1.0 - f) + 0.5, Hazards.LAVA_TOP)
+
+	## Icicles over the hole's lip, frost along the rink, flakes drifting into the chute, and a
+	## round snow pile in the nest a layer down.
+	func _hole(ih: Dictionary) -> void:
+		var rink: Rect2i = ih.rink
+		var hole: Rect2i = ih.hole
+		var nest: Rect2i = ih.nest
+		var floor_y := rink.end.y * 16.0
+		var hx0 := hole.position.x * 16.0
+		var hx1 := hole.end.x * 16.0
+		# Glints skating along the ice floor toward the hole.
+		var dir := float(ih.dir)
+		var from := rink.position.x * 16.0 if dir > 0 else hx1
+		var to := hx0 if dir > 0 else rink.end.x * 16.0
+		for k in 3:
+			var f := fmod(_t * 0.5 + k / 3.0, 1.0)
+			var x := lerpf(from, to, f) if dir > 0 else lerpf(to, from, f)
+			Hazards.draw_star(self, Vector2(x, floor_y - 1.0), 2.5, Color(1, 1, 1, 0.8 * sin(f * PI)))
+		# Frosty lips on both sides of the hole, icicles hanging into it.
+		for side in [hx0, hx1]:
+			draw_rect(Rect2(side - 5.0, floor_y - 2.0, 10.0, 4.0), Hazards.SNOW)
+			for k in 3:
+				var x: float = side + (-1.0 if side == hx1 else 1.0) * (2.0 + k * 4.0)
+				var ln := 6.0 + (k % 2) * 4.0
+				draw_colored_polygon(PackedVector2Array([Vector2(x - 2.0, floor_y), Vector2(x + 2.0, floor_y), Vector2(x, floor_y + ln)]), Color(0.8, 0.94, 1.0, 0.95))
+		# Flakes drifting down the chute's first few tiles.
+		for k in 8:
+			var f := fmod(_t * 0.25 + k / 8.0, 1.0)
+			var at := Vector2(lerpf(hx0 + 8.0, hx1 - 8.0, fmod(k * 0.39, 1.0)) + sin(_t * 1.5 + k) * 5.0, floor_y + f * 96.0)
+			Hazards.draw_flake(self, at, 2.5, Color(1, 1, 1, 0.85 * (1.0 - f)))
+		# The snow pile in the nest: soft and round.
+		var nb := nest.end.y * 16.0
+		var cx := (nest.position.x + nest.size.x * 0.5) * 16.0
+		var hw := nest.size.x * 0.5 * 16.0 - 6.0
+		var pile := PackedVector2Array()
+		for i in 13:
+			var a := PI + PI * i / 12.0
+			pile.append(Vector2(cx + cos(a) * hw, nb + sin(a) * 9.0))
+		var outline := PackedVector2Array()
+		for q in pile:
+			outline.append(q + (q - Vector2(cx, nb)).normalized() * 1.5)
+		draw_colored_polygon(outline, Hazards.OUTLINE)
+		draw_colored_polygon(pile, Hazards.SNOW)
+		draw_circle(Vector2(cx - hw * 0.4, nb - 5.0), 2.0, Color(0.8, 0.9, 1.0))

@@ -109,6 +109,8 @@ static func cage_key(scene: StringName, layer: int) -> StringName:
 var game: Node
 var door := Door.new()
 var _rides: Array = []   # {riders, from, cage, t, to}
+## H-05: a ride down with the Crane aboard ends on the Crane's cable (CraneRide), made on first use.
+var crane_ride: CraneRide
 
 
 func is_riding(player: int) -> bool:
@@ -190,6 +192,14 @@ func _start(cage: StringName, riders: Array) -> void:
 	ride_started.emit(riders, from)
 
 
+func _crane_ride() -> CraneRide:
+	if crane_ride == null or not is_instance_valid(crane_ride):
+		crane_ride = CraneRide.new()
+		crane_ride.game = game
+		game.underground.add_child(crane_ride)
+	return crane_ride
+
+
 func _advance(r: Dictionary, delta: float) -> void:
 	r.t += delta
 	var k := clampf(r.t / RIDE_TIME, 0.0, 1.0)
@@ -209,6 +219,7 @@ func _advance(r: Dictionary, delta: float) -> void:
 		root.cage_flash = 0.0
 	var to: Dictionary = r.to
 	var dumped := false
+	var cable: bool = to.scene == UNDERGROUND and CraneRide.wants(game, r.riders)
 	var i := 0
 	for p in r.riders:
 		var node: Node2D = game.player_node(p)
@@ -226,8 +237,12 @@ func _advance(r: Dictionary, delta: float) -> void:
 		else:
 			pos = game.underground.landing(to.layer)
 		pos.x += (i - (r.riders.size() - 1) * 0.5) * 14.0
-		game.place_player(p, to.scene, pos)
-		node.locked = false
+		if cable:
+			game.place_player(p, to.scene, CraneRide.mouth(pos))
+			_crane_ride().lower(node, pos)
+		else:
+			game.place_player(p, to.scene, pos)
+			node.locked = false
 		i += 1
 	if dumped:
 		Audio.play("pile_dump")

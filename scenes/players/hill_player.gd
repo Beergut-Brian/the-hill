@@ -277,7 +277,9 @@ func _physics_process(delta: float) -> void:
 	if vehicle != null:
 		_step_up(move)
 	_push_bodies(move)
-	if a_press and build != null and build.action(player):
+	# H-05: the Crane's A up top is the wrecking ball unless it lifts / sets down a building.
+	var a_claimed := ability != null and ability.claims_a(move, build)
+	if a_press and build != null and not a_claimed and build.action(player):
 		_dig_used = true
 	if not it.get("dig", false):
 		_dig_used = false
