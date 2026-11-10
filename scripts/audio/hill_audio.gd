@@ -2,8 +2,9 @@
 ## - Engines: one looped engine per driving player (vehicle.sounds.engine), pitched by speed.
 ## - Music: the layered theme follows the players (see THEME RULE below), a layer per depth zone,
 ##   the Dragon's choir in her cavern.
-## - Dragon snore: while she sleeps, a snore every SNORE_EVERY s for anyone underground, louder by
-##   depth (LayerData.snore_volume); at the Bottom it nudges that player's camera, gently.
+## - Dragon snore: while she sleeps, on her `dragon_snored` (anyone in her reach) or on a distant
+##   clock further up; louder by depth (LayerData.snore_volume). Her clock owns the gentle sway.
+## - Lighthouse: `lighthouse_on` when one is placed (it lights the next layer down, B-07).
 ## - Barks: Jeff names rocks, Chuck narrates his driving, the Mole's "oh dear", the Foreman's
 ##   whistle and mutters, the Dragon's rumbles. Audio.bark() rate-caps them.
 ## - Resident arcs: arrival, light-on and each payoff from the Events signals.
@@ -15,11 +16,13 @@
 class_name HillAudio
 extends Node
 
+## The distant snore (out of the Dragon's reach); a bit slower than hers (5 s) so ours never
+## fires where hers is about to.
 const SNORE_EVERY := 5.5
 ## Snore quieter than this (linear) is skipped (Topsoil is 0).
 const SNORE_MIN := 0.05
-const SHAKE_PX := 1.5
-const SHAKE_SECS := 0.6
+## The lighthouse_on cue waits this long after the placing clunk (the lamp flares as it plays).
+const LIGHTHOUSE_DELAY := 0.35
 ## Chuck narrates at most this often while driving, Jeff names a rock at most this often.
 const NARRATE_EVERY := 14.0
 const ROCK_EVERY := 10.0
@@ -34,7 +37,10 @@ const TREASURE_TIER := {&"topsoil": "treasure_small", &"clay": "treasure", &"sto
 
 var game: Node
 var snore_clock := 0.0
-var shake_left := 0.0
+## Snores this director has played, and the last one's volume (tests, --audio-log).
+var snores_played := 0
+var last_snore_db := -80.0
+var _residents: Node = null
 var _layers: Array = []
 var _driving := {}         # player -> vehicle id
 var _narrate_at := {}      # player -> seconds since last narration
@@ -179,6 +185,13 @@ func _in_cavern(pos: Vector2) -> bool:
 
 
 # --- the Dragon's snore --------------------------------------------------------------------------
+# W-17. The Dragon's own clock (UndergroundResidents, every 5 s while she sleeps) owns the snore for
+# anyone within her reach (the cavern and SNORE_REACH above it): it puffs smoke, sways the view
+# gently (ScreenKick, which honours the screen-shake setting) and emits dragon_snored(loudness);
+# the sound plays on that signal. Further up (Clay .. upper Crystal) nobody is in her reach, so the
+# distant snore runs on our clock instead, a little slower than hers so the two never double up.
+# Either way: louder by depth (LayerData.snore_volume), never during the first meeting (her clock
+# is silent then, and ours stands down while anyone is in reach). No camera shake here any more.
 
 ## Linear snore loudness for a layer index (LayerData.snore_volume).
 func snore_volume(layer_index: int) -> float:
@@ -187,47 +200,70 @@ func snore_volume(layer_index: int) -> float:
 	return float(_layers[clampi(layer_index, 0, _layers.size() - 1)].snore_volume)
 
 
+## The underground's residents (null until the underground exists); connects dragon_snored once.
+func _hook_residents() -> void:
+	var u = game.get("underground")
+	var r = u.get("residents") if u != null else null
+	if r == _residents:
+		return
+	if _residents != null and is_instance_valid(_residents) and _residents.dragon_snored.is_connected(_on_dragon_snored):
+		_residents.dragon_snored.disconnect(_on_dragon_snored)
+	_residents = r
+	if r != null and r.has_signal(&"dragon_snored"):
+		r.dragon_snored.connect(_on_dragon_snored)
+
+
+## True when `pos` (global) is inside the Dragon's own snore reach.
+func in_dragon_reach(pos: Vector2) -> bool:
+	var u = game.get("underground")
+	var at: Vector2 = u.to_local(pos) if u is Node2D else pos
+	return at.y > HillGenerator.CAVERN.position.y * 16.0 - UndergroundResidents.SNORE_REACH
+
+
+## The loudest snore any underground player would hear by depth, and whether one is in her reach.
+func _snore_hearing(players: Dictionary) -> Dictionary:
+	var dir = game.get("director")
+	var loudest := 0.0
+	var reach := false
+	for p: int in players:
+		if dir == null or dir.scene_of(p) != &"underground":
+			continue
+		loudest = maxf(loudest, snore_volume(_layer_index(players[p].global_position)))
+		reach = reach or in_dragon_reach(players[p].global_position)
+	return {"loudest": loudest, "reach": reach}
+
+
+## dragon_snored: her snore, as loud as the deepest listener's layer (at least `loudness`).
+func _on_dragon_snored(loudness: float) -> void:
+	if _dragon_awake:
+		return
+	snore_clock = 0.0
+	var players: Dictionary = game.get("players") if game.get("players") is Dictionary else {}
+	var k := maxf(loudness, float(_snore_hearing(players).loudest))
+	if k >= SNORE_MIN:
+		_snore_play(k)
+
+
+func _snore_play(k: float) -> void:
+	if Audio.play("dragon_snore", null, linear_to_db(clampf(k, SNORE_MIN, 1.0))):
+		snores_played += 1
+		last_snore_db = linear_to_db(clampf(k, SNORE_MIN, 1.0))
+		if _log_every > 0.0:
+			print("audio: t=%.1f snore %.1f dB" % [_t, last_snore_db])
+
+
 func _snore(players: Dictionary, delta: float) -> void:
-	if shake_left > 0.0:
-		shake_left -= delta
-		_shake(players, shake_left > 0.0)
+	_hook_residents()
 	if _dragon_awake:
 		return
 	snore_clock += delta
 	if snore_clock < SNORE_EVERY:
 		return
 	snore_clock = 0.0
-	var dir = game.get("director")
-	var loudest := 0.0
-	var at_bottom := false
-	for p: int in players:
-		if dir == null or dir.scene_of(p) != &"underground":
-			continue
-		var li := _layer_index(players[p].global_position)
-		loudest = maxf(loudest, snore_volume(li))
-		at_bottom = at_bottom or li >= _layers.size() - 1
-	if loudest < SNORE_MIN:
-		return
-	if Audio.play("dragon_snore", null, linear_to_db(loudest)) and at_bottom:
-		shake_left = SHAKE_SECS
-
-
-## A slow, small sway (not a jitter) on the camera of every player at the Bottom.
-func _shake(players: Dictionary, on: bool) -> void:
-	var dir = game.get("director")
-	if dir == null or not dir.has_method("camera_of"):
-		return
-	for p: int in players:
-		if dir.scene_of(p) != &"underground" or _layer_index(players[p].global_position) < _layers.size() - 1:
-			continue
-		var cam: Camera2D = dir.camera_of(p)
-		if cam == null:
-			continue
-		if on and SettingsPanel.screen_shake():
-			var k := shake_left / SHAKE_SECS
-			cam.offset = Vector2(0.0, sin(_t * 18.0) * SHAKE_PX * k)
-		else:
-			cam.offset = Vector2.ZERO
+	var h := _snore_hearing(players)
+	if h.reach or float(h.loudest) < SNORE_MIN:
+		return      # in reach: her clock and dragon_snored own it (and stay quiet in the reveal)
+	_snore_play(h.loudest)
 
 
 # --- barks and arcs ------------------------------------------------------------------------------
@@ -279,6 +315,15 @@ func _on_dragon_woken() -> void:
 	get_tree().create_timer(2.0).timeout.connect(Audio.bark.bind("dragon", "rumble"))
 
 
-func _on_building_placed(_id: StringName, _cell: Vector2i) -> void:
+func _on_building_placed(id: StringName, _cell: Vector2i) -> void:
+	if id == &"lighthouse":
+		# B-07: the lamp flares and the next layer down lights; after the placing clunk.
+		get_tree().create_timer(LIGHTHOUSE_DELAY).timeout.connect(_lighthouse_on)
 	# The Foreman inspects every new building: a clipboard mutter once the march sets off.
 	get_tree().create_timer(1.2).timeout.connect(Audio.bark.bind("gnome_foreman", "mutter"))
+
+
+func _lighthouse_on() -> void:
+	var ok := Audio.play("lighthouse_on")
+	if _log_every > 0.0:
+		print("audio: t=%.1f lighthouse_on %s" % [_t, "played" if ok else "capped"])

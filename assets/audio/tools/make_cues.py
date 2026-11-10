@@ -1116,6 +1116,24 @@ def resident(rng, kind):
     raise ValueError(kind)
 
 
+def lighthouse_on(rng):
+    """The Lighthouse lights a layer (B-07): a brass switch click, the lamp's warm hum swelling in,
+    a rising D-major bell sweep as the lamp flares, then a falling glint of notes as the beam
+    shines down the hill. Bright and welcoming: a layer just stopped being dark."""
+    x = silence(2.3)
+    mix(x, burst(rng, 0.03, 2800, 2.0, 0.004), 0.0, 0.55)
+    mix(x, struck(midi(62), 0.05, rng, WOOD, click=0.4), 0.0, 0.35)
+    hum = osc(1.6, midi(50), ((1, 1.0, 0.0), (2, 0.35, 0.0), (3, 0.12, 0.0)), attack=0.35,
+              amp=lambda t: max(0.0, 1.0 - max(0.0, t - 0.9) / 0.7))
+    mix(x, hum, 0.05, 0.1)
+    mix(x, notes_seq([(74, 0.0), (78, 0.07), (81, 0.14), (86, 0.21)], rng, BELL, 0.22), 0.08, 0.6)
+    mix(x, chord([62, 66, 69, 74], 0.45, rng, MARIMBA, 0.75), 0.36, 1.0)
+    mix(x, notes_seq([(98, 0.0), (93, 0.11), (90, 0.22), (86, 0.33), (81, 0.44)], rng, BELL, 0.08),
+        0.62, 0.22)
+    mix(x, sparkle(rng, 3, 0.3, 0.8, 0.14, D_HI), 0.0, 1.0)
+    return x
+
+
 def plank(rng, f0=200.0):
     """One plank of the restore: a hammer knock and a tiny note (rises across variants)."""
     x = silence(0.4)
@@ -1423,6 +1441,7 @@ for k in ("hope", "hm", "happy", "cheer", "arrive"):
     add("resident_" + k, v(resident, k))
 add("ruin_rumble", v(resident, "ruin_rumble"))
 add("light_on", v(resident, "light_on"))
+add("lighthouse_on", lighthouse_on)   # hill-audio-2
 for i, f in enumerate((200, 225, 250, 280), 1):
     add("plank_%d" % i, v(plank, f), trim=-2.0)
 for who in ("mole", "caveman", "gnomes", "dragon"):
@@ -1460,6 +1479,14 @@ PREVIEW = ["dig_dirt_1", "dig_clay_1", "dig_stone_1", "dig_ice_1", "dig_crystal_
            "dump_truck_reverse", "drill_rig_horn", "tree_fall",
            "build_place", "whistle_1", "mole_oh_dear_1", "light_on", "payoff_mole",
            "dragon_snore_1"]
+## --preview-set lane2 (hill-audio-2): the cues newly played on dev by that lane, in play order.
+## "engine@k" is the vehicle's loop resampled to pitch k (what Audio.engine_speed does), 1.6 s;
+## "@db" after a stem plays it that many dB down (the snore by depth).
+PREVIEW_LANE2 = ["front_loader_engine@0.8", "front_loader_engine@1.35", "front_loader_horn",
+                 "scoop_1", "excavator_engine@1.1", "excavator_horn", "dump_truck_engine@1.0",
+                 "dump_truck_horn", "dump_truck_reverse", "crane_horn", "drill_rig_engine@1.2",
+                 "drill_rig_horn", "build_place", "lighthouse_on", "dragon_snore_1@-14",
+                 "dragon_snore_2@-6", "dragon_snore_1@0"]
 # ---------------------------------------------------------------- ffmpeg
 
 def write_wav(path, x):
@@ -1628,6 +1655,37 @@ def _job(args):
     return build(stem, tmp)
 
 
+def preview_lane2(path, tmp):
+    """Stitch PREVIEW_LANE2 with 0.35 s gaps (engines at their pitch, snores at their depth)."""
+    parts = []
+    gap = os.path.join(tmp, "gap.wav")
+    write_wav(gap, silence(0.35))
+    for i, item in enumerate(PREVIEW_LANE2):
+        stem, _, arg = item.partition("@")
+        src = out_path(stem, FILES[stem][1])
+        if FILES[stem][1] == "loop":
+            k = float(arg or 1.0)
+            out = os.path.join(tmp, "lane2_%02d.wav" % i)
+            run(["ffmpeg", "-y", "-v", "error", "-stream_loop", "3", "-i", src, "-af",
+                 "asetrate=%d,aresample=%d,afade=t=in:d=0.15,afade=t=out:st=1.35:d=0.25"
+                 % (int(LOOP_RATE * k), SR), "-t", "1.6", "-ac", "1", out])
+            src = out
+        elif arg:
+            out = os.path.join(tmp, "lane2_%02d.wav" % i)
+            run(["ffmpeg", "-y", "-v", "error", "-i", src, "-af", "volume=%sdB" % arg,
+                 "-ar", str(SR), "-ac", "1", out])
+            src = out
+        parts += [src, gap]
+    cmd = ["ffmpeg", "-y", "-hide_banner", "-v", "error"]
+    for p in parts:
+        cmd += ["-i", p]
+    flt = "".join("[%d:a]aresample=%d,aformat=channel_layouts=mono[a%d];" % (i, SR, i)
+                  for i in range(len(parts)))
+    flt += "".join("[a%d]" % i for i in range(len(parts))) + "concat=n=%d:v=0:a=1[out]" % len(parts)
+    run(cmd + ["-filter_complex", flt, "-map", "[out]", "-c:a", "libvorbis", "-q:a", "5", path])
+    return duration(path)
+
+
 def preview(path, tmp):
     """Stitch PREVIEW with 0.35 s gaps (plus 2 s of the Front Loader engine after hop_in)."""
     parts = []
@@ -1661,6 +1719,8 @@ def main():
     ap.add_argument("--jobs", type=int, default=max(1, (os.cpu_count() or 2) - 1))
     ap.add_argument("--preview", help="write the stitched preview .ogg here (after building)")
     ap.add_argument("--no-build", action="store_true", help="with --preview: just stitch")
+    ap.add_argument("--preview-set", default="main", choices=("main", "lane2"),
+                    help="which preview list --preview stitches (lane2: hill-audio-2's cues)")
     args = ap.parse_args()
     if args.list:
         for s, (_, kind, trim) in FILES.items():
@@ -1690,7 +1750,8 @@ def main():
                     print("  loop: decoded %d / rendered %d, seam step %.4f (p99 %.4f)" % (
                         s["decoded"], s["rendered"], s["seam_step"], s["p99_step"]), flush=True)
     if args.preview:
-        print("preview: %s (%.1f s)" % (args.preview, preview(args.preview, tmp)))
+        fn = preview_lane2 if args.preview_set == "lane2" else preview
+        print("preview: %s (%.1f s)" % (args.preview, fn(args.preview, tmp)))
 
 
 if __name__ == "__main__":
