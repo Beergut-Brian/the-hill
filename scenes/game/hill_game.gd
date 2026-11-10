@@ -94,6 +94,10 @@ func _ready() -> void:
 		if _wants(p):
 			spawn(p)
 	_update_sleeper()
+	if Game.demo:
+		var runner := HillDemoRunner.new()
+		runner.game = self
+		add_child(runner)
 
 
 func _exit_tree() -> void:
