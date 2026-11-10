@@ -11,10 +11,11 @@
 ##   scoop       P1 in the Excavator scoops a wide patch of scrub: the view thumps a little.
 ##   snore       P1 stands in the cavern (out of her first-meeting reach) while she sleeps: smoke
 ##               puffs and the view sways gently with each snore.
+##   spin        P1 in the Excavator honks: it turns all the way round (H-03), twice.
 class_name PolishBeats
 extends ArcBeats
 
-const POLISH_BEATS := ["lighthouse", "cows", "strange", "scoop", "snore"]
+const POLISH_BEATS := ["lighthouse", "cows", "strange", "scoop", "snore", "spin"]
 
 
 func _physics_process(delta: float) -> void:
@@ -27,6 +28,7 @@ func _physics_process(delta: float) -> void:
 		"strange": _strange()
 		"scoop": _scoop()
 		"snore": _snore()
+		"spin": _spin()
 
 
 func _yard(p: int, x: float, facing := 1) -> void:
@@ -160,4 +162,20 @@ func _snore() -> void:
 			_next("stage: in the cavern by the sleeping Dragon")
 		1:
 			if _since() > 12.0:
+				_next("done")
+
+
+func _spin() -> void:
+	match _stage:
+		0:
+			_ride(P1, &"excavator", HillGame.HILLVILLE, Vector2(35 * 48, 0))
+			if game.player_node(P2) != null:
+				_yard(P2, 33 * 48)
+			_next("stage: P1 in the Excavator in the yard")
+		1, 2:
+			if _since() > 1.5:
+				game.player_node(P1).honk()
+				_next("honk: cab spins")
+		3:
+			if _since() > 1.5:
 				_next("done")

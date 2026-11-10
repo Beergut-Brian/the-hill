@@ -330,3 +330,29 @@ func test_the_dragon_snore_sways_the_cavern_and_not_topsoil() -> void:
 	assert_bool(_game.story.dragon_met()).is_false()
 	await _physics(10)
 	assert_float(_game.kick.peak(P1)).is_greater(0.0)
+
+
+# --- H-03: the Excavator turns all the way round -------------------------------------------------
+
+func test_the_excavator_spins_round_on_the_horn_and_the_loader_does_not() -> void:
+	_make()
+	var node := _join()
+	await _physics(2)
+	_game.hop_in(node)          # the Front Loader by the shaft
+	if node.vehicle == null:
+		_game.park_new(HillGame.LOADER, node.position, HillGame.HILLVILLE)
+		_game.hop_in(node)
+	node.honk()
+	assert_float(node.cab_spin).is_equal(0.0)
+	_game.hop_out(node, true)
+	await _physics(2)
+	_game.park_new(&"excavator", node.position, HillGame.HILLVILLE)
+	_game.hop_in(node)
+	await _physics(1)
+	assert_str(String(node.vehicle.id)).is_equal("excavator")
+	node.honk()
+	assert_float(node.cab_spin).is_equal(1.0)
+	await _physics(20)
+	assert_float(node.cab_spin).is_between(0.01, 0.99)
+	await _physics(int(HillPlayer.CAB_SPIN * 60.0) + 4)
+	assert_float(node.cab_spin).is_equal(0.0)
