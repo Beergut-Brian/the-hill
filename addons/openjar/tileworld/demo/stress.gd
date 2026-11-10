@@ -1,8 +1,10 @@
 ## TileWorld fixed-seed performance run, no input: two scripted diggers zigzag down a world while
-## bodies are spawned at their feet to keep `world.max_awake_bodies` busy. Vsync and the fps cap are
-## off so a frame's wall time is its cost. After a 2 s warm-up it measures for --seconds, prints a
-## JSON summary and writes it to --out, then quits.
-##   godot --headless --path . res://addons/openjar/tileworld/demo/stress.tscn -- --seconds=60
+## bodies are spawned at their feet to keep `world.max_awake_bodies` busy. Vsync, the fps cap and the
+## headless idle sleep are off so a frame's wall time is its cost. After a 2 s warm-up it measures
+## for --seconds of game time, prints a JSON summary and writes it to --out, then quits.
+## Simulation cost per physics tick (no renderer; --fixed-fps makes every frame exactly one tick):
+##   godot --headless --fixed-fps 60 --path . res://addons/openjar/tileworld/demo/stress.tscn -- --seconds=60
+## Whole frames with a real renderer (software GPU here, so it measures the rasteriser too):
 ##   godot-render --path . --resolution 1920x1080 res://addons/openjar/tileworld/demo/stress.tscn -- --shape=disk
 ## Args: --seconds=60 --seed=1234 --shape=rect|disk --bodies=60 --out=<path> (default user://tileworld_stress.json)
 extends Node2D
@@ -38,8 +40,7 @@ var prev_us := 0
 var finished := false
 
 var frame_ms: Array[float] = []
-var process_ms: Array[float] = []
-var physics_ms: Array[float] = []
+var physics_ticks := 0
 var dig_ms: Array[float] = []
 var awake_samples: Array[float] = []
 var chunk_samples: Array[float] = []
@@ -51,6 +52,7 @@ var chunk_loads := 0
 func _ready() -> void:
 	DisplayServer.window_set_vsync_mode(DisplayServer.VSYNC_DISABLED)
 	Engine.max_fps = 0
+	OS.low_processor_usage_mode_sleep_usec = 0
 	for a in OS.get_cmdline_user_args():
 		if a.begins_with("--seconds="):
 			seconds = float(a.get_slice("=", 1))
@@ -210,7 +212,7 @@ func _physics_process(delta: float) -> void:
 		made += 1
 	_place_camera()
 	if measuring:
-		physics_ms.append(Performance.get_monitor(Performance.TIME_PHYSICS_PROCESS) * 1000.0)
+		physics_ticks += 1
 		awake_samples.append(world.awake_bodies())
 		chunk_samples.append(world.loaded_chunks().size())
 		water_max = maxi(water_max, world.water_count())
@@ -255,7 +257,6 @@ func _process(delta: float) -> void:
 		return
 	measure_time += delta
 	frame_ms.append(ms)
-	process_ms.append(Performance.get_monitor(Performance.TIME_PROCESS) * 1000.0)
 	if measure_time >= seconds:
 		_finish()
 
@@ -328,10 +329,8 @@ func _finish() -> void:
 		"fps_avg": _r(1000.0 * frame_ms.size() / maxf(total_ms, 0.001)),
 		"frame_ms": _stats(frame_ms, ["avg", "p50", "p95", "p99", "max"]),
 		"frames_over_16_7ms_pct": _r(_over(frame_ms, FRAME_BUDGET_MS)),
-		"process_ms": _stats(process_ms, ["avg", "p95", "max"]),
-		"physics_ms": _stats(physics_ms, ["avg", "p95", "p99", "max"]),
-		"physics_ticks": physics_ms.size(),
-		"physics_over_16_7ms_pct": _r(_over(physics_ms, FRAME_BUDGET_MS)),
+		"physics_ticks": physics_ticks,
+		"one_tick_per_frame": absi(physics_ticks - frame_ms.size()) <= 2,
 		"dig_ms": _stats(dig_ms, ["avg", "p95", "max"]),
 		"awake": _stats(awake_samples, ["avg", "max"]),
 		"bodies_spawned": spawned,
