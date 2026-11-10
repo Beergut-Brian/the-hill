@@ -58,7 +58,7 @@ func _draw_sleeper() -> void:
 static func draw_sleeper(ci: CanvasItem, d: VehicleData, face: int, who: int, tip: float, t: float) -> void:
 	var file := "vehicles/%s.png" % (d.id if d else &"")
 	var bucket := SpriteArt.point(file, "bucket", Vector2(face * 22, -12)) * Vector2(face, 1)
-	var cf := "characters/%s.png" % SpriteArt.char_of(who)
+	var cf := SpriteArt.char_file(who)
 	var sr := SpriteArt.row(cf, "sleep")
 	if not sr.is_empty():
 		# Lying in the bucket; a tipped bucket tips her out a little.
@@ -120,7 +120,7 @@ static func draw_vehicle(ci: CanvasItem, d: VehicleData, face: int, driver: Colo
 	# The driver's head first, behind the glass.
 	if who >= 0:
 		var head := SpriteArt.point(file, "head")
-		var cf := "characters/%s.png" % SpriteArt.char_of(who)
+		var cf := SpriteArt.char_file(who)
 		var rr := SpriteArt.row(cf, "ride")
 		if not rr.is_empty():
 			SpriteArt.draw(ci, cf, 0, int(rr.row), head * f, flip)

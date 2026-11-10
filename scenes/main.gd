@@ -21,7 +21,21 @@ static func proto_mode(args: PackedStringArray) -> StringName:
 	return &""
 
 
+## `--roster-data=res://tests/fixtures/x.json`: play with another roster file (test fixtures, e.g. the
+## stand-in third character for shots). Ignored when the file is not there (exports ship no tests/).
+static func roster_data_arg(args: PackedStringArray) -> String:
+	for a in args:
+		if a.begins_with("--roster-data="):
+			var path := a.trim_prefix("--roster-data=")
+			return path if FileAccess.file_exists(path) else ""
+	return ""
+
+
 func _ready() -> void:
+	var data := roster_data_arg(OS.get_cmdline_user_args() + OS.get_cmdline_args())
+	if data != "" and data != Roster.data_path:
+		Roster.data_path = data
+		Roster.reload()
 	var mode := proto_mode(OS.get_cmdline_user_args() + OS.get_cmdline_args())
 	if mode != &"":
 		_boot_proto(mode == &"auto")
@@ -42,8 +56,8 @@ func _ready() -> void:
 		Game.to_lobby()
 
 
-## The lobby's look is the Showtime skin, data/menu_skin.tres (logo, Jeff and Chuck from the sprite
-## sheets, Hillville blurred behind). Here only the clock: the lobby's Hillville shows the time of
+## The lobby's look is the Showtime skin, data/menu_skin.tres (logo, each player's picked character
+## from the sprite sheets, Hillville blurred behind). Here only the clock: the lobby's Hillville shows the time of
 ## day the save left off at (--time=... freezes it instead; --demo keeps the default morning).
 func _restore_clock() -> void:
 	if Game.demo:

@@ -446,9 +446,9 @@ func _draw() -> void:
 	draw_set_transform(Vector2.ZERO)
 
 
-## Which animation of Jeff / Chuck to show, and its frame (manifest rows).
+## Which animation of the picked character (Jeff / Chuck by default) to show, and its frame (manifest rows).
 func _pose() -> Array:
-	var file := "characters/%s.png" % SpriteArt.char_of(player)
+	var file := SpriteArt.char_file(player)
 	if _swing > 0.0:
 		var n := int(SpriteArt.row(file, "dig_side").get("frames", 3))
 		var f := clampi(int((1.0 - _swing) * n), 0, n - 1)
@@ -462,13 +462,13 @@ func _pose() -> Array:
 
 
 func _draw_body(c: Color) -> void:
-	# Backpack on the back, rounder when full (drawn first: behind Jeff / Chuck).
+	# Backpack on the back, rounder when full (drawn first: behind the character).
 	var full := is_full() and backpack_count() > 0
 	var bag := Rect2(-facing * 8 - 3, -22, 6, 10)
 	draw_rect(bag.grow(1), DARK)
 	draw_rect(bag, Color("a47148").lightened(0.2 if full else 0.0))
 	var pose := _pose()
-	SpriteArt.draw_char(self, SpriteArt.char_of(player), pose[0], _t, Vector2.ZERO, facing < 0, Color.WHITE, pose[1])
+	SpriteArt.draw_char(self, SpriteArt.char_file(player), pose[0], _t, Vector2.ZERO, facing < 0, Color.WHITE, pose[1])
 
 
 func _draw_effects() -> void:
