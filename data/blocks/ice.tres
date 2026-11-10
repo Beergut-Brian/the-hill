@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="BlockData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/data/block_data.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = &"ice"
+color = Color(0.749, 0.902, 0.961, 1)
+dig_sound = &"dig_ice"
+depth_from = 130
+depth_to = 190
+value = 6
+slippery = true

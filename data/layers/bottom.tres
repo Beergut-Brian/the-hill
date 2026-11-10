@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="LayerData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/data/layer_data.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = &"bottom"
+depth_from = 260
+depth_to = 300
+block_mix = {&"stone": 0.5, &"crystal": 0.5}
+hazards = Array[StringName]([])
+darkness = 0.3
+light_tint = Color(0.420, 0.165, 0.063, 1)
+snore_volume = 1.0
+hue = Color(0.878, 0.533, 0.227, 1)
