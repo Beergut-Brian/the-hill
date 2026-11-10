@@ -429,8 +429,8 @@ func test_main_boots_the_lobby_with_jeff_and_chuck_then_the_hill() -> void:
 	var main: Node = auto_free(load("res://scenes/main.tscn").instantiate())
 	add_child(main)
 	var lobby: Node = main.get_node("UI/Lobby")
-	assert_str(lobby.title_text).is_equal("The Hill")
-	assert_object(lobby.get_node("Spots/P1/Character")).is_instanceof(LobbyFigure)
+	assert_str(UiStyle.skin().title()).is_equal("The Hill")   # the project name
+	assert_object(lobby.get_node("Spots/P1/Character")).is_instanceof(CharacterSlot)
 	assert_int(lobby.get_node("Spots/P2/Character").player).is_equal(P2)
 	assert_object(main.get_node_or_null("Arena")).is_null()
 	Players.join_virtual(P1)

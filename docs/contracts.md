@@ -40,33 +40,42 @@ Window close also goes through `quit()`. Menus are for the grown-up: see `docs/u
 
 ### Lobby (`scenes/ui/lobby.tscn`, `scenes/ui/lobby.gd`)
 
-Start screen and main menu in one, a text menu for the grown-up (`docs/ui.md`). Title on top,
-Play / Settings / Back to Open Jar in the middle, a join panel per player (P1 green left, P2 red
-right) with "Press A to join", the player's character and READY.
+Start screen and main menu in one, the Showtime menu kit (`docs/ui.md`): the game's slanted title
+over a stage (sunburst, and the game's world blurred behind it if the skin asks), Jeff (P1 green,
+left) and Chuck (P2 red, right) on podiums with name plates and READY! stamps, and a wedge of
+slanted bars: Play / Settings / Back to Open Jar.
 
-- A on a new pad: that pad joins and is ready; its panel lights up and its character waves.
-- B: un-ready (or back out of Settings / the question). Both ready: "Starting in 3, 2, 1", then
-  `Game.finish_lobby(ready_players)`. Un-readying cancels.
+- A on a new pad: that pad joins and is ready; its podium lights up and its character waves.
+- B: un-ready (or back out of Settings / the question). Both ready: a 3-beat countdown; on the last
+  beat the stamps say GO!, both characters cheer, the three-stripe wipe covers the screen and
+  `Game.finish_lobby(ready_players)` starts round 1 (with the skin's "ROUND 1" card). Un-readying
+  cancels, except during the last beat.
 - A held on Play for 1.5 s by a ready player starts without the other (Play fills up).
 - Back to Open Jar asks "Leave the game?" (Stay focused first), Leave calls `Game.quit()`.
 - Solo mode readies both. A pad that joins mid-game plays from the next round.
 
-Hooks a game uses (keep the node names):
+The look per game comes from one resource, `MenuSkin` (`scenes/ui/kit/menu_skin.gd`): title,
+accent / sunburst / deep colours, the two character scenes and names, the backdrop
+(`SUNBURST`, `SCENE` live world, `TEXTURE` still, `SCREEN` the level behind), the round card.
+`res://data/menu_skin.tres` is used automatically; or `UiStyle.use_skin(skin)` in code.
 
 ```gdscript
-@export var title_texture: Texture2D        # the logo / key art; empty: title_text in the display face
-@export var title_text: String              # empty: the project name
+@export var title_texture: Texture2D        # wins over the skin's title
+@export var title_text: String              # wins over the skin's title
+var round_card_subtitle: String             # "JEFF KICKS FIRST" under ROUND 1; set in code
+var round_card_color: Color                 # its strip colour (default the skin's accent2)
 signal player_readied(player: int, ready: bool)
 signal countdown_started()
 signal countdown_cancelled()
-# Spots/P1/Character, Spots/P2/Character: swap in your character. The lobby calls
-# set_joined(on: bool) and wave() on it if it has them.
-# Backdrop (hide it to show the level), TitleArt, Spots/P*/fill_alpha (0..1, see-through panels),
-# Buttons/Play, Buttons/Settings, Buttons/Door, Settings, Confirm. Customise in _ready(), in code.
+signal launching()                          # the last beat: the wipe is starting
+# Spots/P1/Character, Spots/P2/Character: CharacterSlots hosting the skin's characters; the lobby
+# calls set_joined(on: bool), wave() and cheer() on the character if it has them.
+# Backdrop, Wedge, TitleArt, Buttons/Play, Buttons/Settings, Buttons/Door, Settings, Confirm.
 ```
 
-Theme: `UiStyle.accent = Color(...)` sets the game's accent (focus, sliders, progress). The rest
-of the look is shared; see `docs/ui.md`.
+`ShowtimeWipe.run(on_cover, title, subtitle, color)` plays the same wipe anywhere (between rounds).
+`UiSound.play(cue, pitch)` plays a menu cue: the `.ogg` in `assets/audio/sfx/` if there is one,
+else a synthesized stand-in (cue list in `docs/ui.md`).
 
 ### Settings (`scenes/ui/settings_panel.gd`, class `SettingsPanel`)
 

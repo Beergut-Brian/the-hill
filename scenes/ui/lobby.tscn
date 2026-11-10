@@ -2,13 +2,14 @@
 
 [ext_resource type="Script" path="res://scenes/ui/lobby.gd" id="1_lobby"]
 [ext_resource type="Script" path="res://scenes/ui/lobby_spot.gd" id="2_spot"]
-[ext_resource type="Script" path="res://scenes/ui/lobby_character.gd" id="3_char"]
+[ext_resource type="Script" path="res://scenes/ui/kit/character_slot.gd" id="3_slot"]
 [ext_resource type="Script" path="res://scenes/ui/kit/menu_item.gd" id="4_item"]
 [ext_resource type="Script" path="res://scenes/ui/kit/menu_backdrop.gd" id="5_backdrop"]
 [ext_resource type="Script" path="res://scenes/ui/kit/hint_line.gd" id="6_hint"]
 [ext_resource type="Theme" path="res://assets/ui/theme.tres" id="7_theme"]
 [ext_resource type="PackedScene" path="res://scenes/ui/settings_panel.tscn" id="8_settings"]
 [ext_resource type="PackedScene" path="res://scenes/ui/confirm_dialog.tscn" id="9_confirm"]
+[ext_resource type="Script" path="res://scenes/ui/kit/wedge.gd" id="10_wedge"]
 
 [node name="Lobby" type="Control"]
 layout_mode = 3
@@ -31,13 +32,67 @@ grow_vertical = 2
 mouse_filter = 2
 script = ExtResource("5_backdrop")
 
+[node name="Spots" type="Control" parent="."]
+anchors_preset = 0
+mouse_filter = 2
+
+[node name="P1" type="Control" parent="Spots"]
+layout_mode = 0
+offset_left = 40.0
+offset_top = 300.0
+offset_right = 520.0
+offset_bottom = 1040.0
+mouse_filter = 2
+script = ExtResource("2_spot")
+
+[node name="Character" type="Control" parent="Spots/P1"]
+layout_mode = 0
+offset_left = 90.0
+offset_top = 150.0
+offset_right = 390.0
+offset_bottom = 570.0
+mouse_filter = 2
+script = ExtResource("3_slot")
+
+[node name="P2" type="Control" parent="Spots"]
+layout_mode = 0
+offset_left = 500.0
+offset_top = 300.0
+offset_right = 980.0
+offset_bottom = 1040.0
+mouse_filter = 2
+script = ExtResource("2_spot")
+player = 1
+
+[node name="Character" type="Control" parent="Spots/P2"]
+layout_mode = 0
+offset_left = 90.0
+offset_top = 150.0
+offset_right = 390.0
+offset_bottom = 570.0
+mouse_filter = 2
+script = ExtResource("3_slot")
+
+[node name="Wedge" type="Control" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+script = ExtResource("10_wedge")
+
 [node name="TitleArt" type="TextureRect" parent="."]
 texture_filter = 2
 layout_mode = 0
-offset_left = 410.0
-offset_top = 70.0
-offset_right = 1510.0
-offset_bottom = 330.0
+offset_left = 70.0
+offset_top = 40.0
+offset_right = 1190.0
+offset_bottom = 300.0
+rotation = -0.0872665
+pivot_offset = Vector2(560, 130)
+mouse_filter = 2
 expand_mode = 1
 stretch_mode = 5
 
@@ -53,102 +108,72 @@ text = "Open Jar Game"
 horizontal_alignment = 1
 vertical_alignment = 1
 
-[node name="Spots" type="Control" parent="."]
-anchors_preset = 0
-mouse_filter = 2
-
-[node name="P1" type="Control" parent="Spots"]
-layout_mode = 0
-offset_left = 120.0
-offset_top = 372.0
-offset_right = 620.0
-offset_bottom = 958.0
-script = ExtResource("2_spot")
-
-[node name="Character" type="Control" parent="Spots/P1"]
-layout_mode = 0
-offset_left = 100.0
-offset_top = 124.0
-offset_right = 400.0
-offset_bottom = 448.0
-script = ExtResource("3_char")
-
-[node name="P2" type="Control" parent="Spots"]
-layout_mode = 0
-offset_left = 1300.0
-offset_top = 372.0
-offset_right = 1800.0
-offset_bottom = 958.0
-script = ExtResource("2_spot")
-player = 1
-
-[node name="Character" type="Control" parent="Spots/P2"]
-layout_mode = 0
-offset_left = 100.0
-offset_top = 124.0
-offset_right = 400.0
-offset_bottom = 448.0
-script = ExtResource("3_char")
-player = 1
-
 [node name="Buttons" type="VBoxContainer" parent="."]
 layout_mode = 0
-offset_left = 710.0
-offset_top = 420.0
-offset_right = 1210.0
-offset_bottom = 744.0
+offset_left = 1060.0
+offset_top = 360.0
+offset_right = 1920.0
+offset_bottom = 820.0
 mouse_filter = 2
-theme_override_constants/separation = 24
+theme_override_constants/separation = 28
 
 [node name="Play" type="Control" parent="Buttons"]
 layout_mode = 2
+mouse_filter = 2
 script = ExtResource("4_item")
 text = "Play"
 
 [node name="Settings" type="Control" parent="Buttons"]
 layout_mode = 2
+mouse_filter = 2
 script = ExtResource("4_item")
 text = "Settings"
 
 [node name="Door" type="Control" parent="Buttons"]
 layout_mode = 2
+mouse_filter = 2
 script = ExtResource("4_item")
 text = "Back to Open Jar"
 
 [node name="Countdown" type="Control" parent="."]
 layout_mode = 0
-offset_left = 650.0
-offset_top = 790.0
-offset_right = 1270.0
-offset_bottom = 950.0
-pivot_offset = Vector2(310, 50)
+offset_left = 1000.0
+offset_top = 836.0
+offset_right = 1900.0
+offset_bottom = 966.0
+pivot_offset = Vector2(250, 40)
 mouse_filter = 2
 
 [node name="Footer" type="Control" parent="."]
 layout_mode = 0
-offset_left = 96.0
-offset_top = 984.0
-offset_right = 1824.0
-offset_bottom = 1026.0
+offset_left = 0.0
+offset_top = 0.0
+offset_right = 1920.0
+offset_bottom = 1080.0
 mouse_filter = 2
 
 [node name="Version" type="Label" parent="Footer"]
 layout_mode = 0
-offset_left = 24.0
-offset_right = 400.0
-offset_bottom = 42.0
+offset_left = 1424.0
+offset_top = 20.0
+offset_right = 1860.0
+offset_bottom = 60.0
 theme_type_variation = &"CaptionLabel"
 text = "v0.0.1"
+horizontal_alignment = 2
 vertical_alignment = 1
 
 [node name="Hints" type="Control" parent="Footer"]
 layout_mode = 0
-offset_left = 600.0
-offset_right = 1704.0
-offset_bottom = 42.0
+offset_left = 1090.0
+offset_top = 988.0
+offset_right = 1920.0
+offset_bottom = 1054.0
+mouse_filter = 2
 script = ExtResource("6_hint")
 text = "[ud] Move    [a] Select    [b] Back"
 align = 2
+strip = true
 
 [node name="Settings" parent="." instance=ExtResource("8_settings")]
 layout_mode = 1

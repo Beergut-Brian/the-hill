@@ -7,11 +7,12 @@
 [ext_resource type="Theme" path="res://assets/ui/theme.tres" id="5_theme"]
 [ext_resource type="PackedScene" path="res://scenes/ui/settings_panel.tscn" id="6_settings"]
 [ext_resource type="PackedScene" path="res://scenes/ui/confirm_dialog.tscn" id="7_confirm"]
+[ext_resource type="Script" path="res://scenes/ui/kit/wedge.gd" id="8_wedge"]
 
 [sub_resource type="ShaderMaterial" id="blur_mat"]
 shader = ExtResource("4_blur")
-shader_parameter/lod = 3.0
-shader_parameter/tint = Color(0.07, 0.055, 0.05, 0.62)
+shader_parameter/lod = 0.8
+shader_parameter/tint = Color(0.09, 0.07, 0.25, 0.4)
 
 [node name="PauseMenu" type="Control"]
 layout_mode = 3
@@ -33,69 +34,112 @@ anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 mouse_filter = 2
-color = Color(0.05, 0.05, 0.08, 0.75)
 
-[node name="Card" type="Panel" parent="."]
-layout_mode = 0
-offset_left = 650.0
-offset_top = 150.0
-offset_right = 1270.0
-offset_bottom = 930.0
+[node name="Wedge" type="Control" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+script = ExtResource("8_wedge")
+side = 0
+edge = 1010.0
+opacity = 0.95
+
+[node name="Card" type="Control" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
 
 [node name="Heading" type="Label" parent="Card"]
 layout_mode = 0
-offset_left = 40.0
-offset_top = 44.0
-offset_right = 580.0
-offset_bottom = 128.0
-theme_type_variation = &"HeadingLabel"
+offset_left = 90.0
+offset_top = 30.0
+offset_right = 940.0
+offset_bottom = 250.0
+rotation = -0.0872665
+pivot_offset = Vector2(425, 110)
 text = "Paused"
-horizontal_alignment = 1
 vertical_alignment = 1
 
 [node name="PausedBy" type="Control" parent="Card"]
 layout_mode = 0
-offset_left = 40.0
-offset_top = 132.0
-offset_right = 580.0
-offset_bottom = 176.0
+offset_left = 108.0
+offset_top = 300.0
+offset_right = 700.0
+offset_bottom = 362.0
+mouse_filter = 2
 
 [node name="Buttons" type="VBoxContainer" parent="Card"]
 layout_mode = 0
-offset_left = 70.0
-offset_top = 222.0
-offset_right = 550.0
-offset_bottom = 650.0
-theme_override_constants/separation = 20
+offset_left = 60.0
+offset_top = 420.0
+offset_right = 860.0
+offset_bottom = 960.0
+mouse_filter = 2
+theme_override_constants/separation = 26
 
 [node name="Resume" type="Control" parent="Card/Buttons"]
 layout_mode = 2
+mouse_filter = 2
 script = ExtResource("2_item")
 text = "Resume"
+bleed = 1
+height = 96.0
+height_focused = 140.0
+text_size = 62
+text_size_focused = 108
 
 [node name="Restart" type="Control" parent="Card/Buttons"]
 layout_mode = 2
+mouse_filter = 2
 script = ExtResource("2_item")
 text = "Restart"
+bleed = 1
+height = 96.0
+height_focused = 140.0
+text_size = 62
+text_size_focused = 108
 
 [node name="Settings" type="Control" parent="Card/Buttons"]
 layout_mode = 2
+mouse_filter = 2
 script = ExtResource("2_item")
 text = "Settings"
+bleed = 1
+height = 96.0
+height_focused = 140.0
+text_size = 62
+text_size_focused = 108
 
 [node name="Door" type="Control" parent="Card/Buttons"]
 layout_mode = 2
+mouse_filter = 2
 script = ExtResource("2_item")
 text = "Back to Open Jar"
+bleed = 1
+height = 96.0
+height_focused = 140.0
+text_size = 62
+text_size_focused = 108
 
 [node name="Hint" type="Control" parent="Card"]
 layout_mode = 0
-offset_left = 40.0
-offset_top = 700.0
-offset_right = 580.0
-offset_bottom = 740.0
+offset_left = 1090.0
+offset_top = 988.0
+offset_right = 1920.0
+offset_bottom = 1054.0
+mouse_filter = 2
 script = ExtResource("3_hint")
-text = "[a] Select    [b] Resume"
+text = "[ud] Move    [a] Select    [b] Resume"
+align = 2
+strip = true
 
 [node name="Settings" parent="." instance=ExtResource("6_settings")]
 layout_mode = 1
