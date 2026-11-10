@@ -15,10 +15,12 @@ var _readies: Array = []
 
 
 var _real_settings := ""
+var _real_profile := ""
 
 
 func before() -> void:
 	_real_settings = Save.settings_path
+	_real_profile = Save.profile
 	Save.settings_path = "user://test_settings.json"
 	Game.quit_exits = false
 	Game.quit_requested.connect(_on_quit)
@@ -31,10 +33,16 @@ func after() -> void:
 	Game.quit_exits = true
 	Save.wipe_settings()
 	Save.settings_path = _real_settings
+	Save.flush()
+	Save.profile = _real_profile
+	Save._load()
 	Save.reload_settings()
 
 
 func before_test() -> void:
+	# Boots save the game: never into the real profile.
+	Save.profile = "test_lobby"
+	Save.wipe()
 	Save.wipe_settings()
 	Players.reset()
 	Game.demo = false
@@ -148,7 +156,7 @@ func test_both_ready_counts_down_then_starts() -> void:
 	lobby.count_step(Lobby.COUNT_STEP * 2.0)
 	assert_int(Game.state).is_equal(Game.State.PLAYING)
 	assert_array(_readies).is_equal([[P1, P2]])
-	assert_int(_main.get_node("Arena/Players").get_child_count()).is_equal(2)
+	assert_int(_main.game.players.size()).is_equal(2)
 	assert_bool(lobby.visible).is_false()
 
 
@@ -406,7 +414,7 @@ func test_restart_returns_to_lobby() -> void:
 	assert_bool(lobby.readied[P1]).is_false()
 	assert_bool(lobby.get_node("Spots/P2").joined).is_true()   # pads stay joined
 	await await_idle_frame()
-	assert_int(_main.get_node("Arena/Players").get_child_count()).is_equal(0)
+	assert_object(_main.game).is_null()
 	lobby.press_a(P1)
 	lobby.press_a(P2)
 	_finish_countdown()
@@ -416,18 +424,18 @@ func test_restart_returns_to_lobby() -> void:
 
 # --- joins mid-game, demo ------------------------------------------------------
 
-func test_late_joiner_plays_from_next_round() -> void:
+## The Hill drops a late joiner straight in (out of the Front Loader's bucket), no waiting.
+func test_late_joiner_drops_in() -> void:
 	_boot()
 	Players.join_virtual(P1)
 	_lobby().hold_step(P1, true, Lobby.HOLD_TO_START)
 	_finish_countdown()
+	assert_bool(_main.game.players.has(P2)).is_false()
 	Players.join_virtual(P2)
-	var p2: Node = _main.get_node("Arena/Players").get_child(1)
+	var p2: HillPlayer = _main.game.player_node(P2)
+	assert_object(p2).is_not_null()
 	assert_int(p2.player).is_equal(P2)
-	assert_bool(p2.waiting).is_true()
-	Game.end_round()
-	Game.start_round()
-	assert_bool(p2.waiting).is_false()
+	assert_bool(p2.locked).is_false()
 
 
 func test_demo_skips_lobby() -> void:
