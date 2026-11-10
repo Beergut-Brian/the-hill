@@ -386,3 +386,58 @@ func test_breached_pocket_gushes_for_about_two_seconds() -> void:
 	assert_int(after_gush).is_greater(start)
 	await _physics(60)
 	assert_int(w.water_count()).is_equal(after_gush)
+
+
+# --- up top ------------------------------------------------------------------------------------
+
+func test_up_top_a_scoops_scrub_x_opens_the_book_y_honks() -> void:
+	_make()
+	var intent := IDLE.duplicate()
+	var p := _join(P1)
+	p.intent_source = func() -> Dictionary: return intent
+	var hv := _game.hillville
+	var x := hv.nearest_scrub(hv.spawn_point(P1).x)
+	p.global_position = Vector2(x - 4.0, 0)
+	p.facing = 1
+	var before := hv.scrub_left()
+	intent.dig = true
+	await _physics(3)
+	intent.dig = false
+	assert_int(hv.scrub_left()).is_less(before)
+	var pile := 0
+	for b in [&"dirt", &"stone"]:
+		pile += Inventory.count(b)
+	assert_int(pile).is_greater(0)
+	intent.book = true
+	await _physics(2)
+	intent.book = false
+	assert_bool(_game.build.captures(P1)).is_true()
+	await _physics(2)
+	intent.book = true
+	await _physics(2)
+	intent.book = false
+	assert_bool(_game.build.captures(P1)).is_false()
+	var honks := [0]
+	p.honked.connect(func() -> void: honks[0] += 1)
+	intent.horn = true
+	await _physics(2)
+	assert_int(honks[0]).is_equal(1)
+
+
+func test_main_boots_the_lobby_with_jeff_and_chuck_then_the_hill() -> void:
+	Game._set_state(Game.State.LOBBY)
+	var main: Node = auto_free(load("res://scenes/main.tscn").instantiate())
+	add_child(main)
+	var lobby: Node = main.get_node("UI/Lobby")
+	assert_str(lobby.title_text).is_equal("The Hill")
+	assert_object(lobby.get_node("Spots/P1/Character")).is_instanceof(LobbyFigure)
+	assert_int(lobby.get_node("Spots/P2/Character").player).is_equal(P2)
+	assert_object(main.get_node_or_null("Arena")).is_null()
+	Players.join_virtual(P1)
+	Game.finish_lobby([P1])
+	assert_object(main.game).is_not_null()
+	assert_int(main.game.get_index()).is_less(main.get_node("UI").get_index())
+	assert_bool(main.game.players.has(P1)).is_true()
+	Game.to_lobby()
+	await await_idle_frame()
+	assert_object(main.game).is_null()
