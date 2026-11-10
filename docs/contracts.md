@@ -221,16 +221,30 @@ func wipe_settings() -> void
 ### `Audio` (`scripts/autoload/Audio.gd`)
 
 ```gdscript
-func play(cue: String, position = null) -> void   # cue = file stem in assets/audio/sfx/
-func music(track: String, fade: float = 0.5) -> void
+func play(cue: String, position = null, volume_db: float = 0.0) -> bool  # false: rate-capped / nothing
+func music(track: String, fade: float = 0.5) -> void       # one file, looped (menus)
 func stop_music(fade: float = 0.5) -> void
-func bark(character: String, bark: String) -> void   # from openjar-characters voice packs
-func set_volume(bus: String, linear: float) -> void  # "Music" / "SFX", 0..1; Settings calls it
+func music_state(theme: StringName, zone: int, cavern: bool, fade: float = 1.5) -> void
+	# theme &"up" | &"down"; zone 0 (Topsoil)..N brings in music_down_layer_1..zone; cavern adds
+	# music_cavern. One AudioStreamSynchronized, crossfaded by stream volume. HillAudio drives it.
+func engine(key, cue: String) -> void                      # looped engine per key (a player id)
+func engine_speed(key, speed: float) -> void               # 0..1 -> pitch ENGINE_PITCH, level up
+func engine_stop(key) -> void
+func bark(character: String, cue: String) -> bool          # one line on the Voice bus, rate-capped
+	# voice pack first (Roster info voice dir, else assets/characters/<id>/voice/<cue>[_n].ogg),
+	# else the placeholder assets/audio/voice/<id>_<cue>[_n].ogg; false when skipped
+func duck(db: float, secs: float) -> void                  # pull the music down (DUCKS does it per cue)
+func set_volume(bus: String, linear: float) -> void        # "Music" / "SFX" (Voice follows SFX), 0..1
 func get_volume(bus: String) -> float
 ```
 
-Audio creates the `Music` and `SFX` buses at start if the project has no bus layout, and applies
-the saved volumes.
+Audio creates the `Music`, `SFX` and `Voice` buses at start if the project has no bus layout, puts
+a hard limiter (-1 dB ceiling) on Master and a duck amplifier on Music, and applies the saved
+volumes. A cue name is the file stem in `assets/audio/sfx/` (`.ogg`, or `.wav` for seamless loops);
+`cue_1..cue_N` are variants, rotated without an immediate repeat. `ALIASES` map the GAME.md design
+names (`engine_<vehicle>`, `horn_<vehicle>`, `gnome_whistle`, `tip`, `build_move`) onto the cue
+names the code plays. Every cue has a rate cap (`CAPS`: minimum gap, maximum voices); the list of
+cues, caps and ducks is `assets/audio/CUES.md`.
 
 Every action must call `Audio.play`. Missing cue files log a warning (once per cue), never crash.
 While `synth_missing` is on (the default), a missing SFX cue plays a short synth beep whose pitch
@@ -243,6 +257,13 @@ func has_cue(cue: String) -> bool                    # a real file exists for th
 
 Menu cues (Audio lane supplies the files): `ui_move`, `ui_confirm`, `ui_back`, `player_join`,
 `player_ready`, `player_unready`, `count_tick`, `round_start`, `pause`, `solo_on`, `solo_off`.
+
+Resident-arc cues (the arcs lane plays them, the Audio lane supplies the files): `plank` once per
+plank of a restore (four rising variants), `light_on` when the restored building lights up,
+`resident_arrive`, `resident_hope` / `resident_hm` / `resident_happy` / `resident_cheer` for the
+picture bubbles, `payoff_mole` / `payoff_caveman` / `payoff_gnomes` / `payoff_dragon`.
+`HillAudio` already plays `resident_arrive` on `Events.resident_arrived` and `light_on` +
+`payoff_<resident>` on `Events.ruin_restored`, so the arcs lane only adds the per-plank call.
 
 ### `Debug` (`scripts/autoload/Debug.gd`)
 
