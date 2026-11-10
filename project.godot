@@ -27,6 +27,7 @@ Audio="*res://scripts/autoload/Audio.gd"
 Debug="*res://scripts/autoload/Debug.gd"
 Events="*res://scripts/autoload/Events.gd"
 Inventory="*res://scripts/autoload/Inventory.gd"
+Progress="*res://scripts/autoload/Progress.gd"
 
 [display]
 
