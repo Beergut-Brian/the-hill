@@ -6,7 +6,9 @@
 ## - boulders drawn from props/boulder.png in quarter turns (the sprite never rotates);
 ## - treasure props from treasures/<id>.png with a sparkle, an additive glow and a small light;
 ## - a lamp per landing cage (registered light + fx/glow.png pool);
-## - the residents idling where GAME.md puts them, and a warm light at the Bottom.
+## - the residents idling where GAME.md puts them (the gnome crew of three walled into the Gnome
+##   Room), and a warm light at the Bottom;
+## - set_ice_warm: the Dragon Perch's warm Ice layer (softer, warmer darkness, a wash, drips).
 ## Every piece is skipped when its sheet is missing, so the game still runs on the flat look.
 class_name UndergroundLook
 extends Node2D
@@ -26,9 +28,22 @@ const OUTLINE := Color("3a2a44")
 const GOLD := Color("ffd23f")
 const WARM := Color("ffb45a")
 
+## The Dragon Perch warms the Ice layer (set_ice_warm): softer, warmer darkness and drips.
+const WARM_ICE_TINT := Color(0.55, 0.3, 0.12)
+const WARM_ICE_DARK := 0.55                     # share of the band's darkness left
+const WARM_ICE_BACK := Color(1.0, 0.62, 0.3, 0.16)
+const DRIP_EVERY := 0.28
+const DRIP := Color(0.75, 0.9, 1.0)
+
 var u: Underground
 var lamps: Array[Node2D] = []
 var residents: Dictionary = {}       # StringName -> SheetSprite
+var ice_warm := false
+var _ice_back: Node2D                # warm wash over the Ice band's backdrop
+var _ice_fx: Node2D                  # drips, above the darkness
+var _drips: Array = []               # [{pos, vy, t, splash}]
+var _drip_t := 0.0
+var _rng := RandomNumberGenerator.new()
 
 
 func build(p_u: Underground) -> void:
@@ -188,10 +203,17 @@ func draw_cages(c: Node2D) -> void:
 func _residents() -> void:
 	# Mole: in the Topsoil landing room, left of the shaft.
 	_resident(&"mole", "characters/mole.png", "idle", _floor_at(Vector2(u.landing(0).x - 72.0, u.landing(0).y)), -1)
-	# Gnome Foreman: at the door of the gnome room, drawn in front of the prop, in Stone.
+	# The gnome crew (the Foreman is up top from the start): three of them walled into the gnome
+	# room in Stone, in front of the prop, under UndergroundResidents' brick wall (z 7).
 	var gr := _spot(&"gnome_room")
 	if gr.size != Vector2i.ZERO:
-		_resident(&"foreman", "characters/foreman.png", "idle", Vector2(gr.end.x * 16.0 - 14.0, gr.end.y * 16.0), 1, 1)
+		var cx := (gr.position.x + gr.size.x * 0.5) * 16.0
+		for i in 3:
+			var s := _resident(StringName("crew_%d" % i), "characters/foreman.png", "idle", Vector2(cx + (i - 1) * 18.0, gr.end.y * 16.0), 6, 1 if i < 2 else -1)
+			s.scale = Vector2.ONE * UndergroundResidents.CREW_SCALE
+			s.modulate = TownResidents.CREW_TINTS[i % TownResidents.CREW_TINTS.size()]
+			s.name = "Crew%d" % i
+		residents[&"foreman"] = residents[&"crew_0"]
 	# Caveman: frozen in his ice block in the Ice landing room, right of the shaft.
 	var ice := _layer_of(&"ice")
 	if ice >= 0:
@@ -275,3 +297,101 @@ func _light_node(parent: Node, pos: Vector2, light: Vector2, tint: Color, glow_a
 		g.z_as_relative = false
 		n.add_child(g)
 	return n
+
+
+# --- the warm Ice layer ------------------------------------------------------------------------
+
+## The Dragon Perch stands (Story.ice_warm): the Ice band's darkness turns warmer and softer, its
+## backdrop gets a warm wash, and drips fall near players there. Off restores the data look.
+func set_ice_warm(on: bool) -> void:
+	if on == ice_warm:
+		return
+	ice_warm = on
+	var bands: Array = []
+	for l: LayerData in u.layers():
+		var warm := on and l.id == &"ice"
+		bands.append({"from": l.depth_from, "to": l.depth_to,
+				"darkness": l.darkness * (WARM_ICE_DARK if warm else 1.0),
+				"tint": WARM_ICE_TINT if warm else l.light_tint})
+	u.world.set_darkness(bands)
+	if on and _ice_back == null:
+		_ice_back = Node2D.new()
+		_ice_back.name = "IceWarm"
+		_ice_back.z_index = -98
+		_ice_back.draw.connect(_draw_ice_back)
+		u.add_child(_ice_back)
+		_ice_fx = Node2D.new()
+		_ice_fx.name = "IceDrips"
+		_ice_fx.z_as_relative = false
+		_ice_fx.z_index = GLOW_Z
+		_ice_fx.draw.connect(_draw_drips)
+		u.add_child(_ice_fx)
+		_rng.seed = 7311
+	if _ice_back != null:
+		_ice_back.visible = on
+		_ice_fx.visible = on
+		_drips.clear()
+
+
+func _ice_band() -> Rect2:
+	var i := _layer_of(&"ice")
+	if i < 0:
+		return Rect2()
+	var l: LayerData = u.layers()[i]
+	return Rect2(-BACK_MARGIN, l.depth_from * 16.0, Underground.WIDTH * 16.0 + BACK_MARGIN * 2.0, (mini(l.depth_to, Underground.HEIGHT) - l.depth_from) * 16.0)
+
+
+func _draw_ice_back() -> void:
+	_ice_back.draw_rect(_ice_band(), WARM_ICE_BACK)
+
+
+func _process(delta: float) -> void:
+	if not ice_warm or _ice_fx == null:
+		return
+	var band := _ice_band()
+	_drip_t -= delta
+	if _drip_t <= 0.0:
+		_drip_t = DRIP_EVERY
+		for c in u.players_root.get_children() if u.players_root != null else []:
+			var at := u.to_local((c as Node2D).global_position)
+			if band.has_point(at):
+				_spawn_drip(at)
+	for i in range(_drips.size() - 1, -1, -1):
+		var d: Dictionary = _drips[i]
+		d.t += delta
+		if d.splash < 0.0:
+			d.vy = minf(d.vy + 700.0 * delta, 420.0)
+			d.pos.y += d.vy * delta
+			var cell := Vector2i(int(d.pos.x / 16.0), int(d.pos.y / 16.0))
+			if u.world.is_solid(cell) or d.t > 3.0:
+				d.splash = 0.0
+				d.pos.y = cell.y * 16.0
+		else:
+			d.splash += delta
+			if d.splash > 0.3:
+				_drips.remove_at(i)
+	_ice_fx.queue_redraw()
+
+
+## A drip from the nearest ceiling above a random spot near `at` (in air, under rock).
+func _spawn_drip(at: Vector2) -> void:
+	var x := at.x + _rng.randf_range(-220.0, 220.0)
+	var c := Vector2i(int(x / 16.0), int(at.y / 16.0) - 1)
+	for k in 10:
+		var cell := c - Vector2i(0, k)
+		if u.world.is_solid(cell):
+			if k == 0:
+				return
+			_drips.append({"pos": Vector2(x, (cell.y + 1) * 16.0), "vy": 0.0, "t": 0.0, "splash": -1.0})
+			return
+
+
+func _draw_drips() -> void:
+	for d in _drips:
+		var p: Vector2 = d.pos
+		if d.splash < 0.0:
+			_ice_fx.draw_circle(p, 2.0, Color(DRIP, 0.85))
+			_ice_fx.draw_line(p + Vector2(0, -1), p + Vector2(0, -4), Color(DRIP, 0.6), 1.5)
+		else:
+			var k: float = d.splash / 0.3
+			_ice_fx.draw_arc(p, 2.0 + 5.0 * k, PI, TAU, 8, Color(DRIP, 0.8 * (1.0 - k)), 1.2)
