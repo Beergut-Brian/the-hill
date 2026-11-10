@@ -257,7 +257,7 @@ func _on_tile_dug(cell: Vector2i, block: StringName, player: int) -> void:
 func _found(id: StringName, player: int, rect: Rect2i) -> void:
 	if not Progress.find_treasure(id, player):
 		return
-	Audio.play("treasure")
+	Audio.play(HillAudio.treasure_cue(id))
 	var center := (Vector2(rect.position) + Vector2(rect.size) * 0.5) * 16.0
 	burst(center, Color("fff2a8"), 24, 160.0)
 	burst(center, Color("f2c94c"), 16, 90.0)
