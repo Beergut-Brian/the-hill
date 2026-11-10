@@ -411,6 +411,7 @@ func water_count() -> int
 func buoyancy_at(pos: Vector2) -> Vector2     # ZERO when dry; else against gravity_at(pos), stronger
 func step_water() -> void                     # one cellular tick (10 Hz by default)
 var drain_per_second: float = 0.0             # cells removed per second from open water (Water Towers raise it)
+@export var flow_reach: int = 8               # cells water looks along a level line for a drop
 func set_darkness(bands: Array) -> void       # [{from: int, to: int, darkness: float, tint: Color}] by depth_of
 func darkness_at(depth: int) -> float
 func add_light(node: Node2D, radius_px: float) -> void    # a headlamp: a hole in the dark that follows node
@@ -433,7 +434,9 @@ Rules worth knowing: only chunks within `chunk_radius` of a tracked node have `T
 nodes and collision; `get_tile`/`set_tile`/`dig`/save work everywhere. The chunk manager only
 ever talks to `WorldShape` (`chunk_of`, `chunk_cells`, `neighbourhood`), so a new shape is a new
 `WorldShape` subclass and nothing else. Water is a set of full cells: it moves to `below`, else
-to a free `sides` cell; the count never grows, it never enters a solid tile or leaves the shape.
+toward the nearest drop (a free `sides` cell from which a free `below` is within `flow_reach`,
+default 8, along the level line), else sideways when pressed from above, so it settles level; the
+count never grows, it never enters a solid tile, an unloaded chunk or leaves the shape.
 
 ## Module: split screen (`addons/openjar/split_screen/`)
 

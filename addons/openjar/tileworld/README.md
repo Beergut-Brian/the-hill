@@ -144,10 +144,13 @@ when one of them is dug) it breaks into one awake `FallingBody` per footprint ce
 ## Water
 
 Water is a set of full cells in loaded chunks. Each tick (`water_hz`, default 10) a cell moves to
-`shape.below` if that is free, else to a free `shape.sides` cell (only when it could then fall, or
-water presses from above, so flat water settles). It never enters a solid tile, a cell outside the
-shape or an unloaded chunk, and the count never grows. Only cells near a change are checked, so a
-still lake costs nothing. `water_entered(cell)` fires when water first flows into a dug-out cell.
+`shape.below` if that is free; else toward a drop: to a free `shape.sides` cell when, looking on
+along the level line from it for up to `flow_reach` cells (default 8, all free and loaded), one has
+a free `below` (the nearer drop wins); else, when water presses from above, to any free side cell.
+So poured water runs out into a level sheet (surface within one cell) and then lies still, and a
+sheet with no drop within `flow_reach` does not move. It never enters a solid tile, a cell outside
+the shape or an unloaded chunk, and the count never grows. Only cells near a change are checked
+(removing a tile wakes the water within `flow_reach` of it), so a still lake costs nothing. `water_entered(cell)` fires when water first flows into a dug-out cell.
 
 `step_water()` runs one tick by hand (`water_hz <= 0` leaves ticking to you). `drain_per_second`
 (default 0) removes surface cells. `buoyancy_at(pos)` is zero when dry and `-gravity_at(pos) * 1.6`

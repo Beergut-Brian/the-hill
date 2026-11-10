@@ -30,6 +30,8 @@ var chunk_radius: int = 1
 ## A chunk costs a few ms (generator, tiles, collision), so keep this at 1 for a steady 60 fps.
 var chunk_budget_per_frame := 1
 var drain_per_second: float = 0.0
+## How far (cells) water looks along a level line for a drop before it spreads toward it.
+@export var flow_reach := 8
 ## Water ticks per second from _physics_process; <= 0 means only explicit step_water() calls.
 var water_hz := 10.0
 ## Use this TileSet instead of the generated one: atlas source 0, tile id N at atlas (N-1, 0).
@@ -159,7 +161,9 @@ func set_tile(cell: Vector2i, id: int) -> void:
 	var now := is_solid_id(id)
 	if now and has_water(cell):
 		set_water(cell, false)
-	if was != now:
+	if was and not now:
+		_water.touch_area(cell, flow_reach)
+	elif was != now:
 		_water.touch(cell)
 	if was and not now:
 		_bodies.on_support_removed(cell)

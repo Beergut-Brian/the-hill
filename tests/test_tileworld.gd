@@ -721,3 +721,104 @@ func test_awake_cap_holds_when_bodies_wake_behind_the_index() -> void:
 		var cell := w.shape.cell_at(b.position)
 		assert_bool(w.is_solid(w.shape.below(cell))).is_true()
 	assert_array(w._bodies.queue).is_empty()
+
+
+# --- 11. levelling water -----------------------------------------------------------------------
+
+## A rect world with an open room x 4..59, y 8..19; the floor is row 20.
+func _room() -> TileWorld:
+	var w := _world(RectShape.new(64, 64, 32), 2)
+	_tracker(w, Vector2i(32, 16))
+	w.update_chunks()
+	_carve(w, _box(Vector2i(4, 8), Vector2i.DOWN, Vector2i.RIGHT, range(0, 12), range(0, 56)))
+	for i in 3:
+		w.step_water()
+	return w
+
+
+## Steps until the active set is empty (or max); asserts the count never changes.
+func _settle(w: TileWorld, n: int, max_steps := 600) -> int:
+	var steps := 0
+	while not w._water._active.is_empty() and steps < max_steps:
+		w.step_water()
+		assert_int(w.water_count()).is_equal(n)
+		steps += 1
+	return steps
+
+
+func _heights(w: TileWorld) -> Dictionary:
+	var h := {}
+	for c in w.water_cells():
+		h[c.x] = h.get(c.x, 0) + 1
+	return h
+
+
+func test_water_pile_levels_out_then_goes_still() -> void:
+	var w := _room()
+	for c in _box(Vector2i(28, 12), Vector2i.DOWN, Vector2i.RIGHT, range(0, 8), range(0, 4)):
+		w.set_water(c, true)                                 # a 4 x 8 column standing on the floor
+	var n := w.water_count()
+	assert_int(n).is_equal(32)
+	var steps := _settle(w, n)
+	assert_int(steps).is_less(600)
+	# Still for real, not just unwatched: waking every cell moves nothing.
+	var settled := _sorted(w.water_cells())
+	for c in w.water_cells():
+		w._water._active[c] = true
+	w.step_water()
+	assert_array(_sorted(w.water_cells())).is_equal(settled)
+	var h := _heights(w)
+	var lo := 1 << 30
+	var hi := 0
+	for x in h:
+		lo = mini(lo, h[x])
+		hi = maxi(hi, h[x])
+	assert_int(hi - lo).is_less_equal(1)
+	assert_int(h.size()).is_greater_equal(16)               # spread well past the 4 columns
+	for c in w.water_cells():
+		assert_bool(w.is_solid(c)).is_false()
+	var before := _sorted(w.water_cells())
+	for i in 30:
+		w.step_water()
+	assert_array(_sorted(w.water_cells())).is_equal(before)
+	assert_bool(w._water._active.is_empty()).is_true()
+
+
+func test_flat_sheet_without_a_drop_in_reach_stays_put() -> void:
+	var w := _room()
+	for x in range(20, 30):
+		w.set_water(Vector2i(x, 19), true)
+	w.dig(Vector2i(30 + w.flow_reach + 1, 20))             # a hole just out of reach
+	var before := _sorted(w.water_cells())
+	for i in 60:
+		w.step_water()
+	assert_array(_sorted(w.water_cells())).is_equal(before)
+	# A hole within reach of the settled sheet: it notices and runs into it.
+	w.dig(Vector2i(30 + w.flow_reach - 2, 20))
+	_settle(w, 10)
+	assert_bool(w.has_water(Vector2i(30 + w.flow_reach - 2, 20))).is_true()
+	assert_int(w.water_count()).is_equal(10)
+
+
+func test_polar_water_pile_settles() -> void:
+	var w := _world(DiskShape.new(96), 2)
+	_tracker(w, Vector2i(-64, 0))
+	w.update_chunks()
+	# A room around (-70, 0): gravity points +x here, so "down" is +x and the floor is x = -60.
+	_carve(w, _box(Vector2i(-72, -12), Vector2i.RIGHT, Vector2i.DOWN, range(0, 12), range(0, 24)))
+	for c in _box(Vector2i(-66, -2), Vector2i.RIGHT, Vector2i.DOWN, range(0, 6), range(0, 3)):
+		w.set_water(c, true)
+	var n := w.water_count()
+	var depth0 := 0
+	for c in w.water_cells():
+		depth0 += w.shape.depth_of(c)
+	assert_int(_settle(w, n)).is_less(600)
+	var depth1 := 0
+	for c in w.water_cells():
+		depth1 += w.shape.depth_of(c)
+		assert_bool(w.is_solid(c)).is_false()
+	assert_int(depth1).is_greater(depth0)                  # it went toward the core
+	var before := _sorted(w.water_cells())
+	for i in 30:
+		w.step_water()
+	assert_array(_sorted(w.water_cells())).is_equal(before)
