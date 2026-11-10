@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="VehicleData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/data/vehicle_data.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = &"excavator"
+order = 1
+dig_shape = Array[Vector2i]([Vector2i(0, -1), Vector2i(0, 0), Vector2i(0, 1)])
+dig_tier = 1
+clear_area = Vector2i(3, 2)
+speed = 100
+carry = 2.0
+needs_treasure = &"buried_car"
+sounds = {&"engine": &"excavator_engine", &"horn": &"excavator_horn", &"dig": &"excavator_dig"}

@@ -25,6 +25,8 @@ Game="*res://scripts/autoload/Game.gd"
 Save="*res://scripts/autoload/Save.gd"
 Audio="*res://scripts/autoload/Audio.gd"
 Debug="*res://scripts/autoload/Debug.gd"
+Events="*res://scripts/autoload/Events.gd"
+Inventory="*res://scripts/autoload/Inventory.gd"
 
 [display]
 

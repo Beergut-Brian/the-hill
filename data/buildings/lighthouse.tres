@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="BuildingData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/data/building_data.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = &"lighthouse"
+footprint = Vector2i(1, 3)
+cost = {&"stone": 20, &"crystal": 5}
+needs_treasure = &""
+needs_vehicle = &"crane"
+effect = &"light_layer"
+effect_amount = 1.0

@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="BlockData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/data/block_data.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = &"clay"
+color = Color(0.784, 0.439, 0.184, 1)
+dig_sound = &"dig_clay"
+depth_from = 30
+depth_to = 70
+value = 2
+dig_tier = 0

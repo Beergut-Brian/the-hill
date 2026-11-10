@@ -1,0 +1,48 @@
+## One kind of block in the underground (data/blocks/<id>.tres).
+class_name BlockData
+extends TileDef
+
+## Audio cue played when this block is dug, e.g. &"dig_dirt".
+@export var dig_sound: StringName
+## Tile depth where it starts to appear.
+@export var depth_from: int
+## Tile depth where it stops appearing (exclusive).
+@export var depth_to: int
+## Relative worth (BALANCE.md), never shown as a number.
+@export var value: int = 1
+## Lowest VehicleData.dig_tier that can remove it (0 = shovel).
+@export var dig_tier: int = 0
+## Ice: the player slides.
+@export var slippery: bool = false
+## Lava pockets: bounces the player.
+@export var bouncy: bool = false
+## "" = decided by `breakable`; else unbreakable until that game version.
+@export var breakable_from_version: String = ""
+
+
+## True when breakable, or when `version` >= breakable_from_version (dotted integers).
+func is_breakable_in(version: String) -> bool:
+	if breakable:
+		return true
+	if breakable_from_version == "":
+		return false
+	return _cmp(version, breakable_from_version) >= 0
+
+
+static func _parts(v: String) -> PackedInt32Array:
+	var core := v.split("-")[0]
+	var out := PackedInt32Array()
+	for p in core.split("."):
+		out.append(int(p))
+	return out
+
+
+static func _cmp(a: String, b: String) -> int:
+	var pa := _parts(a)
+	var pb := _parts(b)
+	for i in maxi(pa.size(), pb.size()):
+		var x := pa[i] if i < pa.size() else 0
+		var y := pb[i] if i < pb.size() else 0
+		if x != y:
+			return 1 if x > y else -1
+	return 0

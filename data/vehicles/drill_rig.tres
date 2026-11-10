@@ -1,0 +1,16 @@
+[gd_resource type="Resource" script_class="VehicleData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/data/vehicle_data.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = &"drill_rig"
+order = 4
+dig_shape = Array[Vector2i]([Vector2i(0, -2), Vector2i(0, -1), Vector2i(0, 0), Vector2i(0, 1), Vector2i(0, 2)])
+dig_tier = 3
+clear_area = Vector2i(5, 5)
+speed = 60
+carry = 3.0
+needs_treasure = &"giant_tooth"
+works_up_top = false
+sounds = {&"engine": &"drill_rig_engine", &"horn": &"drill_rig_horn", &"dig": &"drill_rig_dig"}

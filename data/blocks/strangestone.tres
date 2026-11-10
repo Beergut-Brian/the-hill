@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="BlockData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/data/block_data.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = &"strangestone"
+color = Color(0.122, 0.353, 0.369, 1)
+breakable = false
+dig_sound = &"dig_stone"
+depth_from = 260
+depth_to = 300
+value = 0
+breakable_from_version = "2.0.0"
