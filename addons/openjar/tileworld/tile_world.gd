@@ -36,6 +36,21 @@ var drain_per_second: float = 0.0
 var water_hz := 10.0
 ## Use this TileSet instead of the generated one: atlas source 0, tile id N at atlas (N-1, 0).
 var tile_set_override: TileSet
+## Tile art (set before setup()): solid tiles by open mask, back walls behind dug cells. null: the
+## generated flat-colour TileSet (or tile_set_override).
+var tile_art: TileArt
+## Darkness 1 renders as this alpha of the band tint mixed toward darkness_night: never pure black.
+var darkness_floor: float = 0.8:
+	set(v):
+		darkness_floor = v
+		if _darkness:
+			_darkness.darkness_floor = v
+## The dim navy the dark leans toward.
+var darkness_night := Color(0.06, 0.07, 0.16):
+	set(v):
+		darkness_night = v
+		if _darkness:
+			_darkness.darkness_night = v
 ## Physics layer of the generated TileSet's collision.
 var collision_layer := 1:
 	set(v):
@@ -81,11 +96,16 @@ func setup(p_shape: WorldShape, p_generator: WorldGenerator, p_palette: Array[Ti
 		var def := palette[i]
 		_solid[i] = 1 if i > 0 and def != null and def.solid else 0
 		_breakable[i] = 1 if i > 0 and def != null and def.breakable else 0
-	_tile_set = tile_set_override if tile_set_override else _build_tile_set()
+	if tile_art:
+		_tile_set = tile_art.tile_set()
+	else:
+		_tile_set = tile_set_override if tile_set_override else _build_tile_set()
 	if _water == null:
 		_water = WaterSim.new(self)
 		add_child(_water)
 		_darkness = DarknessOverlay.new(self)
+		_darkness.darkness_floor = darkness_floor
+		_darkness.darkness_night = darkness_night
 		add_child(_darkness)
 		_bodies = BodyIndex.new(self)
 	_water.reset(world_seed)
@@ -152,13 +172,20 @@ func set_tile(cell: Vector2i, id: int) -> void:
 		edits.tiles[cell] = id
 		_edited_chunks[key] = true
 	var layer: TileMapLayer = _chunks.get(key)
-	if layer:
+	var was := is_solid_id(old)
+	var now := is_solid_id(id)
+	if tile_art:
+		# The cell and its four neighbours: open masks, and the wall lip under a new/removed ceiling.
+		_redraw_art(cell)
+		for o in _NEIGHBOURS:
+			_redraw_art(cell + o)
+	elif layer:
 		if id > 0:
 			layer.set_cell(cell, 0, Vector2i(id - 1, 0))
 		else:
 			layer.erase_cell(cell)
-	var was := is_solid_id(old)
-	var now := is_solid_id(id)
+	if was != now:
+		_darkness.on_solid_changed(cell)
 	if now and has_water(cell):
 		set_water(cell, false)
 	if was and not now:
@@ -270,6 +297,20 @@ func _load_chunk(key: Vector2i) -> void:
 	layer.z_index = -1
 	var wet: Array[Vector2i] = []
 	var n_ids := _solid.size()
+	var art := tile_art
+	# A solid grid over the chunk's bounding box plus a one-cell ring (art masks, light occlusion).
+	var grid := {}
+	var sol := PackedByteArray()
+	var lo := Vector2i.ZERO
+	var gw := 0
+	if art or _darkness.is_active():
+		grid = _grid_box(cells)
+		lo = grid.lo
+		gw = grid.gw
+		sol = grid.sol
+	var ids := PackedInt32Array()
+	if art:
+		ids.resize(cells.size())
 	var i := 0
 	for c in cells:
 		var v := base[i]
@@ -287,16 +328,136 @@ func _load_chunk(key: Vector2i) -> void:
 			if we != null:
 				water = we
 			water = water and not is_solid_id(id)
-		if id > 0:
+		if gw > 0:
+			sol[(c.y - lo.y) * gw + c.x - lo.x] = 1 if id > 0 and id < n_ids and _solid[id] == 1 else 0
+		if art:
+			ids[i - 1] = id
+		elif id > 0:
 			layer.set_cell(c, 0, Vector2i(id - 1, 0))
 		if water:
 			wet.append(c)
+	if gw > 0:
+		_fill_ring(grid, cells.size())
+	if art:
+		i = 0
+		for c in cells:
+			var id := ids[i]
+			var b := base[i] & _ID_MASK
+			i += 1
+			var g := (c.y - lo.y) * gw + c.x - lo.x
+			if sol[g] == 1:
+				var open := (1 - sol[g - gw]) | ((1 - sol[g + 1]) << 1) | ((1 - sol[g + gw]) << 2) | ((1 - sol[g - 1]) << 3)
+				layer.set_cell(c, TileArt.SOLID_SOURCE, art.solid_coords(c, id, open))
+			else:
+				var wc := art.wall_coords(c, b, sol[g - gw] == 1)
+				if wc.x >= 0:
+					layer.set_cell(c, TileArt.WALL_SOURCE, wc)
 	add_child(layer)
 	_chunks[key] = layer
 	_chunk_cells[key] = cells
 	_water.on_chunk_loaded(wet)
-	_darkness.add_chunk(key, cells)
+	_darkness.add_chunk(key, cells, grid)
 	chunk_loaded.emit(key)
+
+
+const _NEIGHBOURS: Array[Vector2i] = [Vector2i(0, -1), Vector2i(1, 0), Vector2i(0, 1), Vector2i(-1, 0)]
+
+
+## {lo, gw, gh, sol}: a 0/1 solid grid over the cells' bounding box grown by one cell; lo is the
+## grid's top-left cell. Every entry starts at 2 (unknown): the caller writes the cells' own entries,
+## then _fill_ring asks the world for the rest.
+func _grid_box(cells: Array) -> Dictionary:
+	var lo: Vector2i = cells[0]
+	var hi: Vector2i = cells[0]
+	for c: Vector2i in cells:
+		lo = lo.min(c)
+		hi = hi.max(c)
+	lo -= Vector2i.ONE
+	hi += Vector2i.ONE
+	var gw := hi.x - lo.x + 1
+	var gh := hi.y - lo.y + 1
+	var sol := PackedByteArray()
+	sol.resize(gw * gh)
+	sol.fill(2)
+	return {"lo": lo, "gw": gw, "gh": gh, "sol": sol}
+
+
+## Grid entries still unknown (2) get the world's answer: the ring, and the gaps of a chunk that does
+## not fill its bounding box (a disk's). n_cells: the chunk's cell count.
+func _fill_ring(grid: Dictionary, n_cells: int) -> void:
+	var sol: PackedByteArray = grid.sol
+	var lo: Vector2i = grid.lo
+	var gw: int = grid.gw
+	var gh: int = grid.gh
+	var idx := PackedInt32Array()
+	if n_cells == (gw - 2) * (gh - 2):
+		for x in gw:
+			idx.append(x)
+			idx.append((gh - 1) * gw + x)
+		for y in range(1, gh - 1):
+			idx.append(y * gw)
+			idx.append(y * gw + gw - 1)
+	else:
+		for g in sol.size():
+			if sol[g] == 2:
+				idx.append(g)
+	# Base tiles in one generator call (its fast path), then edits and loaded chunks on top.
+	var outside: Array[Vector2i] = []
+	var at := PackedInt32Array()
+	for g in idx:
+		var c := lo + Vector2i(g % gw, g / gw)
+		var e = edits.tiles.get(c)
+		if e == null:
+			e = _base.get(c)
+			if e != null:
+				e = e & _ID_MASK
+		if e != null:
+			sol[g] = 1 if is_solid_id(e) else 0
+		elif shape.contains(c):
+			outside.append(c)
+			at.append(g)
+		else:
+			sol[g] = 0
+	if not outside.is_empty():
+		var base := generator.base_chunk(outside)
+		for k in at.size():
+			sol[at[k]] = 1 if is_solid_id(base[k] & _ID_MASK) else 0
+	grid.sol = sol
+
+
+## A solid grid for cells already loaded (set_darkness rebuilds the overlay with it).
+func _grid_now(cells: Array) -> Dictionary:
+	var grid := _grid_box(cells)
+	var sol: PackedByteArray = grid.sol
+	var lo: Vector2i = grid.lo
+	var gw: int = grid.gw
+	for c: Vector2i in cells:
+		sol[(c.y - lo.y) * gw + c.x - lo.x] = 1 if is_solid(c) else 0
+	grid.sol = sol
+	_fill_ring(grid, cells.size())
+	return grid
+
+
+## Redraws one cell from tile_art (no-op when its chunk is not loaded).
+func _redraw_art(c: Vector2i) -> void:
+	var layer: TileMapLayer = _chunks.get(shape.chunk_of(c)) if shape.contains(c) else null
+	if layer == null:
+		return
+	var id := get_tile(c)
+	if is_solid_id(id):
+		var open := 0
+		var bit := 1
+		for o in _NEIGHBOURS:
+			if not is_solid(c + o):
+				open |= bit
+			bit <<= 1
+		layer.set_cell(c, TileArt.SOLID_SOURCE, tile_art.solid_coords(c, id, open))
+	else:
+		var wc := tile_art.wall_coords(c, base_tile_of(c), is_solid(c + Vector2i.UP))
+		if wc.x >= 0:
+			layer.set_cell(c, TileArt.WALL_SOURCE, wc)
+		else:
+			layer.erase_cell(c)
 
 
 ## Something wrote an edit at cell (TileWorld and its water do this on every write).
@@ -425,8 +586,9 @@ func darkness_at(depth: int) -> float:
 	return _darkness.darkness_at(depth)
 
 
-func add_light(node: Node2D, radius_px: float) -> void:
-	_darkness.lights[node] = radius_px
+## A light that follows node (up to DarknessOverlay.MAX_LIGHTS; the nearest to tracked nodes win).
+func add_light(node: Node2D, radius_px: float, strength: float = 1.0) -> void:
+	_darkness.lights[node] = Vector2(radius_px, strength)
 
 
 func remove_light(node: Node2D) -> void:

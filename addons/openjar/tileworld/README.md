@@ -156,12 +156,28 @@ the shape or an unloaded chunk, and the count never grows. Only cells near a cha
 (default 0) removes surface cells. `buoyancy_at(pos)` is zero when dry and `-gravity_at(pos) * 1.6`
 in water; `FallingBody.floats` uses it.
 
+## Tile art
+
+Set `world.tile_art` (a `TileArt` subclass, `tile_art.gd`) before `setup()`; null keeps the flat
+generated tiles. `tile_set()` has source 0 (solid tiles, collision on physics layer 0) and source 1
+(back walls, no collision). Per solid cell the world asks `solid_coords(cell, id, open)` (`open`:
+bits 1 up, 2 right, 4 down, 8 left touch a non-solid cell); per air cell `wall_coords(cell, base_id,
+ceiling)` (`base_id` 0 = air in the base world; `(-1, -1)` = no wall, the backdrop shows). A chunk
+build works on a local solid grid (one generator call for its ring), and every `set_tile`/`dig`
+redraws the cell and its four neighbours, across chunk edges. `demo/demo_tile_art.gd` is a
+generated example (the stress run uses it with `--tile-art=`).
+
 ## Darkness and lights
 
 `set_darkness([{from, to, darkness, tint}, ...])` darkens by `depth_of` (`darkness` 0..1, `tint` a
-Color); `[]` removes it. `add_light(node, radius_px)` cuts a smooth hole in the dark that follows
-the node; `remove_light(node)` undoes it. Up to 8 lights; each chunk that is fully lit costs
-nothing. `darkness_at(depth)` reads a band.
+Color, up to 16 bands); `[]` removes it. It is never pure black: darkness 1 renders at alpha
+`darkness_floor` (0.8) of the band tint mixed toward `darkness_night` (a dim navy).
+`add_light(node, radius_px, strength = 1.0)` lights the dark around a node; `remove_light(node)`
+undoes it. Light is worked out per cell (texel: band darkness, band index, occlusion air / open
+solid / closed solid) and blended bilinearly cell to cell; it reaches 72% as far into a solid
+cell with an open side and 40% into closed rock. Up to 32 lights are drawn, the nearest to a tracked
+node win. A dig rewrites only the touched texels; each chunk that is fully lit costs nothing.
+`darkness_at(depth)` reads a band.
 
 ## Performance knobs
 
