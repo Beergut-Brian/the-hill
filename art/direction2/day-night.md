@@ -28,7 +28,8 @@ the sky gradient colours, one `CanvasModulate` tint on the surface world, and li
 | Night (C + grade) | `#0b1030` | `#2a3270` | 0.50, 0.55, 0.85 | on, big, stars and moon |
 | Dawn (B, mirrored) | `#9fd4d8` | `#f9e7bd` plus orange band | 1.00, 0.90, 0.84 | fading out |
 
-The strip uses exactly these dusk and night numbers. Sun and moon are sprites that ride the sky.
+The strip uses exactly these dusk and night numbers. The Morning and Golden hour rows are in-between
+values and are not rendered in the strip. Sun and moon are sprites that ride the sky.
 
 ## 3. Rules
 
