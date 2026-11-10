@@ -21,3 +21,16 @@ One line per file. Nothing enters `assets/` without a line here.
 | `sprites/props/tree.png`, `rock.png`, `stump.png`, `boulder.png` | `art/tools/make_game_art.py` | Scrub and props; drawn in code, no generative model | Project's own |
 | `sprites/treasures/*.png` (buried_car, giant_tooth, gnome_room, finds, sparkle) | `art/tools/make_game_art.py` | Treasures and small finds; drawn in code, no generative model | Project's own |
 | `sprites/fx/glow.png`, `cone.png`, `window.png` | `art/tools/make_game_art.py` | Soft light sprites for additive light; drawn in code, no generative model | Project's own |
+
+<!-- characters:begin (scripts/tools/sync_characters.sh writes this block) -->
+
+## Characters (synced from openjar-characters v0.3.0)
+
+| File | Source / tool | Prompt or notes | License |
+| --- | --- | --- | --- |
+| `characters/jeff/jeff.glb` | `openjar-characters` `v0.3.0`, `characters/jeff/refs/jarling/jeff.glb` (Jarlings avatar kit, Blender, procedural); Godot extracts its textures (`jeff_*.png`) on import | Jeff, playable; copied unchanged | Open Jar Games, in-house (same terms as openjar-characters) |
+| `characters/jeff/pixel.png` | `openjar-characters` `v0.3.0`, `tools/pixel/residents.py` `jeff()` (Python + Pillow, drawn in code) | Jeff pixel form (the-hill pixel), front view, native size | Open Jar Games, in-house (same terms as openjar-characters) |
+| `characters/chuck/chuck.glb` | `openjar-characters` `v0.3.0`, `characters/chuck/refs/jarling/chuck.glb` (Jarlings avatar kit, Blender, procedural); Godot extracts its textures (`chuck_*.png`) on import | Chuck, playable; copied unchanged | Open Jar Games, in-house (same terms as openjar-characters) |
+| `characters/chuck/pixel.png` | `openjar-characters` `v0.3.0`, `tools/pixel/residents.py` `chuck()` (Python + Pillow, drawn in code) | Chuck pixel form (the-hill pixel), front view, native size | Open Jar Games, in-house (same terms as openjar-characters) |
+
+<!-- characters:end -->

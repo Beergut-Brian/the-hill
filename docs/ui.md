@@ -11,9 +11,10 @@ menus. Gameplay keeps the kid rules (`docs/kid-design.md`). Everything lives in 
 
 ## The look
 
-- **A stage that belongs to the menu.** A slowly turning sunburst in the game's colours, Jeff
-  (left, green `#3cc24a`) and Chuck (right, red `#e4393c`) on spotlit podiums with name plates
-  and READY! stamps, and the game's title big, tilted, with a hard ink outline.
+- **A stage that belongs to the menu.** A slowly turning sunburst in the game's colours, each
+  player's chosen character (P1 left, green `#3cc24a` podium; P2 right, red `#e4393c`; Jeff and
+  Chuck by default) on spotlit podiums with name plates and READY! stamps, and the game's title
+  big, tilted, with a hard ink outline.
 - **The game's world behind it**, out of focus, if the game opts in (`MenuSkin.backdrop`).
 - **Everything leans the same way** (`UiStyle.LEAN` = 0.2), as if it is moving: a dark wedge
   cuts in from the right with racing stripes on its edge, and carries slanted bars.
@@ -31,6 +32,7 @@ menus. Gameplay keeps the kid rules (`docs/kid-design.md`). Everything lives in 
 | Move | The new bar grows out past its mark and settles (TRANS_BACK), the old one shrinks back. |
 | Press | The bar flashes the accent and squashes (y 0.8, x 1.05), then springs back (TRANS_ELASTIC). |
 | Ready | The player's podium lights, their READY! stamp slams on from big. |
+| Choose | Left / right: the arrow beside the name kicks out, the character squashes down (70 ms), becomes the next one in a cream poof, and pops up past full size (TRANS_BACK, 320 ms); the name bounces in; the character barks (else the `char_swap` cue). Nobody free: a little head-shake and a low tak. |
 | Round starts | On the countdown's last beat the stamps flip to GO!, Play flashes and squashes, both characters jump, then three leaning stripes (cream, green, red) chase across pulling the deep colour behind them, a "ROUND 1" card holds for a beat, and the stripes wipe off into the game. |
 | Pause | The game stays visible, softened and tinted; a wedge slides in from the left edged in the pauser's colour. |
 | Settings | Its wider wedge slams in from the right; the title shrinks and the podiums step left. Meters bump when a value changes. |
@@ -52,8 +54,8 @@ UiStyle.use_skin(preload("res://data/menu_skin.tres"))   # redraws every open me
 | `accent` | Title, focused-bar block, READY line, meters; becomes `UiStyle.accent` | `#ffc23a` |
 | `accent2` | The sunburst | `#8a5cf6` |
 | `deep` | Wedge, bars, wipe cover; keep it dark | `#281a5c` |
-| `p1_character`, `p2_character` | Scenes on the podiums (Control, Node2D or Node3D, see below) | placeholder |
-| `p1_name`, `p2_name` | Name plates | JEFF, CHUCK |
+| `p1_character`, `p2_character` | Scenes on the podiums (Control, Node2D or Node3D, see below) | the player's `Roster` pick |
+| `p1_name`, `p2_name` | Fixed name plates (only for a game whose characters are fixed) | the pick's name |
 | `pixel_art`, `character_scale` | Nearest filtering and whole-number scale for 2D art | off, 1 |
 | `camera_3d_distance`, `camera_3d_height` | Podium shot for Node3D characters | 3.4, 0.9 |
 | `backdrop` | `SUNBURST`, `SCENE`, `TEXTURE` or `SCREEN` (below) | `SUNBURST` |
@@ -80,7 +82,11 @@ UiStyle.use_skin(preload("res://data/menu_skin.tres"))   # redraws every open me
 
 ### Characters on the podiums
 
-`Spots/P1/Character` and `Spots/P2/Character` are `CharacterSlot`s. They host the skin's scene:
+`Spots/P1/Character` and `Spots/P2/Character` are `CharacterSlot`s. By default (skin slots empty)
+they host the player's `Roster` pick (`RosterCharacter`): its Jarling `.glb` from
+`assets/characters/<id>/`, idling, cheering when ready; with `pixel_art` its pixel form
+(`pixel.png`, a Node2D, feet on the podium, scaled by `character_scale`). If the skin sets a scene,
+the slot hosts that instead:
 
 - **Node3D** (a Jarling `.glb` with a rig script): shown in its own little lit SubViewport with a
   transparent background (key light, rim light in `accent2`, ambient), on a slow turntable.
@@ -91,11 +97,31 @@ UiStyle.use_skin(preload("res://data/menu_skin.tres"))   # redraws every open me
 
 The kit calls `set_joined(on: bool)`, `wave()` (on ready) and `cheer()` (round starting) on the
 character if it has them; the slot itself also hops, so a character with no methods still jumps.
+A skin scene with `set_character(id: String)` is told the player's pick when it is hosted and
+whenever it changes, so a game can keep its own rig and gear and still have the chooser. A scene
+without it is shown as it is (the chooser still changes the pick and the name).
 Not joined: the character is a dark shadow and the plate pulses "[a] JOIN".
+
+## The character chooser
+
+On your podium, joined and not ready: **left / right** (stick, D-pad or keys) cycles your character
+through `Roster.roster()`, skipping the other player's pick (never the same character twice).
+Small arrows sit either side of your name and the tag above says "[lr] Pick  [a] Ready up".
+**A** readies as before and locks the pick (arrows gone); **B** un-readies and you can change again.
+Each change is written to the shared picks file at once, so the next game and the launcher start
+you as that character (`docs/roster.md`).
+
+Solo (playtest only): the one pad drives one podium at a time. **Select** (tapped on its own)
+switches the pad to the other podium: A, B and left / right then act there. Solo readies both, so
+to change: B, left / right, A; Select, B, left / right, A for the other one.
+
+With only Jeff and Chuck in the roster (characters `v0.3.0`) and both players on the stage, there
+is nobody free to switch to: left / right gives the head-shake. New characters land with a
+`sync_characters.sh` rerun, no code change.
 
 ## Screens
 
-- **Lobby** (`scenes/ui/lobby.tscn`): title top left over the stage, podiums, the wedge with Play
+- **Lobby** (`scenes/ui/lobby.tscn`): title top left over the stage, podiums (with the chooser), the wedge with Play
   (with a "2P" chip and a dot per joined player), Settings, Back to Open Jar; under them a status
   headline in the accent ("WHO'S PLAYING?", "WAITING FOR PLAYER 2", "BOTH PLAYERS READY 3") and a
   hint line; the hint strip bottom right. Join, ready, hold-to-start-solo, solo mode and
@@ -148,6 +174,7 @@ same name and it replaces the synth; no code change.
 | `ui_wipe` | wipe in (and out, pitch 1.15) | three fast whooshes |
 | `ui_card` | round card | cymbal swell |
 | `ui_pause` | pause menu opens | record-scratch dip into a low pad |
+| `char_swap` | chooser swap, when the character has no voice bark; pitch 1.08 P1, 0.92 P2 | soft puff + rising cartoon pop |
 
 `Game` still plays its own `pause` and `round_start` cues through `Audio`.
 
@@ -161,7 +188,9 @@ same name and it replaces the synth; no code change.
 | `setting_row.gd` | `SettingRow`: bar with a meter or ON / OFF chips |
 | `wedge.gd` | The dark wedge with racing stripes; tween `edge` |
 | `menu_backdrop.gd` | The stage: world (SCENE / TEXTURE / SCREEN), sunburst, floor |
-| `character_slot.gd` | `CharacterSlot`: hosts a Control, Node2D or Node3D character |
+| `character_slot.gd` | `CharacterSlot`: hosts a Control, Node2D or Node3D character; `swap_to(id)` |
+| `roster_character.gd` | `RosterCharacter.make(id, pixel)`: a Roster pick as a podium character (`roster_jarling.gd` 3D, `roster_sprite.gd` pixel) |
+| `poof.gd` | `Poof.burst(parent, at)`: the chooser's puff |
 | `showtime_wipe.gd` | `ShowtimeWipe`: the three-stripe wipe and round card |
 | `ui_sound.gd` | `UiSound`: cues with a synth fallback |
 | `hint_line.gd` | `HintLine`: glyph hints; `strip = true` for the dark strip |
@@ -188,13 +217,36 @@ children (exported builds lose those).
 
 ### Per game
 
+**Every game: spawn the chosen character.** The lobby needs nothing; the game's own player scene
+must stop hard-coding Jeff and Chuck:
+
+```gdscript
+var who := Roster.info(Roster.pick(player))      # id, name, glb, pixel, voice, barks
+var body: Node3D = load(who.glb).instantiate()   # pixel game: a Sprite2D with texture = load(who.pixel)
+rig.add_child(body)                              # same rig, collision and gear for everyone
+```
+
+Every playable character is a standard Jarling, so one collision shape, the same animations
+(`idle`, `run`, `kick`, `cheer`) and the same gear slots work for all of them. Keep player colours
+on the slot (rings, HUD, arrows) from `Players.COLOR`, never from the character. Barks:
+`Roster.bark(id)` (false until a character has recorded barks; fall back to your generic set).
+Remove `p1_name` / `p2_name` from `data/menu_skin.tres` so the plates follow the pick.
+
 - **Spaceballs** (3D): title "SPACEBALLS", accent `#ffc928`, sunburst `#2a9dff`, deep `#16296b`;
   characters: a Node3D scene holding `jeff.glb` / `chuck.glb` with the Jarling rig (play `idle`,
   `cheer()` plays `cheer`); `backdrop = SCENE`, `backdrop_scene = scenes/levels/field.tscn`
   (it has no camera, so the skin's default field camera is used). Verified in a scratch copy:
-  `handoff/shots/`.
+  `handoff/shots/`. **Chooser:** give `lobby_jarling.gd` a `set_character(id)` that swaps its
+  `Jarling/Model` for `load(Roster.info(id).glb)` (equipment re-applied with `dress()`), point
+  `lobby_jeff.tscn` / `lobby_chuck.tscn` at `assets/characters/<id>/` (drop
+  `assets/models/characters/jeff.glb`, `chuck.glb` after a `sync_characters.sh` run), clear
+  `p1_name` / `p2_name` in the skin, and have the kicker spawn from `Roster.info(Roster.pick(p)).glb`
+  with the same `jarling_rig.gd`, gear and `windup_<id>` cue falling back to a generic windup.
 - **Junk Yard Zap** (3D): title "JUNK YARD ZAP", accent `#ffb21f`, sunburst `#ff6a2b`, deep
   `#33201a`; the yard diorama as `backdrop_scene`, the JYZ Jarling rig as characters.
+  **Chooser:** leave the skin's character slots empty (or give the JYZ rig scene
+  `set_character(id)`), and spawn each zapper's body from `Roster.info(Roster.pick(p)).glb` with
+  the JYZ equipment (tool in `slot_hand_r`, backpack in `slot_back`) on any standard body.
 - **The Hill** (2D pixel art; in this repo: `data/menu_skin.tres`, `scenes/ui/hill_menu_*`): `pixel_art = true`, `character_scale = 4` (or whatever integer
   your sprites use), characters as Node2D scenes (an `AnimatedSprite2D` with feet at the origin;
   add `cheer()` to play a jump animation), title as a pixel logo PNG in `title_texture`
@@ -202,14 +254,19 @@ children (exported builds lose those).
   `#2b2a3f`). Backdrop: `SCREEN` if the hill is drawn behind the lobby, or `SCENE` with the level
   scene (2D renders into the SubViewport at 1/4 size with a `size_2d_override` of 1920x1080, so
   bring a Camera2D or design the scene for a 1920x1080 view). The bars, wedge, wipe and type stay
-  vector: that is on purpose, the menu is the grown-up's layer.
+  vector: that is on purpose, the menu is the grown-up's layer. **Chooser:** with `pixel_art` and
+  empty character slots the podiums show each pick's `pixel.png` (40x32, feet on the podium)
+  scaled by `character_scale`; in game, build the player sprite from
+  `Roster.info(Roster.pick(p)).pixel` (the front view; The Hill's own walk frames keyed by id until
+  the library ships pixel sheets per character).
 
 ## Screenshots
 
 `scripts/tools/shots.sh "" 1.5 /tmp/shots --ui=lobby-ready` (also `lobby`, `lobby-joined`,
-`lobby-hold`, `lobby-settings`, `lobby-confirm`, `pause`, `pause-settings`, `pause-confirm`, and the
+`lobby-hold`, `lobby-settings`, `lobby-confirm`, `lobby-pick` (P1 choosing, arrows), `lobby-swap`
+(P1 posed mid-swap, poof), `pause`, `pause-settings`, `pause-confirm`, and the
 motion strip `lobby-go1` .. `lobby-go6`: SETTINGS focused, up to PLAY, A + GO!, wipe, round card,
-into the game).
+into the game). Add `--ui-pixel` for a `pixel_art` skin (pixel forms on the podiums).
 
 Performance: the sunburst is one full-screen shader; the `SCENE` backdrop renders at 1/16 of the
 pixels; 3D characters render in two small SubViewports. All of it is gone once the round starts.

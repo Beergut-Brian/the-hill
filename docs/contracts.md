@@ -41,18 +41,20 @@ Window close also goes through `quit()`. Menus are for the grown-up: see `docs/u
 ### Lobby (`scenes/ui/lobby.tscn`, `scenes/ui/lobby.gd`)
 
 Start screen and main menu in one, the Showtime menu kit (`docs/ui.md`): the game's slanted title
-over a stage (sunburst, and the game's world blurred behind it if the skin asks), Jeff (P1 green,
-left) and Chuck (P2 red, right) on podiums with name plates and READY! stamps, and a wedge of
-slanted bars: Play / Settings / Back to Open Jar.
+over a stage (sunburst, and the game's world blurred behind it if the skin asks), each player's
+`Roster` pick (P1 green ring, left; P2 red, right; Jeff and Chuck by default) on podiums with name
+plates and READY! stamps, and a wedge of slanted bars: Play / Settings / Back to Open Jar.
 
 - A on a new pad: that pad joins and is ready; its podium lights up and its character waves.
+- Left / right while joined and not ready: the character chooser (`Roster`, above).
 - B: un-ready (or back out of Settings / the question). Both ready: a 3-beat countdown; on the last
   beat the stamps say GO!, both characters cheer, the three-stripe wipe covers the screen and
   `Game.finish_lobby(ready_players)` starts round 1 (with the skin's "ROUND 1" card). Un-readying
   cancels, except during the last beat.
 - A held on Play for 1.5 s by a ready player starts without the other (Play fills up).
 - Back to Open Jar asks "Leave the game?" (Stay focused first), Leave calls `Game.quit()`.
-- Solo mode readies both. A pad that joins mid-game plays from the next round.
+- Solo mode readies both. A pad that joins mid-game plays from the next round. Solo is never
+  turned on at boot by the saved setting (playtest only): only `--solo` or Select + Start.
 
 The look per game comes from one resource, `MenuSkin` (`scenes/ui/kit/menu_skin.gd`): title,
 accent / sunburst / deep colours, the two character scenes and names, the backdrop
@@ -68,8 +70,9 @@ signal player_readied(player: int, ready: bool)
 signal countdown_started()
 signal countdown_cancelled()
 signal launching()                          # the last beat: the wipe is starting
-# Spots/P1/Character, Spots/P2/Character: CharacterSlots hosting the skin's characters; the lobby
-# calls set_joined(on: bool), wave() and cheer() on the character if it has them.
+# Spots/P1/Character, Spots/P2/Character: CharacterSlots hosting the skin's characters, by default
+# the player's Roster pick; the lobby calls set_joined(on: bool), wave() and cheer() on the
+# character if it has them, and set_character(id: String) when the pick changes.
 # Backdrop, Wedge, TitleArt, Buttons/Play, Buttons/Settings, Buttons/Door, Settings, Confirm.
 ```
 
@@ -86,9 +89,76 @@ Per install, through `Save.set_setting()`, written the moment a value changes.
 const MUSIC := "music_volume"     # 0..1, default 0.8 -> Audio "Music" bus
 const SOUND := "sound_volume"     # 0..1, default 1.0 -> Audio "SFX" bus
 const SHAKE := "screen_shake"     # bool, default true
-const SOLO := "solo_playtest"     # bool, default false; on at boot turns Players solo on
+const SOLO := "solo_playtest"     # bool, default false; the toggle in Settings. Not restored at boot
 static func screen_shake() -> bool  # games check this before shaking the camera
 ```
+
+### `Roster` (`scripts/autoload/Roster.gd`)
+
+Who each player is: the playable characters (from `openjar-characters`, vendored by
+`scripts/tools/sync_characters.sh` into `assets/characters/<id>/` and `data/roster.json`) and each
+slot's pick. Player colours stay with the slot (`Players.COLOR`), never the character.
+
+```gdscript
+signal pick_changed(player: int, id: String)
+
+var data_path := "res://data/roster.json"   # tests point this at a fixture, then reload()
+var picks_path: String                       # the shared file; tests point this at user://
+var characters_tag: String                   # the openjar-characters tag the roster came from
+
+func roster() -> Array[String]               # playable ids in chooser order
+func has(id: String) -> bool
+func info(id: String) -> Dictionary          # {} if unknown, else:
+	# id, name ("Jeff"), glb ("res://assets/characters/jeff/jeff.glb" or ""),
+	# pixel ("res://assets/characters/jeff/pixel.png" or ""), voice ("res://.../voice/" or ""),
+	# barks (Array of file stems in voice/), default_for (1, 2 or 0)
+func default_for(player: int) -> String      # data/roster.json defaults.P1 / .P2
+func pick(player: int) -> String             # never "" while the roster has a character
+func set_pick(player: int, id: String) -> bool   # false (no change) if unknown or the other's pick
+func next_free(player: int, dir: int) -> String  # dir +1 / -1 through roster(), skipping the
+                                                 # other player's pick; pick(player) if none free
+func taken(id: String, by_other_than: int) -> bool
+func reload() -> void                        # re-read roster.json, args, the shared file
+func bark(id: String) -> bool                # plays a random voice bark; false if it has none
+```
+
+**Resolving a slot** at start (`reload()`), first hit that is in `roster()`:
+1. `--p1-char=<id>` / `--p2-char=<id>` (either side of `--`)
+2. the shared file `players.json[Save.profile]["P1" | "P2"]`
+3. `defaults.P1` / `defaults.P2`
+4. the first roster id the other player has not got
+
+Unknown, removed or resident ids are skipped, never an error. If both slots resolve to the same
+id, P2 moves to `next_free(P2, 1)`. No two players are ever the same character.
+
+**The shared picks file** (`picks_path`): `OS.get_data_dir() + "/openjar/players.json"` (Linux
+`~/.local/share/openjar/players.json`), outside every game's `user://`. Shared with every Open Jar
+game and the launcher:
+
+```json
+{ "p1": { "P1": "jeff", "P2": "chuck" }, "kid": { "P1": "chuck", "P2": "jeff" } }
+```
+
+Keyed by save profile, then slot. Written the moment a pick changes (`set_pick`): read the file,
+change only this profile's slot, keep every other key, write `players.json.tmp`, rename over
+`players.json` (folder created if missing). A missing or broken file reads as empty. Roster never
+touches the game's own `user://` saves.
+
+**Launch args**: the launcher passes `--profile=<id> --p1-char=<id> --p2-char=<id>`. They win over
+the file; a pick changed in the game is still written to the file.
+
+**Spawning the chosen character** (game code; `docs/ui.md` "Per game"):
+
+```gdscript
+var who := Roster.info(Roster.pick(player))
+var body: Node = load(who.glb).instantiate()      # 3D; a pixel game uses load(who.pixel)
+add_child(body)
+```
+
+**The chooser** (lobby): joined and not ready, left / right (stick or D-pad) calls
+`Roster.set_pick(p, Roster.next_free(p, dir))`; the podium swaps with a squash/pop and a poof, the
+plate shows the new name, the character barks (else the `char_swap` cue). Ready: left / right does
+nothing; B un-readies. Solo: Select picks which podium the pad drives (A, B and left / right).
 
 ### `Players` (`scripts/autoload/Players.gd`)
 

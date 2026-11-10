@@ -27,14 +27,18 @@ enum Backdrop {
 @export var deep := Color("281a5c")
 
 @export_group("Characters")
-## Player 1's character on the left podium (Jeff in Open Jar games). Any scene: a Control or Node2D
-## is placed on the podium (feet at its origin for Node2D), a Node3D is shown in its own little
-## lit SubViewport. The kit calls set_joined(on: bool), wave() and cheer() on it if it has them.
-## Empty: the template's placeholder.
+## Player 1's character on the left podium. Empty (the default): whoever the player picked in the
+## chooser (Roster: its .glb, or its pixel form with pixel_art). A game can override with any
+## scene: a Control or Node2D is placed on the podium (feet at its origin for Node2D), a Node3D is
+## shown in its own little lit SubViewport. The kit calls set_joined(on: bool), wave() and cheer()
+## on it if it has them, and set_character(id: String) with the Roster pick: give your scene that
+## method to keep the chooser working with your own rig and gear.
 @export var p1_character: PackedScene
 @export var p2_character: PackedScene
-@export var p1_name := "JEFF"
-@export var p2_name := "CHUCK"
+## Name plates. Empty (the default): the Roster pick's name ("JEFF"). Set one only for a game whose
+## characters are fixed.
+@export var p1_name := ""
+@export var p2_name := ""
 ## Pixel art: nearest filtering and whole-number scaling for 2D characters and backdrops.
 @export var pixel_art := false
 ## Node2D / Control characters are scaled by this (pixel games: a whole number, e.g. 4).
@@ -75,7 +79,11 @@ func title() -> String:
 
 
 func player_name(player: int) -> String:
-	return p1_name if player == 0 else p2_name
+	var fixed := p1_name if player == 0 else p2_name
+	if fixed != "":
+		return fixed
+	var who := Roster.info(Roster.pick(player))
+	return str(who.name).to_upper() if not who.is_empty() else "PLAYER %d" % (player + 1)
 
 
 func character(player: int) -> PackedScene:

@@ -29,6 +29,7 @@ Events="*res://scripts/autoload/Events.gd"
 Inventory="*res://scripts/autoload/Inventory.gd"
 Progress="*res://scripts/autoload/Progress.gd"
 TimeOfDay="*res://scripts/autoload/TimeOfDay.gd"
+Roster="*res://scripts/autoload/Roster.gd"
 
 [display]
 

@@ -16,12 +16,15 @@ var _readies: Array = []
 
 var _real_settings := ""
 var _real_profile := ""
+var _real_picks := ""
 
 
 func before() -> void:
 	_real_settings = Save.settings_path
 	_real_profile = Save.profile
 	Save.settings_path = "user://test_settings_lobby.json"
+	_real_picks = Roster.picks_path
+	Roster.picks_path = "user://test_lobby_players.json"
 	Game.quit_exits = false
 	Game.quit_requested.connect(_on_quit)
 	Game.lobby_ready.connect(_on_lobby_ready)
@@ -37,6 +40,9 @@ func after() -> void:
 	Save.profile = _real_profile
 	Save._load()
 	Save.reload_settings()
+	DirAccess.remove_absolute(Roster.picks_path)
+	Roster.picks_path = _real_picks
+	Roster.reload()
 
 
 func before_test() -> void:
@@ -333,6 +339,7 @@ func test_saved_solo_stays_off_at_boot() -> void:
 	_boot()
 	await await_idle_frame()
 	assert_bool(Players.solo).is_false()
+	assert_bool(_lobby().readied[P1]).is_false()
 
 
 # --- pause menu ----------------------------------------------------------------
