@@ -27,6 +27,9 @@ static func run(lobby: Control) -> void:
 		Players.join_virtual(P2)
 		lobby.freeze = false
 		Game.finish_lobby([P1, P2])
+		# Let the game run a moment first: worlds that set up their views while playing (split
+		# screen, The Hill's director) are drawn behind the pause blur, as in a real pause.
+		await lobby.get_tree().create_timer(1.0).timeout
 		Game.pause()
 		var pm: Node = lobby.get_tree().get_first_node_in_group("openjar_pause_menu")
 		pm.paused_by = P2
