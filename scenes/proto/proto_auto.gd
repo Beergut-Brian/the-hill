@@ -13,6 +13,8 @@ var step := 0
 var step_time := 0.0
 var done := false
 var _intent := {0: IDLE.duplicate(), 1: IDLE.duplicate()}
+var _wet_time := {0: 0.0, 1: 0.0}
+var _floated := {}
 
 ## [name, timeout seconds]; conditions and intents live in _drive().
 var _steps: Array = [
@@ -39,6 +41,7 @@ func intent_for(player: int) -> Dictionary:
 
 
 func _physics_process(delta: float) -> void:
+	_log_floating(delta)
 	if done or proto.players.size() < 2:
 		return
 	step_time += delta
@@ -98,3 +101,16 @@ func _idle_up_top(player: int) -> void:
 
 func _go(player: int, move: Vector2, dig := false, jump := false) -> void:
 	_intent[player] = {"move": move, "dig": dig, "jump": jump}
+
+
+## "P<n> floating" once, after half a second in water without touching the floor.
+func _log_floating(delta: float) -> void:
+	for p in proto.players:
+		var pl: ProtoPlayer = proto.players[p]
+		if pl.world == null or not pl.in_water() or pl.is_on_floor():
+			_wet_time[p] = 0.0
+			continue
+		_wet_time[p] = _wet_time.get(p, 0.0) + delta
+		if _wet_time[p] >= 0.5 and not _floated.has(p):
+			_floated[p] = true
+			proto.log_event("P%d floating" % (p + 1))

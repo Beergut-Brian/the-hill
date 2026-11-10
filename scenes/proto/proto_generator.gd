@@ -11,7 +11,10 @@ const LANDING := Rect2i(96, 9, 8, 3)        # x 96..103, y 9..11; floor is row 1
 const CAGE := Rect2i(99, 10, 2, 2)          # bottom of the shaft: the underground cage zone
 const BOULDER_CAVITY := Rect2i(109, 8, 2, 2)
 const PROP_CAVITY := Rect2i(113, 8, 3, 2)
-const WATER_POCKET := Rect2i(119, 6, 8, 4)  # floor is row 10: the tunnel breaches it
+## x 118..126, y 9..15. The tunnel (rows 10..11, floor row 12) breaks into its left wall at x 117:
+## rows 9..11 (27 cells) spill out and level along the tunnel as a one-high sheet, rows 12..15
+## (36 cells) sit below the tunnel floor and stay as a 4-deep pool a player floats in.
+const WATER_POCKET := Rect2i(118, 9, 9, 7)
 const CALM := Rect2i(88, 0, 47, 19)         # x 88..134, y 0..18: no noise caves here
 const STRANGE_FROM := 294
 

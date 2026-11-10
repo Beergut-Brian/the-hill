@@ -144,17 +144,58 @@ func test_boulder_sleeps_then_falls_when_undercut() -> void:
 	assert_array(landed).contains([b])
 
 
-func test_water_pocket_pours_into_the_tunnel() -> void:
+## The pocket is deeper than the tunnel: breached from the side, its top spills along the tunnel as
+## a one-high sheet and the part below the tunnel floor stays as a pool a player floats in.
+func test_water_pocket_pours_into_the_tunnel_and_a_player_floats() -> void:
 	_make()
 	await _physics(2)
 	var w := _proto.world
-	assert_bool(w.has_water(Vector2i(120, 8))).is_true()
-	assert_bool(w.has_water(Vector2i(120, 10))).is_false()
-	w.dig(Vector2i(120, 10))
-	w.dig(Vector2i(120, 11))
-	for i in 6:
+	w.water_hz = 0.0                                     # step the water by hand
+	var pocket := ProtoGenerator.WATER_POCKET
+	var floor_row := ProtoGenerator.LANDING.end.y        # 12: the tunnel floor
+	for y in range(pocket.position.y, pocket.end.y):
+		for x in range(pocket.position.x, pocket.end.x):
+			assert_bool(w.has_water(Vector2i(x, y))).is_true()
+	assert_int(pocket.end.y - floor_row).is_greater_equal(3)
+	var n := w.water_count()
+	for x in range(ProtoGenerator.LANDING.end.x, pocket.position.x):   # dig the tunnel up to the wall
+		w.dig(Vector2i(x, floor_row - 2))
+		w.dig(Vector2i(x, floor_row - 1))
+	for i in 300:
 		w.step_water()
-	assert_bool(w.has_water(Vector2i(120, 10)) or w.has_water(Vector2i(120, 11))).is_true()
+	assert_int(w.water_count()).is_equal(n)
+	# Poured: a level sheet along the tunnel floor, one cell high.
+	var sheet := 0
+	for x in range(ProtoGenerator.LANDING.end.x, pocket.position.x):
+		if w.has_water(Vector2i(x, floor_row - 1)):
+			sheet += 1
+		assert_bool(w.has_water(Vector2i(x, floor_row - 2))).is_false()
+	assert_int(sheet).is_greater_equal(8)
+	var top := 0
+	for x in range(pocket.position.x, pocket.end.x):
+		if w.has_water(Vector2i(x, pocket.position.y)):
+			top += 1
+	assert_int(top).is_less_equal(1)                    # the pocket's top row emptied
+	# The pool below the tunnel floor is still full.
+	for y in range(floor_row, pocket.end.y):
+		for x in range(pocket.position.x, pocket.end.x):
+			assert_bool(w.has_water(Vector2i(x, y))).is_true()
+	# A player dropped into the pool floats: wet, off the floor, never down at the bottom.
+	var p := _join(Players.P1)
+	var cs := float(w.shape.cell_size)
+	_proto.teleport(Players.P1, FoundationProto.UNDERGROUND, Vector2((pocket.position.x + 4.5) * cs, (floor_row - 1) * cs))
+	var wet := 0
+	var grounded := 0
+	var deepest := 0.0
+	for i in 150:
+		await get_tree().physics_frame
+		if i >= 30:                                      # it bobs at the surface, never stands
+			wet += 1 if p.in_water() else 0
+			grounded += 1 if p.is_on_floor() else 0
+			deepest = maxf(deepest, p.position.y)
+	assert_int(grounded).is_equal(0)
+	assert_int(wet).is_greater_equal(40)
+	assert_float(deepest).is_less(pocket.end.y * cs - cs)
 
 
 # --- split -------------------------------------------------------------------------------------
