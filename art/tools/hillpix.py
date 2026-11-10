@@ -132,7 +132,7 @@ PALETTES = {
     "c": dict(
         key="c", name="C  Lantern", mood="Late-afternoon adventure. Deep jewel layers, dark tunnels, glowing finds.",
         k=_K_C,
-        layers=dict(top="#6e4230", clay="#c9581c", stone="#43568c", ice="#6cc4f0", crys="#7a35d0",
+        layers=dict(top="#6e4230", clay="#cc7420", stone="#43568c", ice="#6cc4f0", crys="#7a35d0",
                     cav="#6a2238", strange="#16304a", edge="#666e7c"),
         back_override=dict(ice="#1f4f90"),
         colors=dict(sky1="#2f7fe0", sky2="#a8dcff", cloud="#fff6e0", sun="#ffe95c", hill="#6fae30",

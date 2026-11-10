@@ -112,7 +112,7 @@ Shadow hue 240°, light hue 50°, 12° shift per step. Outline `#16131f`.
 | Layer | deep | low | mid | high | wall | wall dark |
 | --- | --- | --- | --- | --- | --- | --- |
 | Topsoil | `#391014` | `#4f211c` | `#6e4230` | `#b58e69` | `#2c1816` | `#231312` |
-| Clay | `#680006` | `#911d09` | `#c9581c` | `#eaa553` | `#501d12` | `#40170e` |
+| Clay | `#6a0900` | `#93320b` | `#cc7420` | `#ecbd57` | `#522814` | `#422010` |
 | Stone | `#171749` | `#282c65` | `#43568c` | `#799dc7` | `#1e2038` | `#181a2d` |
 | Ice | `#243c7c` | `#4073ad` | `#6cc4f0` | `#96f1ff` | `#1f4f90` | `#193f73` |
 | Crystal | `#0f0a6c` | `#381a96` | `#7a35d0` | `#bf69ee` | `#2b1b53` | `#221642` |
@@ -140,7 +140,7 @@ Player pop (CIE76 ΔE; under 25 would be a fail, 40+ is comfortable):
 | Layer | green on tile | green on wall | red on tile | red on wall |
 | --- | --- | --- | --- | --- |
 | Topsoil | 90 | 101 | 55 | 76 |
-| Clay | 103 | 102 | 27 | 57 |
+| Clay | 90 | 95 | 40 | 59 |
 | Stone | 111 | 108 | 92 | 89 |
 | Ice | 91 | 118 | 108 | 99 |
 | Crystal | 170 | 128 | 108 | 90 |
@@ -148,4 +148,4 @@ Player pop (CIE76 ΔE; under 25 would be a fail, 40+ is comfortable):
 | Strangestone | 103 | 106 | 93 | 92 |
 | Edgestone | 86 | 96 | 81 | 84 |
 
-Worst case ΔE 27. Environment colours inside a player's reserved hue band: none.
+Worst case ΔE 40. Environment colours inside a player's reserved hue band: none.
