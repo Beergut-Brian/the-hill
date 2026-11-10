@@ -144,7 +144,7 @@ func _ready() -> void:
 		var beat := HillBeatRunner.beat_arg(OS.get_cmdline_user_args() + OS.get_cmdline_args())
 		var runner: Node = HillDemoRunner.new()
 		if beat != "":
-			runner = HazardBeats.new() if HazardBeats.HAZARD_BEATS.has(beat) else VehicleBeats.new() if VehicleBeats.VEHICLE_BEATS.has(beat) else PolishBeats.new() if PolishBeats.POLISH_BEATS.has(beat) else ArcBeats.new() if ArcBeats.ARC_BEATS.has(beat) else HillBeatRunner.new()
+			runner = TwoDriverBeats.new() if TwoDriverBeats.TWO_BEATS.has(beat) else HazardBeats.new() if HazardBeats.HAZARD_BEATS.has(beat) else VehicleBeats.new() if VehicleBeats.VEHICLE_BEATS.has(beat) else PolishBeats.new() if PolishBeats.POLISH_BEATS.has(beat) else ArcBeats.new() if ArcBeats.ARC_BEATS.has(beat) else HillBeatRunner.new()
 		runner.set("game", self)
 		if beat != "":
 			runner.set("beat", beat)
