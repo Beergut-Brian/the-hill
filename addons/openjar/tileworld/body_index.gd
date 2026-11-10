@@ -4,7 +4,9 @@
 ## - props: support cell -> props standing there; removing one makes the prop re-check its support.
 ## - awake cap: past world.max_awake_bodies, wake requests wait in a FIFO queue.
 ## - bodies whose chunk is not loaded are frozen; on load they come back asleep (awake if their
-##   support went away meanwhile, or if they were falling when frozen).
+##   support went away meanwhile, or if they were falling when frozen). Every body is checked when a
+##   chunk loads or frees (sync_frozen); otherwise only awake bodies can leave the loaded area, so
+##   only they are checked (sync_awake).
 extends RefCounted
 
 var world: TileWorld
@@ -12,6 +14,8 @@ var bodies: Array[FallingBody] = []
 var resting: Dictionary[Vector2i, Array] = {}
 var props: Dictionary[Vector2i, Array] = {}
 var queue: Array[FallingBody] = []
+## Bodies run through _sync_one by the last sync_frozen / sync_awake call (tests read it).
+var synced_last := 0
 
 
 func _init(p_world: TileWorld) -> void:
@@ -43,11 +47,7 @@ func remove(b: FallingBody) -> void:
 
 
 func awake_count() -> int:
-	var n := 0
-	for b in bodies:
-		if not b.sleeping and not b.freeze:
-			n += 1
-	return n
+	return _awake_list().size()
 
 
 func request_wake(b: FallingBody) -> void:
@@ -88,12 +88,31 @@ func wake_resting_on(cell: Vector2i) -> void:
 		request_wake(b)
 
 
+## Every body: freeze those whose chunk is gone, thaw those whose chunk came back.
 func sync_frozen() -> void:
+	synced_last = 0
 	for b in bodies.duplicate():
 		if is_instance_valid(b):
 			_sync_one(b)
+			synced_last += 1
 		else:
 			bodies.erase(b)
+
+
+## Only awake bodies (nothing else moves): freeze those that left the loaded chunks.
+func sync_awake() -> void:
+	synced_last = 0
+	for b in _awake_list():
+		_sync_one(b)
+		synced_last += 1
+
+
+func _awake_list() -> Array[FallingBody]:
+	var out: Array[FallingBody] = []
+	for b in bodies:
+		if is_instance_valid(b) and not b.sleeping and not b.freeze:
+			out.append(b)
+	return out
 
 
 func add_prop(p: BreakableProp) -> void:

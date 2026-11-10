@@ -244,7 +244,10 @@ func update_chunks(budget: int = -1) -> void:
 			_free_chunk(k)
 			freed += 1
 		_changed_chunks = made + freed
-	_bodies.sync_frozen()
+	if _changed_chunks > 0:
+		_bodies.sync_frozen()
+	else:
+		_bodies.sync_awake()
 
 
 func local_pos(n: Node2D) -> Vector2:

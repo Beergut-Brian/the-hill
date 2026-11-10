@@ -655,3 +655,39 @@ func test_edited_chunk_reloads_with_edits_and_untouched_chunk_without() -> void:
 	b.load_save(data)
 	assert_bool(b._edited_chunks.has(Vector2i(0, 0))).is_true()
 	assert_bool(b._edited_chunks.has(Vector2i(2, 0))).is_true()
+
+
+# --- 10. body bookkeeping per frame ------------------------------------------------------------
+
+func test_only_awake_bodies_are_synced_without_chunk_changes() -> void:
+	var w := _world(RectShape.new(256, 64, 32), 0)
+	var t := _tracker(w, Vector2i(10, 10))
+	w.update_chunks()
+	var resting: Array[FallingBody] = []
+	for i in 6:
+		var c := Vector2i(2 + i * 4, 10)
+		w.set_tile(c, 0)
+		var b := FallingBody.new()
+		b.position = w.shape.center_of(c)
+		w.add_child(b)
+		resting.append(b)
+	for b in resting:
+		await _await_sleep(b)
+	w.update_chunks()
+	assert_int(w._bodies.synced_last).is_equal(0)          # nothing awake, nothing changed
+	# An awake body walks out of the loaded chunk with no chunk change: it is frozen.
+	_carve(w, _box(Vector2i(28, 12), Vector2i.DOWN, Vector2i.RIGHT, [0], range(0, 4)))
+	var roller := FallingBody.new()
+	roller.position = w.shape.center_of(Vector2i(28, 12))
+	w.add_child(roller)
+	w.update_chunks()
+	assert_int(w._bodies.synced_last).is_equal(1)
+	roller.position = w.shape.center_of(Vector2i(33, 12))   # chunk (1, 0): not loaded
+	w.update_chunks()
+	assert_bool(roller.freeze).is_true()
+	# A chunk change checks every body.
+	t.position = w.shape.center_of(Vector2i(40, 10))
+	w.update_chunks()
+	assert_int(w._bodies.synced_last).is_equal(7)
+	assert_bool(roller.freeze).is_false()
+
