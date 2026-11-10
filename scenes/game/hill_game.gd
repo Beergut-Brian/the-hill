@@ -1,4 +1,4 @@
-## The Hill at play: one ScreenDirector (zoom 2.0) hosting Hillville and the Underground, the
+## The Hill at play: one ScreenDirector (zoom from data/camera.tres, 2.0) hosting Hillville and the Underground, the
 ## players (drop-in: P2 sleeps in the Front Loader's bucket until P2 joins), the vehicles (parked
 ## nodes; a driven vehicle *is* its driver), the elevator, the save and the HUD.
 ## Tree: Game (this) > Director (> Hud, BookLayer), Build (BuildController), Elevator, Save.
@@ -38,6 +38,8 @@ var town: TownResidents
 var cows: BarnCows
 ## V-07 / W-17: short camera kicks (big scoops, boulder landings, the snore).
 var kick: ScreenKick
+## S-06: the camera leads in the dig / drive direction; bigger vehicles zoom out (data/camera.tres).
+var camera: CameraLead
 ## Up top right of the Caveman's fire: every treasure found, by layer.
 var shelf: TreasureShelf
 ## The four ruins and the buildings they become (restore, door lights, Lost & Found, the crew).
@@ -54,7 +56,9 @@ func _ready() -> void:
 	name = "Game"
 	director = ScreenDirector.new()
 	director.name = "Director"
-	director.zoom = 2.0
+	camera = CameraLead.new()
+	camera.game = self
+	director.zoom = camera.tuning.zoom   # S-07: 2.0 until the TV check (data/camera.tres)
 	add_child(director)
 	hillville = _make(HILLVILLE_SCENES) as Hillville
 	underground = UNDERGROUND_SCENE.instantiate()
@@ -82,6 +86,7 @@ func _ready() -> void:
 	kick = ScreenKick.new()
 	kick.game = self
 	add_child(kick)
+	add_child(camera)
 	var sound := HillAudio.new()   # Audio lane: engines, layered music, snore, barks
 	sound.game = self
 	add_child(sound)
@@ -144,7 +149,7 @@ func _ready() -> void:
 		var beat := HillBeatRunner.beat_arg(OS.get_cmdline_user_args() + OS.get_cmdline_args())
 		var runner: Node = HillDemoRunner.new()
 		if beat != "":
-			runner = VehicleBeats.new() if VehicleBeats.VEHICLE_BEATS.has(beat) else PolishBeats.new() if PolishBeats.POLISH_BEATS.has(beat) else ArcBeats.new() if ArcBeats.ARC_BEATS.has(beat) else HillBeatRunner.new()
+			runner = CameraBeats.new() if CameraBeats.CAMERA_BEATS.has(beat) else VehicleBeats.new() if VehicleBeats.VEHICLE_BEATS.has(beat) else PolishBeats.new() if PolishBeats.POLISH_BEATS.has(beat) else ArcBeats.new() if ArcBeats.ARC_BEATS.has(beat) else HillBeatRunner.new()
 		runner.set("game", self)
 		if beat != "":
 			runner.set("beat", beat)
