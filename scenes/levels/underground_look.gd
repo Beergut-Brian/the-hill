@@ -9,6 +9,9 @@
 ## - the residents idling where GAME.md puts them (the gnome crew of three walled into the Gnome
 ##   Room), and a warm light at the Bottom;
 ## - set_ice_warm: the Dragon Perch's warm Ice layer (softer, warmer darkness, a wash, drips).
+## - lit layers (B-07): the first Lighthouse up top lights Stone, each more lights the next layer
+##   down. A lit band keeps LIT_SHARE of its darkness (warm lamp tint), fades in over LIT_FADE when
+##   it happens live, and its landing gets a lighthouse lantern with a sweeping beam.
 ## Every piece is skipped when its sheet is missing, so the game still runs on the flat look.
 class_name UndergroundLook
 extends Node2D
@@ -35,7 +38,24 @@ const WARM_ICE_BACK := Color(1.0, 0.62, 0.3, 0.16)
 const DRIP_EVERY := 0.28
 const DRIP := Color(0.75, 0.9, 1.0)
 
+## Lighthouses: which layer the first one lights, and how a lit band looks.
+const LIT_FIRST := &"stone"
+const LIT_SHARE := 0.22                         # share of the band's darkness left when lit
+const LIT_TINT := Color(0.3, 0.22, 0.08)        # the dark that is left goes warm lamp-gold
+const LIT_FADE := 1.2                           # seconds, when a Lighthouse goes up live
+const LIT_STEPS := 6                            # darkness rewrites during the fade (each re-bakes chunks)
+const BEACON_LIGHT := Vector2(230.0, 1.0)
+const BEAM := Color(1.0, 0.86, 0.45)
+
 var u: Underground
+## Layers lit by Lighthouses (Progress.count_buildings(&"lighthouse"), clamped to the layers below).
+var lit_layers := 0
+var _lit_k := {}                     # layer index -> 0..1 shown
+var _lit_fade := -1.0                # seconds into a live fade, -1 when idle
+var _lit_poll := 0.0
+var _lit_shown_steps := 0
+var _beacons := {}                   # layer index -> Node2D (light + lantern + beam)
+var _beam_t := 0.0
 var lamps: Array[Node2D] = []
 var residents: Dictionary = {}       # StringName -> SheetSprite
 var ice_warm := false
@@ -56,6 +76,7 @@ func build(p_u: Underground) -> void:
 	_treasures()
 	_cage_lamps()
 	_residents()
+	_sync_lit(false)
 
 
 # --- backdrop ----------------------------------------------------------------------------------
@@ -307,13 +328,7 @@ func set_ice_warm(on: bool) -> void:
 	if on == ice_warm:
 		return
 	ice_warm = on
-	var bands: Array = []
-	for l: LayerData in u.layers():
-		var warm := on and l.id == &"ice"
-		bands.append({"from": l.depth_from, "to": l.depth_to,
-				"darkness": l.darkness * (WARM_ICE_DARK if warm else 1.0),
-				"tint": WARM_ICE_TINT if warm else l.light_tint})
-	u.world.set_darkness(bands)
+	_apply_bands()
 	if on and _ice_back == null:
 		_ice_back = Node2D.new()
 		_ice_back.name = "IceWarm"
@@ -345,7 +360,103 @@ func _draw_ice_back() -> void:
 	_ice_back.draw_rect(_ice_band(), WARM_ICE_BACK)
 
 
+## The darkness bands from LayerData, with the warm Ice (Dragon Perch) and the Lighthouse-lit layers.
+func _apply_bands() -> void:
+	var bands: Array = []
+	var ls := u.layers()
+	for i in ls.size():
+		var l: LayerData = ls[i]
+		var warm := ice_warm and l.id == &"ice"
+		var d := l.darkness * (WARM_ICE_DARK if warm else 1.0)
+		var tint: Color = WARM_ICE_TINT if warm else l.light_tint
+		var k: float = _lit_k.get(i, 0.0)
+		bands.append({"from": l.depth_from, "to": l.depth_to,
+				"darkness": lerpf(d, d * LIT_SHARE, k), "tint": tint.lerp(LIT_TINT, k)})
+	u.world.set_darkness(bands)
+
+
+## The layer indices `n` Lighthouses light: Stone first, then one more each, down to the Bottom.
+func lit_indices(n: int) -> Array[int]:
+	var out: Array[int] = []
+	var first := _layer_of(LIT_FIRST)
+	if first < 0:
+		return out
+	for i in range(first, mini(first + n, u.layers().size())):
+		out.append(i)
+	return out
+
+
+## How lit layer `i` is right now (0 dark .. 1 lit); the fade moves it.
+func lit_amount(i: int) -> float:
+	return float(_lit_k.get(i, 0.0))
+
+
+## Reads the Lighthouse count; a change lights (or unlights) layers, fading when `animate`.
+func _sync_lit(animate: bool) -> void:
+	var n := Progress.count_buildings(&"lighthouse")
+	if n == lit_layers:
+		return
+	lit_layers = n
+	var want := lit_indices(n)
+	for i in _lit_k.keys():
+		if not want.has(i):
+			_lit_k.erase(i)
+			_remove_beacon(i)
+	for i in want:
+		if not _beacons.has(i):
+			_add_beacon(i)
+		if not _lit_k.has(i):
+			_lit_k[i] = 0.0 if animate else 1.0
+	if animate:
+		_lit_fade = 0.0
+		_lit_shown_steps = 0
+	_apply_bands()
+
+
+## A lighthouse lantern on the landing's wall (registered light, gold glow, sweeping beam).
+func _add_beacon(i: int) -> void:
+	var r := u.cage_rect(i)
+	var b := _light_node(u, Vector2(r.end.x + 30, r.position.y - 6), BEACON_LIGHT, BEAM, 0.45)
+	b.name = "Beacon%d" % i
+	var beam := Node2D.new()
+	beam.name = "Beam"
+	beam.z_index = GLOW_Z
+	beam.z_as_relative = false
+	var mat := CanvasItemMaterial.new()
+	mat.blend_mode = CanvasItemMaterial.BLEND_MODE_ADD
+	beam.material = mat
+	beam.draw.connect(_draw_beacon.bind(beam, i))
+	b.add_child(beam)
+	_beacons[i] = b
+
+
+func _remove_beacon(i: int) -> void:
+	var b: Node2D = _beacons.get(i)
+	_beacons.erase(i)
+	if b != null:
+		u.world.remove_light(b)
+		b.queue_free()
+
+
+## A little gold lantern and a soft wedge of light that sweeps left and right through the layer.
+func _draw_beacon(ci: Node2D, i: int) -> void:
+	var k := lit_amount(i)
+	var a := PI + 0.9 * sin(_beam_t * 0.9 + i)        # sweeps across the layer, never up into rock
+	var reach := 260.0
+	var half := 0.16
+	var pts := PackedVector2Array([Vector2.ZERO,
+			Vector2(cos(a - half), sin(a - half) * 0.35) * reach,
+			Vector2(cos(a + half), sin(a + half) * 0.35) * reach])
+	ci.draw_colored_polygon(pts, Color(BEAM, 0.22 * k))
+	var mirror := PackedVector2Array([Vector2.ZERO, Vector2(-pts[1].x, pts[1].y), Vector2(-pts[2].x, pts[2].y)])
+	ci.draw_colored_polygon(mirror, Color(BEAM, 0.12 * k))
+	ci.draw_rect(Rect2(-5, -7, 10, 13), OUTLINE)
+	ci.draw_rect(Rect2(-4, -6, 8, 11), Color(GOLD, 0.6 + 0.4 * k))
+	ci.draw_rect(Rect2(-2, -4, 4, 4), Color(1, 1, 0.9, 0.5 + 0.5 * k))
+
+
 func _process(delta: float) -> void:
+	_lit_process(delta)
 	if not ice_warm or _ice_fx == null:
 		return
 	var band := _ice_band()
@@ -395,3 +506,25 @@ func _draw_drips() -> void:
 		else:
 			var k: float = d.splash / 0.3
 			_ice_fx.draw_arc(p, 2.0 + 5.0 * k, PI, TAU, 8, Color(DRIP, 0.8 * (1.0 - k)), 1.2)
+
+
+func _lit_process(delta: float) -> void:
+	_lit_poll -= delta
+	if _lit_poll <= 0.0:
+		_lit_poll = 0.25
+		_sync_lit(true)
+	if _lit_fade >= 0.0:
+		_lit_fade += delta
+		var k := clampf(_lit_fade / LIT_FADE, 0.0, 1.0)
+		var step := ceili(k * LIT_STEPS)
+		if step != _lit_shown_steps:
+			_lit_shown_steps = step
+			for i in _lit_k.keys():
+				_lit_k[i] = maxf(float(_lit_k[i]), float(step) / LIT_STEPS)
+			_apply_bands()
+		if k >= 1.0:
+			_lit_fade = -1.0
+	if not _beacons.is_empty():
+		_beam_t += delta
+		for b in _beacons.values():
+			(b as Node2D).get_node(^"Beam").queue_redraw()

@@ -47,7 +47,7 @@ X out of scope, Q open questions, F build phases.
 | C-10 | S1 Notes | "Game name: The Hill. Town name: Hillville" | built | assets/ui/the_hill_logo.png; .scratch/shots/lobby/t003.0s.png | The town name "Hillville" never appears on screen |
 | C-11 | S1 Players | Both players share one inventory (the shaft pile) and one town | built | tests/test_inventory.gd::test_spend_is_all_or_nothing; tests/test_hill_game.gd::test_ride_down_to_deepest_and_up_dumps_backpacks | |
 | C-12 | S1 Loop | Load in: Hillville is as you left it | built | tests/test_hill_build.gd::test_hillville_save_round_trip, ::test_rebuild_from_progress | |
-| C-13 | S1 Loop | Session start: the gnome crew has dug overnight and left a pile at the shaft | missing | scripts/data/rules.gd `gnome_award` (tests/test_data.gd::test_gnome_award) | The rule exists and is tested, but nothing in the game calls it. The save has no crew timestamp |
+| C-13 | S1 Loop | Session start: the gnome crew has dug overnight and left a pile at the shaft | built | tests/test_resident_arcs.gd::test_the_crew_award_runs_on_load_from_the_saved_stamp; tests/test_polish.gd::test_every_save_stamps_the_time_and_a_clock_set_back_gives_nothing; handoff/frames/crew_overnight_march.png | Wired by the resident-arcs merge (b9966b0): on load with the Gnome Village standing, `ruins.crew_return(save.away_seconds)` piles blocks at the shaft and the crew marches out. Checked and framed by polish-2 |
 | C-14 | S1 Loop | Backpack full is never a hard stop; the icon goes round and happy | built | tests/test_hill_game.gd::test_full_backpack_never_stops_digging; scenes/game/hud.gd | |
 | C-15 | S1 Loop | Ride up and the backpack dumps at the shaft pile | built | tests/test_hill_game.gd::test_ride_down_to_deepest_and_up_dumps_backpacks | |
 | C-16 | S1 Loop | Treasures unlock one specific thing each (car → Garage, Gnome Room → Gnome Village) | partial | tests/test_vehicles_treasures.gd::test_each_garage_gives_the_next_vehicle_and_the_drill_garage_waits_for_the_tooth | The car and the tooth unlock things. The Gnome Room → Village link is only on a branch |
@@ -76,21 +76,21 @@ X out of scope, Q open questions, F build phases.
 | W-07 | S1 Clay | Dim; headlamp | built | tests/test_hazards_residents.gd::test_darkness_values_load_from_data; .scratch/shots/rescue/t005.0s.png | |
 | W-08 | S1 Stone | Gnome Room, giant tooth, dinosaur skeleton | built | data/treasures/{gnome_room,giant_tooth,dino_skeleton}.tres | |
 | W-09 | S1 Stone | Rolling boulders: bonk, stars, fine | built | tests/test_hazards_residents.gd::test_a_falling_boulder_bonks_briefly_and_takes_nothing | |
-| W-10 | S1 Stone | Dark; needs the Lighthouse | partial | data/layers/stone.tres (darkness 0.8) | It is dark, but the Lighthouse doesn't light it (B-07) |
+| W-10 | S1 Stone | Dark; needs the Lighthouse | built | tests/test_polish.gd::test_a_lighthouse_lights_stone_and_each_more_lights_the_next_layer_down; handoff/frames/lighthouse_before_dark_stone.png, lighthouse_lit_stone.png | Dark until the first Lighthouse (B-07) |
 | W-11 | S1 Ice | Ice (slippery), snow, frozen fish | partial | data/blocks/ice.tres (`slippery = true`) | No code reads `slippery`. There is no snow and no frozen fish |
 | W-12 | S1 Ice | A frozen caveman who wakes and waves; a pirate chest | built | tests/test_hazards_residents.gd::test_the_caveman_thaws_once_and_it_saves; data/treasures/pirate_chest.tres | |
 | W-13 | S1 Ice | Hazard: slide into holes | missing | none | Needs slippery ice first (W-11) |
 | W-14 | S1 Crystal | Crystal is worth the most; lava pockets bounce you, no damage | partial | data/blocks/crystal.tres | There are no lava pockets (only the data fields) |
 | W-15 | S1 Crystal | The Dragon Egg; self-lit | built | data/treasures/dragon_egg.tres; .scratch/shots/crystal/t005.0s.png | |
 | W-16 | S1 Bottom | Huge cavern; the Dragon asleep around the last treasure; warm | built | .scratch/shots/reveal/t005.0s.png | |
-| W-17 | S1 Bottom / Audio | Her snore shakes the screen; louder by depth | partial | scripts/gameplay/underground_residents.gd (`dragon_snore`) | The snore plays in the cavern, but there is no screen shake and it doesn't get louder with depth. S6 keeps the reveal shake-free on purpose |
+| W-17 | S1 Bottom / Audio | Her snore shakes the screen; louder by depth | partial | tests/test_polish.gd::test_the_dragon_snore_sways_the_cavern_and_not_topsoil; handoff/frames/dragon_snore_puff.png | Polish-2: while she sleeps, every 5 s a smoke puff and a gentle sway (2 px in the cavern, fainter up through Crystal, none above); signal `dragon_snored(loudness)`. The periodic snore **sound** waits on audio: `dragon_snore` is not in CUES.md on dev, and feature/audio-pass has its own `_shake` in hill_audio.gd: on merge it should play on `dragon_snored` and drop its shake |
 | W-18 | S1 Underground | Directional digging: 1 tile shovel, 3-wide Excavator, 5-wide Drill Rig | built | data/vehicles/*.tres `dig_shape`; tests/test_hill_game.gd::test_vehicle_dig_fits_its_body | |
 | W-19 | S1 Underground | Loose things fall: boulders, treasures, bathtub, the Mole | partial | tests/test_tileworld.gd::test_falling_body_wake_rules | Only boulders fall. Treasures are pickups or stay put (S7), and the Mole doesn't fall |
 | W-20 | S1 Underground | Props break into chunks when dug under (car, gnome-room walls) | partial | tests/test_tileworld.gd::test_breakable_prop_breaks_when_undercut | The engine can do it, but the car stays where it lies (S7) and no gnome-room walls break |
 | W-21 | S1 Underground | Tunnels persist; only edits are saved | built | tests/test_tileworld.gd::test_save_is_edit_only_and_round_trips | |
-| W-22 | S1 Underground | Light is a soft gate: you can dig in the dark but can't see the sparkle | partial | addons/openjar/tileworld/darkness_overlay.gd | The darkness is there, but nothing lifts it (B-07) |
+| W-22 | S1 Underground | Light is a soft gate: you can dig in the dark but can't see the sparkle | built | tests/test_polish.gd::test_a_lighthouse_lights_stone_and_each_more_lights_the_next_layer_down; handoff/frames/lighthouse_lit_stone.png | Lighthouses lift the darkness one layer each from Stone down; Topsoil and Clay stay headlamp layers |
 | W-23 | S1 Underground | Bottom reveal: Dragon yawns, hill shakes, asks to come up, elevator carries her up in pieces, she coils on the peak | partial | tests/test_hazards_residents.gd::test_the_dragon_reveal_plays_once_and_it_saves | Only the first meeting is on dev (stir, yawn, smoke rings, back to sleep; S6). The wake, the climb and the peak are on a branch |
-| W-24 | S1 World borders | Strangestone below the cavern: faint runes, slow pulse, shovel bounces with a sparkle and a ? bubble | partial | data/blocks/strangestone.tres; .scratch/shots/reveal/t005.0s.png | The tile shows and won't break (`dig_blocked` cue). There is no ? bubble |
+| W-24 | S1 World borders | Strangestone below the cavern: faint runes, slow pulse, shovel bounces with a sparkle and a ? bubble | built | tests/test_polish.gd::test_strangestone_bounces_with_a_question_bubble_and_edgestone_does_not; handoff/frames/strangestone_question.png | Polish-2: scripts/gameplay/strange_bubble.gd: a ? picture bubble over the digger and a ring of sparkles at the tile; `dig_blocked` plays as before |
 | W-25 | S1 World borders | Edgestone at left/right edges, hazard stripe, unbreakable | built | tests/test_hill_game.gd::test_edges_and_floor_are_unbreakable | |
 | W-26 | S1 World borders | Both are `BlockData` with `breakable = false` + `breakable_from_version` | built | tests/test_data.gd::test_unbreakable_blocks_by_version | |
 | W-27 | S6 | Layer darkness values (Topsoil 0.3, Clay 0.6, Stone 0.8, Ice 0.5, Crystal 0.15, Bottom 0.3) | partial | tests/test_hazards_residents.gd::test_darkness_values_load_from_data | Needs a recheck on the TV |
@@ -116,17 +116,17 @@ X out of scope, Q open questions, F build phases.
 | ID | Source | Item | Status | Proof | Notes |
 | --- | --- | --- | --- | --- | --- |
 | B-01 | S1 | Barn, 10 dirt: +1 backpack per barn, no cap | built | tests/test_hill_game.gd::test_backpack_fills_and_capacity_follows_barns | |
-| B-02 | S1 | Barn: cows wander out; more barns, more cows | missing | none (no cow code or sprite) | |
+| B-02 | S1 | Barn: cows wander out; more barns, more cows | built | tests/test_polish.gd::test_every_barn_has_a_cow_in_its_yard_and_a_new_one_trots_out, ::test_a_hundred_barns_is_a_hundred_cows, ::test_walking_into_a_cow_makes_her_hop; handoff/frames/cows_*.png | Polish-2: scripts/gameplay/barn_cows.gd. **Placeholder cow drawn in code**: the library cow is only a proposal (openjar-characters `feature/quadruped-cow`, name open as D53), not approved for play. TODO(audio): `cow_moo` is not in CUES.md |
 | B-03 | S1 | House, 15 dirt + 5 clay: lights at dusk; Jeff and Chuck sleep here | partial | data/buildings/house.tres; assets/sprites/buildings/house_lit.png | building.gd swaps in the lit sprite at night (not checked in a frame with a House). Nobody sleeps there |
 | B-04 | S1 | Garage, 20 clay + 10 stone, needs the Buried Car; each opens the next vehicle | built | tests/test_hill_build.gd::test_garage_unlocks_excavator_then_still_allowed; tests/test_vehicles_treasures.gd::test_each_garage_gives_the_next_vehicle_and_the_drill_garage_waits_for_the_tooth | |
 | B-05 | S1 / S7 | Vehicles park at their Garage; a Garage built early waits with its door shut | built | tests/test_vehicles_treasures.gd::test_vehicles_treasures_buildings_survive_a_reload | |
 | B-06 | S1 | **Workshop**, 15 stone: bigger shovel, faster vehicles; hammering and sparks | missing | none (no data row; not in the book: .scratch/shots/book/t008.0s.png) | Dropped without a recorded decision; see REPORT |
-| B-07 | S1 | Lighthouse, 20 stone + 5 crystal: lights the next layer down per one built; sweeping beam at night | partial | data/buildings/lighthouse.tres (`effect = light_layer`); tests/test_vehicles_treasures.gd::test_book_shows_crane_buildings_locked_with_a_crane_picture_until_the_crane_comes | It can be built after the Crane, but no code reads `light_layer`, so it lights nothing. The beam isn't checked |
+| B-07 | S1 | Lighthouse, 20 stone + 5 crystal: lights the next layer down per one built; sweeping beam at night | built | tests/test_polish.gd::test_a_lighthouse_lights_stone_and_each_more_lights_the_next_layer_down, ::test_a_saved_lighthouse_lights_stone_after_a_reload, ::test_building_a_lighthouse_flares_its_lamp; handoff/frames/lighthouse_*.png (polish-2) | Polish-2: the first Lighthouse lights Stone, each more lights the next layer down (UndergroundLook "lit layers": darkness x0.22, warm tint, 1.2 s fade, a lantern and sweeping beam at the lit landing). Up top the lamp flares and shines down when placed, and sweeps the sky at night (scenes/buildings/lighthouse_beam.gd). TODO(audio): a `lighthouse_on` cue for the light-up moment is not in CUES.md |
 | B-08 | S1 | Museum: restore the Flooded Cabin; shows every treasure and how many are left per layer | missing | data/buildings/flooded_cabin.tres (ruin row only) | On branch. The Treasure Shelf (T-08) stands in |
-| B-09 | S1 | Gnome Village: restore the Crooked Watchtower; the crew digs 20–50 blocks while the game is closed, up to a cap | missing | tests/test_data.gd::test_gnome_award (rule only) | The village is on a branch. The overnight award isn't wired (C-13) |
+| B-09 | S1 | Gnome Village: restore the Crooked Watchtower; the crew digs 20–50 blocks while the game is closed, up to a cap | built | tests/test_resident_arcs.gd::test_gnome_village_crew_leaves_a_capped_pile_after_time_away; handoff/frames/crew_overnight_march.png | Merged with resident-arcs (b9966b0); checked by polish-2 |
 | B-10 | S1 | Water Tower, 15 stone + 10 ice: drains floods faster; generic look | built | tests/test_vehicles_treasures.gd::test_water_tower_drains_flooded_tunnels_near_a_player; .scratch/shots/shelf/t008.0s.png | S7 gates it behind the Crane |
 | B-11 | S1 | Dragon Perch: restore the Ruined Keep; she warms the Ice layer so it's not slippery | missing | data/buildings/ruined_keep.tres (ruin row only) | On branch. Ice isn't slippery yet anyway (W-11) |
-| B-12 | S1 | Gnome crew comeback clip: pile at the shaft, gnomes march out with a whistle | missing | none | Same as C-13 |
+| B-12 | S1 | Gnome crew comeback clip: pile at the shaft, gnomes march out with a whistle | built | tests/test_resident_arcs.gd::test_the_crew_award_runs_on_load_from_the_saved_stamp; handoff/frames/crew_overnight_march.png | Five gnomes march out of the shaft to the pile with a block each (scripts/gameplay/ruin_sites.gd `_draw_clip`); cues `whistle`, `crew_march` |
 | B-13 | S1 Art | Buildings are multi-tile sprites with a 3-frame unfold | built | tests/test_art_sprites.gd::test_building_art_and_garage_door_frames | |
 
 ## Residents: the ruins
@@ -155,7 +155,7 @@ X out of scope, Q open questions, F build phases.
 | --- | --- | --- | --- | --- | --- |
 | H-01 | S1 | Five vehicles, unlocked one per Garage | built | tests/test_vehicles_treasures.gd::test_ladder_is_five_vehicles_with_their_own_abilities_and_faceless_art; .scratch/shots/lineup/t008.0s.png | |
 | H-02 | S1 | Front Loader: clears 1-tile scrub, carries a ghost, scoops 1 tile; horn, bucket tilt | built | tests/test_hill_game.gd::test_up_top_a_scoops_scrub_x_opens_the_book_y_honks | |
-| H-03 | S1 | Excavator: clears 3x2, digs ponds; digs 3-wide; arm waves, cab spins all the way round | partial | data/vehicles/excavator.tres; tests/test_hill_game.gd::test_garage_rolls_out_a_parked_excavator | Dig and clear work. No pond digging and no full cab spin |
+| H-03 | S1 | Excavator: clears 3x2, digs ponds; digs 3-wide; arm waves, cab spins all the way round | partial | data/vehicles/excavator.tres; tests/test_hill_game.gd::test_garage_rolls_out_a_parked_excavator; tests/test_polish.gd::test_the_excavator_spins_round_on_the_horn_and_the_loader_does_not; handoff/frames/excavator_spin_strip.png | Dig and clear work. Polish-2: the horn (Y) turns the Excavator all the way round (0.7 s). It turns the whole sprite; a cab-only spin needs a separate cab layer from the Art lane. No pond digging |
 | H-04 | S1 / S7 | Dump Truck: hauls the pile, best tip animation, 5x backpack, tips into the elevator, reverse beep | built | tests/test_vehicles_treasures.gd::test_dump_truck_carries_five_backpacks_and_tips_the_whole_load_onto_the_pile, ::test_dump_truck_reverses_with_a_beep_before_it_turns_round | |
 | H-05 | S1 / S7 | Crane: places tall buildings, lifts/moves placed buildings, lowers you down the shaft fast, hauls boulders, wrecking ball for stumps | partial | tests/test_vehicles_treasures.gd::test_crane_hooks_a_boulder_out_for_good_and_it_stays_gone_after_a_reload | Tall-building gate and boulder haul work. The fast shaft ride is "not done" (S7). No lifting buildings and no wrecking ball |
 | H-06 | S1 / S7 | Drill Rig: 5-wide straight down on its own; parks by the shaft; shakes the screen | built | tests/test_vehicles_treasures.gd::test_drill_rig_drills_five_wide_straight_down_on_its_own_until_told_to_stop | Gentle rumble only when Settings allows shake |
@@ -175,7 +175,7 @@ X out of scope, Q open questions, F build phases.
 | P-03 | S5 | Plays whoever was picked; other characters get a sheet built at runtime | built | tests/test_hill_chooser.gd::test_a_pixel_form_only_character_gets_a_built_sheet, ::test_swapped_picks_swap_the_bodies | |
 | P-04 | S1 | Drop-in: P2 asleep in the Loader's bucket; a button press tips him out | built | tests/test_hill_game.gd::test_p2_sleeps_in_the_bucket_then_drops_in_and_plays | |
 | P-05 | S2 | The library gains a 2D pixel format for Jeff, Chuck and the four residents | built | assets/sprites/characters/{jeff,chuck,mole,foreman,caveman,dragon}.png | |
-| P-06 | S1 | Personalities: Jeff names every rock; Chuck narrates his driving | missing | none | No voice barks (S5) |
+| P-06 | S1 | Personalities: Jeff names every rock; Chuck narrates his driving | missing | none | No voice barks (S5). On branch `feature/audio-pass` (6141537), **not on dev** at 76db260 (checked 2026-11-10, polish-2): hill_audio.gd `_on_tile_dug` (placeholder voices) → would be partial |
 
 ## Systems, camera, tech
 
@@ -189,7 +189,7 @@ X out of scope, Q open questions, F build phases.
 | S-06 | S1 Controls | Underground camera leads in the dig direction; zooms out a little in bigger vehicles | missing | none (no lead or zoom-out in addons/openjar/split_screen/screen_director.gd) | |
 | S-07 | S3 | Camera zoom 2.0; check on the TV, likely 3.0 | partial | scenes/game/hill_game.gd (`director.zoom = 2.0`) | Waiting for the TV check |
 | S-08 | S3 | Water conserved; breached pockets gush ~2 s | built | tests/test_hill_game.gd::test_breached_pocket_gushes_for_about_two_seconds | |
-| S-09 | S1 Tech | Save: edits, treasures, inventory, buildings, vehicles, deepest layer, last scene, crew timestamp, `ResidentState`; autosave every ride and every 60 s | partial | tests/test_hill_game.gd::test_save_round_trip; tests/test_data.gd::test_resident_save_round_trip_through_json; scenes/game/hill_save.gd (`AUTOSAVE_EVERY := 60.0`) | No gnome crew timestamp |
+| S-09 | S1 Tech | Save: edits, treasures, inventory, buildings, vehicles, deepest layer, last scene, crew timestamp, `ResidentState`; autosave every ride and every 60 s | built | tests/test_hill_game.gd::test_save_round_trip; tests/test_data.gd::test_resident_save_round_trip_through_json; scenes/game/hill_save.gd (`AUTOSAVE_EVERY := 60.0`) tests/test_polish.gd::test_every_save_stamps_the_time_and_a_clock_set_back_gives_nothing | `gnome_stamp` is written on every save (scenes/game/hill_save.gd, resident-arcs merge) |
 | S-10 | S1 Tech | Game contracts (signals, `Inventory.can_afford`, `World.dig`) in docs/contracts.md | built | docs/contracts.md; tests/test_inventory.gd::test_can_afford | Nothing on dev emits `ruin_restored` or `dragon_woken` yet |
 | S-11 | S1 / S2 | Tile world and split director are game-agnostic; Worm's polar disk is a swap | built | tests/test_tileworld.gd::test_polar_body_falls_toward_core, ::test_chunk_manager_knows_no_concrete_shape | |
 | S-12 | S1 Tech | Awake `RigidBody2D` cap 60; 9 chunks per player | built | tests/test_tileworld.gd::test_awake_cap_queues_wakes, ::test_chunk_budget_limits_new_chunks_per_call | |
@@ -198,7 +198,7 @@ X out of scope, Q open questions, F build phases.
 | S-15 | S1 Tech | `PictoBubble` scene for arcs, costs and prompts, then moved to `openjar-addons/ui/` | missing | none (no PictoBubble class; bubbles drawn in build_book.gd / town_residents.gd) | |
 | S-16 | S2 | Template features: grown-up menus, solo, `--demo`, `--shots=`, release smoke-boot, `store/jar.glb` | partial | tests/test_lobby.gd::test_saved_solo_stays_off_at_boot; tests/test_hill_demo.gd; .scratch/shots/lobby/t003.0s.png | There is no `store/` folder, so no `jar.glb`. The lobby version label reads v0.0.1, not the tag (template-wide bug) |
 | S-17 | S2 | Premium slice spend logged in GAME.md by the producer | missing | none (no spend log in GAME.md) | |
-| S-18 | S6 / S7 | `--demo-beat=` showcases (bonk … crystal; garage … lineup) | built | .scratch/shots/{lineup,book,shelf,rescue,reveal,crystal}/ | |
+| S-18 | S6 / S7 | `--demo-beat=` showcases (bonk … crystal; garage … lineup) | built | .scratch/shots/{lineup,book,shelf,rescue,reveal,crystal}/ | Polish-2 adds lighthouse, cows, strange, scoop, snore (scripts/gameplay/polish_beats.gd) |
 
 ## Menus
 
@@ -222,9 +222,9 @@ X out of scope, Q open questions, F build phases.
 | V-04 | S1 Art | 16 px tiles, 32 px characters, nearest-neighbour, whole-pixel zoom | built | art/direction/pixel-rules.md; tests/test_art_sprites.gd::test_sheet_frames_come_from_the_manifest | |
 | V-05 | S1 Art | Distinct block colours: dirt brown, clay orange, stone grey-blue, ice pale blue, crystal purple | built | .scratch/shots/crystal/t005.0s.png, rescue/t005.0s.png | |
 | V-06 | S1 Art | Treasures sparkle through the dirt from two tiles away | built | .scratch/shots/rescue/t005.0s.png (car and chest sparkle) | |
-| V-07 | S1 Art | Juice: dig particles in block colour, shake on big scoops/falls, dust when a building lands, sparkle burst and ding | partial | scripts/gameplay/treasure_reveal.gd; .scratch/shots/demo/t018.0s.png | Particles and the reveal burst work. Only the drill shakes; nothing shakes on big scoops or falls |
+| V-07 | S1 Art | Juice: dig particles in block colour, shake on big scoops/falls, dust when a building lands, sparkle burst and ding | built | tests/test_polish.gd::test_a_big_scoop_kicks_and_a_loader_scoop_does_not, ::test_a_boulder_landing_near_kicks_and_far_does_not, ::test_kicks_are_small_short_and_off_with_screen_shake_off; handoff/frames/excavator_big_scoop.png | Polish-2: scripts/gameplay/screen_kick.gd. A scoop of 3+ tiles (Excavator, Crane, Drill) kicks 2-3 px for 0.22 s; a boulder landing within 14 tiles kicks up to 3.5 px for 0.25 s. Capped at 4 px / 0.9 s; Settings screen shake off = none. A still frame cannot show a shake |
 | V-08 | S1 Art / F-6 | Store art: grid (Excavator mid-scoop, fossil flying, Chuck drives, Jeff cheers), hero (Hillville at dusk, Dragon on the peak) | missing | none (no store/ folder) | |
-| V-09 | S1 / F-6 | Final pixel art for everything | partial | assets/sprites/manifest.json | Sandbox art covers everything on dev. Missing: a gnome crew sheet, cows, the Workshop, restored ruins (on branch) |
+| V-09 | S1 / F-6 | Final pixel art for everything | partial | assets/sprites/manifest.json | Sandbox art covers everything on dev. Missing: a gnome crew sheet, final cows (polish-2 draws a placeholder cow in code), the Workshop, restored ruins (on branch) |
 | V-10 | S2 / Q-3 | No real places: generic landmarks only | built | .scratch/shots/shelf/t008.0s.png (generic water tower) | |
 
 ## Audio
@@ -234,21 +234,21 @@ one plays the **synth placeholder beep** (tests/test_proto.gd::test_audio_synth_
 
 | ID | Source | Item | Status | Proof | Notes |
 | --- | --- | --- | --- | --- | --- |
-| A-01 | CLAUDE.md | Sound on every action | partial | tests/test_proto.gd::test_audio_synth_beep_for_missing_cues | Every action makes a sound, but they are all placeholder beeps |
-| A-02 | S1 Audio | `dig_<block>`: crumble, squelch, crack, crunch, chime | partial | scenes/levels/underground.gd (`Audio.play(cue)` per block) | synth only |
-| A-03 | S1 Audio | `scoop`, `tip`: hydraulic whine, rattle | partial | cues `scoop`, `bucket_tip` | synth only |
-| A-04 | S1 Audio | `engine_<vehicle>`: looped, pitched by speed, one per vehicle | missing | none (no engine cue in code) | |
-| A-05 | S1 Audio | `horn_<vehicle>`: one per vehicle; Dump Truck reverse beep | partial | cue `horn`; tests/test_vehicles_treasures.gd::test_dump_truck_reverses_with_a_beep_before_it_turns_round | One horn for all vehicles; synth only |
-| A-06 | S1 Audio | `treasure`: sparkle and ding, bigger for rarer | partial | cues `treasure`, `treasure_reveal`, `treasure_pickup` | synth only; not by rarity |
-| A-07 | S1 Audio | `fall`, `bonk` | partial | cues `fall`, `bonk` | synth only |
-| A-08 | S1 Audio | `flood`: gurgle, giggle | partial | cues `flood`, `splash`, `float_up` | synth only |
-| A-09 | S1 Audio | `elevator`: clang, rattle, ding | partial | cues `elevator`, `cage_door` | synth only |
-| A-10 | S1 Audio | `build_place`, `build_move` | partial | cues `build_place`, `build_unfold`, `build_pickup` | synth only |
-| A-11 | S1 Audio | `tree_fall`, `rock_crack` | partial | cues `tree_fall`, `rock_crack`, `stump_pop` | synth only |
-| A-12 | S1 Audio | `gnome_whistle`: whistle, marching feet | partial | cues `whistle`, `crew_march` | synth only |
-| A-13 | S1 Audio | `dragon_snore` louder by depth | partial | cue `dragon_snore` | synth only; no volume by depth (W-17) |
-| A-14 | S1 Audio | Music: sunny up-top theme; the same theme slowed underground with a layer per zone; cavern choir | missing | assets/audio/music/ is empty | |
-| A-15 | S1 Audio | Barks: Mole "oh dear", Foreman mutters, Dragon rumbles, Jeff names rocks, Chuck narrates | missing | none | |
+| A-01 | CLAUDE.md | Sound on every action | partial | tests/test_proto.gd::test_audio_synth_beep_for_missing_cues | Every action makes a sound, but they are all placeholder beeps. On branch `feature/audio-pass` (6141537), **not on dev** at 76db260 (checked 2026-11-10, polish-2): tests/test_audio.gd::test_every_cue_resolves_to_a_file |
+| A-02 | S1 Audio | `dig_<block>`: crumble, squelch, crack, crunch, chime | partial | scenes/levels/underground.gd (`Audio.play(cue)` per block) | synth only. On branch `feature/audio-pass` (6141537), **not on dev** at 76db260 (checked 2026-11-10, polish-2): assets/audio/sfx/dig_*.ogg; ::test_variants_rotate_without_repeats |
+| A-03 | S1 Audio | `scoop`, `tip`: hydraulic whine, rattle | partial | cues `scoop`, `bucket_tip` | synth only. On branch `feature/audio-pass` (6141537), **not on dev** at 76db260 (checked 2026-11-10, polish-2): sfx/scoop_1-2, bucket_tip, dump_truck_tip |
+| A-04 | S1 Audio | `engine_<vehicle>`: looped, pitched by speed, one per vehicle | missing | none (no engine cue in code) | On branch `feature/audio-pass` (6141537), **not on dev** at 76db260 (checked 2026-11-10, polish-2): sfx/*_engine.wav; ::test_engine_pitch_follows_speed |
+| A-05 | S1 Audio | `horn_<vehicle>`: one per vehicle; Dump Truck reverse beep | partial | cue `horn`; tests/test_vehicles_treasures.gd::test_dump_truck_reverses_with_a_beep_before_it_turns_round | One horn for all vehicles; synth only. On branch `feature/audio-pass` (6141537), **not on dev** at 76db260 (checked 2026-11-10, polish-2): sfx/*_horn.ogg, dump_truck_reverse.ogg; ::test_every_vehicle_has_its_own_engine_and_horn |
+| A-06 | S1 Audio | `treasure`: sparkle and ding, bigger for rarer | partial | cues `treasure`, `treasure_reveal`, `treasure_pickup` | synth only; not by rarity. On branch `feature/audio-pass` (6141537), **not on dev** at 76db260 (checked 2026-11-10, polish-2): HillAudio.treasure_cue; ::test_treasures_get_bigger_with_depth |
+| A-07 | S1 Audio | `fall`, `bonk` | partial | cues `fall`, `bonk` | synth only. On branch `feature/audio-pass` (6141537), **not on dev** at 76db260 (checked 2026-11-10, polish-2): sfx/fall_1-3, bonk_1-2 |
+| A-08 | S1 Audio | `flood`: gurgle, giggle | partial | cues `flood`, `splash`, `float_up` | synth only. On branch `feature/audio-pass` (6141537), **not on dev** at 76db260 (checked 2026-11-10, polish-2): sfx/flood, float_up, splash_1-2 |
+| A-09 | S1 Audio | `elevator`: clang, rattle, ding | partial | cues `elevator`, `cage_door` | synth only. On branch `feature/audio-pass` (6141537), **not on dev** at 76db260 (checked 2026-11-10, polish-2): sfx/elevator, cage_door, elevator_clank, elevator_ding |
+| A-10 | S1 Audio | `build_place`, `build_move` | partial | cues `build_place`, `build_unfold`, `build_pickup` | synth only. On branch `feature/audio-pass` (6141537), **not on dev** at 76db260 (checked 2026-11-10, polish-2): sfx/build_place, build_pickup, build_unfold |
+| A-11 | S1 Audio | `tree_fall`, `rock_crack` | partial | cues `tree_fall`, `rock_crack`, `stump_pop` | synth only. On branch `feature/audio-pass` (6141537), **not on dev** at 76db260 (checked 2026-11-10, polish-2): sfx/tree_fall, rock_crack_1-2, stump_pop |
+| A-12 | S1 Audio | `gnome_whistle`: whistle, marching feet | partial | cues `whistle`, `crew_march` | synth only. On branch `feature/audio-pass` (6141537), **not on dev** at 76db260 (checked 2026-11-10, polish-2): sfx/whistle_1-3, crew_march, march_step |
+| A-13 | S1 Audio | `dragon_snore` louder by depth | partial | cue `dragon_snore` | synth only; no volume by depth (W-17). On branch `feature/audio-pass` (6141537), **not on dev** at 76db260 (checked 2026-11-10, polish-2): hill_audio.gd `_snore`; ::test_snore_gets_louder_with_depth |
+| A-14 | S1 Audio | Music: sunny up-top theme; the same theme slowed underground with a layer per zone; cavern choir | missing | assets/audio/music/ is empty | On branch `feature/audio-pass` (6141537), **not on dev** at 76db260 (checked 2026-11-10, polish-2): assets/audio/music/*; ::test_music_crossfades_up_down_and_cavern |
+| A-15 | S1 Audio | Barks: Mole "oh dear", Foreman mutters, Dragon rumbles, Jeff names rocks, Chuck narrates | missing | none | On branch `feature/audio-pass` (6141537), **not on dev** at 76db260 (checked 2026-11-10, polish-2): bark hooks + rate caps (placeholder voices) → would be partial |
 
 ## Kid-design checks (S1, on top of docs/kid-design.md)
 
@@ -264,7 +264,7 @@ one plays the **synth placeholder beep** (tests/test_proto.gd::test_audio_synth_
 | K-08 | S1 | On foot is always available | built | tests/test_hill_game.gd::test_hop_in_drive_and_hop_out | |
 | K-09 | S1 | Depth shown as a picture strip of layers, not metres | built | scenes/game/hud.gd; .scratch/shots/reveal/t005.0s.png (marker at the bottom band) | |
 | K-10 | S1 | The Dragon is sleepy and friendly from the first frame | built | .scratch/shots/reveal/t005.0s.png | |
-| K-11 | S1 | The gnome crew rewards coming back, with a cap | missing | tests/test_data.gd::test_gnome_award (rule only) | C-13 |
+| K-11 | S1 | The gnome crew rewards coming back, with a cap | built | tests/test_resident_arcs.gd::test_gnome_village_crew_leaves_a_capped_pile_after_time_away | Capped by Rules.GNOME_CAP; nothing under 30 minutes; a clock set back gives nothing (tests/test_polish.gd) |
 | K-12 | S1 | A resident's arrival is funny-sad, never sad | missing | none on dev | The arrivals are on a branch |
 | K-13 | S1 | Residents never block anything; restoring is optional | partial | tests/test_hazards_residents.gd::test_residents_have_no_collision_and_keep_to_their_rooms | Restoring is on a branch |
 
@@ -302,21 +302,9 @@ play. Size: S = under a lane-hour, M = one lane session, L = several sessions or
 
 1. **Merge `feature/resident-arcs`** (R-02, R-03, R-04, R-07, R-08, B-08, B-09, B-11, K-12, K-13, W-23, C-16): the four ruins are on screen but do nothing on dev. Review it and merge it after `vehicles-treasures`. **S** (review and merge) — the work is done
 2. **Real sound and music** (A-01 to A-15): every sound is a placeholder beep and there is no music. This is what you hear in every second of play. **L**
-3. **Lighthouse lights a layer** (B-07, W-10, W-22): Stone is dark and the building the plan uses to fix that does nothing. **S**
+3. **Lighthouse lights a layer** (B-07, W-10, W-22): Stone is dark and the building the plan uses to fix that does nothing. **S** **Done on `feature/hill-polish-2`**.
 4. **Engine loops and one horn per vehicle** (A-04, A-05): his favourite part is the vehicles. **M** (part of 2)
-5. **Cows from barns** (B-02): "more barns, more cows" is the payoff for a hundred barns. **S**
-6. **Gnome crew overnight pile and march clip** (C-13, B-12, K-11, S-09 timestamp): the come-back-tomorrow hook. The rule exists and only needs wiring. **M**
+5. **Cows from barns** (B-02): "more barns, more cows" is the payoff for a hundred barns. **S** **Done on `feature/hill-polish-2`**.
+6. **Gnome crew overnight pile and march clip** (C-13, B-12, K-11, S-09 timestamp): the come-back-tomorrow hook. The rule exists and only needs wiring. **M** **Done on `feature/hill-polish-2`** (wired by resident-arcs, checked and framed).
 7. **Workshop** (B-06): a whole building is missing, with no recorded decision. Decide: build it (bigger shovel, faster vehicles) or record it as dropped. **M** (S to drop)
-8. **Juice: screen shake on big scoops and falls, Strangestone ? bubble, snore shake** (V-07, W-24, W-17). **S**
-9. **Excavator cab spin and pond digging; Crane wrecking ball, lift buildings, fast shaft ride** (H-03, H-05). **M**
-10. **Ice slippery + slide into holes; lava bounce pockets** (W-11, W-13, W-14): the deep layers have no comedy hazard of their own. **M**
-11. **Pick a layer on the way down** (S-04) and **camera lead / zoom-out in big vehicles** (S-06). **M**
-12. **Resident idle gags and the Mole honking in an empty vehicle** (R-09, R-11). **M**
-13. **Town adjacency hearts** (C-23, C-26): Kaden's layer, and he will notice it. **M**
-14. **Layer flavour: roots, waving worms, snow, frozen fish, sand; things that fall (bathtub, Mole)** (W-03, W-11, C-17, W-19). **M**
-15. **Jeff and Chuck barks** (P-06, A-15). **M**
-16. **Underground puzzles: boulder-breakable walls, blocks that need a vehicle** (C-22). **M**
-17. **Recheck on the TV: camera zoom, darkness values, shaft timing, 60 fps on a real GPU** (S-07, W-27, K-06, S-13). **S**, at the playtest
-18. **Round-2 art pick from Kaden** (V-03), then final-art gaps (V-09: crew sheet). **S** for Kaden, **L** if he picks D or E
-19. **Store art + `store/jar.glb`** (V-08, S-16): visible on the launcher, not in play. **M**
-20. **BALANCE.md timings, engine extraction to openjar-addons, PictoBubble, spend log** (C-27, S-14/F-5, S-15, S-17): not seen in play. **M** each
+8. **Juice: screen shake on big scoops and falls, Strangestone ? bubble, snore shake** (V-07, W-24, W-17). **S** **Done on `feature/hill-polish-2`** (the snore sound waits on audio, W-17).

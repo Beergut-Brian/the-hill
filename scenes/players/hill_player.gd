@@ -17,6 +17,8 @@ signal honked()
 const WIDTH := 12.0
 const HEIGHT := 28.0
 const WALK := 200.0
+## V-07: a scoop clearing this many tiles or more is "big" and kicks the view.
+const BIG_SCOOP := 3
 const JUMP := 300.0          # about 46 px: clears 2 tiles
 const GRAVITY := 980.0       # up top only; underground asks the world
 const DIG_EVERY := 0.14
@@ -50,6 +52,9 @@ var _shape: CollisionShape2D
 var _squash := 0.0
 var _swing := 0.0
 var _honk := 0.0
+## H-03: the Excavator turns all the way round on the horn (1 -> 0 over CAB_SPIN seconds).
+const CAB_SPIN := 0.7
+var cab_spin := 0.0
 var _full_pop := 0.0
 var _dig_cd := 0.0
 var _dig_used := false
@@ -136,6 +141,8 @@ func honk() -> void:
 		cue = String(vehicle.sounds[&"horn"])
 	Audio.play(cue)
 	_honk = 1.0
+	if vehicle != null and vehicle.id == &"excavator" and cab_spin <= 0.0:
+		cab_spin = 1.0
 	honked.emit()
 
 
@@ -202,6 +209,7 @@ func _physics_process(delta: float) -> void:
 	_squash = move_toward(_squash, 0.0, delta * 5.0)
 	_swing = move_toward(_swing, 0.0, delta * 6.0)
 	_honk = move_toward(_honk, 0.0, delta * 2.5)
+	cab_spin = move_toward(cab_spin, 0.0, delta / CAB_SPIN)
 	_full_pop = move_toward(_full_pop, 0.0, delta * 3.0)
 	queue_redraw()
 	if locked:
@@ -373,6 +381,9 @@ func _scoop() -> int:
 	var n := 0
 	if hv != null and hv.has_method("scoop"):
 		n = hv.scoop(global_position, facing, area, player)
+	if n >= BIG_SCOOP:
+		# V-07: a big scoop (a tree, or a vehicle's wide bucket) thumps the view a little.
+		ScreenKick.kick(player, 1.5 + 0.25 * mini(n, 6), 0.22)
 	if n <= 0:
 		Audio.play("swing")
 		swung.emit(Vector2i.ZERO)
@@ -457,7 +468,12 @@ func _draw() -> void:
 	if vehicle != null:
 		var moving := absf(velocity.x) > 10.0 and is_on_floor()
 		var st := ability.draw_state() if ability != null else {}
+		if cab_spin > 0.0:
+			# A full turn seen from the side: squeeze to an edge, show the back, come round again.
+			var sx := cos((1.0 - cab_spin) * TAU)
+			draw_set_transform(Vector2(0, ride_offset - sin((1.0 - cab_spin) * PI) * 3.0), 0.0, Vector2(sx if absf(sx) > 0.12 else 0.12 * signf(sx + 0.0001), 1.0))
 		Vehicle.draw_vehicle(self, vehicle, facing, c, _swing * 0.6, _aim, _t, moving, player, st)
+		draw_set_transform(Vector2(0, ride_offset))
 		if ability != null:
 			ability.draw_over(self)
 		var sleeper: int = game.sleeper_in(vehicle.id) if game != null and game.has_method("sleeper_in") else -1

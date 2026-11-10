@@ -53,6 +53,8 @@ var flash_layer := 0
 var _layers: Array = []
 var _cages: Node2D
 var look: UndergroundLook
+## W-24: the Strangestone question bubble and sparkle when a dig bounces off it.
+var strange: StrangeBubble
 ## One per water pocket (generator.pockets, the big Clay pocket first).
 var _gushes: Array = []
 ## Kid-safe hazards (bonk, float, cave-in) and the residents' behaviour; see their scripts.
@@ -107,6 +109,8 @@ func _ready() -> void:
 	look = UndergroundLook.new()
 	add_child(look)
 	look.build(self)
+	strange = StrangeBubble.new()
+	add_child(strange)
 	players_root = Node2D.new()
 	players_root.name = "Players"
 	add_child(players_root)
@@ -118,7 +122,7 @@ func _ready() -> void:
 	residents.setup(self)
 	world.tile_dug.connect(_on_tile_dug)
 	world.dig_blocked.connect(_on_dig_blocked)
-	world.body_landed.connect(func(_b: Node2D, _s: float) -> void: Audio.play("fall"))
+	world.body_landed.connect(_on_body_landed)
 	world.prop_broke.connect(_on_prop_broke)
 	world.water_entered.connect(_on_water_entered)
 	world.update_chunks()
@@ -348,9 +352,28 @@ func haul_boulder(i: int, player := -1) -> void:
 	boulder_hauled.emit(i, player)
 
 
-func _on_dig_blocked(cell: Vector2i, _block: StringName, _player: int) -> void:
+func _on_dig_blocked(cell: Vector2i, block: StringName, player: int) -> void:
 	Audio.play("dig_blocked")
 	burst(world.shape.center_of(cell), Color.WHITE, 8, 70.0)
+	if block == &"strangestone" and strange != null:
+		strange.bounce(cell, player)
+
+
+## V-07: a boulder (or piece) landing thumps the view of anyone near, more the closer and harder.
+const FALL_NEAR := 14.0 * 16.0
+func _on_body_landed(b: Node2D, speed: float) -> void:
+	Audio.play("fall")
+	if b == null or players_root == null:
+		return
+	var at := to_local(b.global_position)
+	for n in players_root.get_children():
+		var pl := n as HillPlayer
+		if pl == null:
+			continue
+		var d := to_local(pl.global_position).distance_to(at)
+		if d < FALL_NEAR:
+			var k := (1.0 - d / FALL_NEAR) * clampf(speed / 300.0, 0.4, 1.0)
+			ScreenKick.kick(pl.player, 1.0 + 2.5 * k, 0.25)
 
 
 func _on_prop_broke(prop: Node2D, pieces: Array) -> void:

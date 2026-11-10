@@ -40,6 +40,8 @@ var reveal := 1.0:
 		reveal = clampf(v, 0.0, 1.0)
 		queue_redraw()
 var _glow: Node2D
+## Lighthouses only: the night sweep and the placement flare.
+var beam: LighthouseBeam
 ## 0 closed .. 1 rolled up (Garage only).
 var door_open := 0.0:
 	set(v):
@@ -77,6 +79,10 @@ func _ready() -> void:
 		_glow.material = mat
 		_glow.draw.connect(_draw_windows)
 		add_child(_glow)
+	if data != null and data.id == &"lighthouse":
+		beam = LighthouseBeam.new()
+		beam.building = self
+		add_child(beam)
 
 
 func _process(_delta: float) -> void:
@@ -156,6 +162,8 @@ func unfold() -> Tween:
 		hv.puff(position + Vector2(size_px().x * 0.5, 0), Color(0.85, 0.75, 0.6), 14)
 	var t := create_tween()
 	t.tween_property(self, "scale", Vector2(1, 1), UNFOLD_TIME).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	if beam != null:
+		t.tween_callback(beam.flare)
 	return t
 
 
