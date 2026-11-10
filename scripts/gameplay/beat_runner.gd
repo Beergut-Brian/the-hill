@@ -24,13 +24,22 @@
 ##           then with the Crane the Garage card shows the Drill Rig and the Giant Tooth it waits for.
 ##   shelf   Most treasures found, a Water Tower built: P1 walks up to the Treasure Shelf.
 ##   lineup  All five vehicles in a row up top, P1 in the Dump Truck, P2 in the Crane.
+##   steal   P1 digs on foot in Topsoil: the Mole pops up, takes the shovel (sheepish bubble) and
+##           gives it straight back while P1 keeps digging.
+##   walled  P1 beside the Gnome Room (the crew's hats bob over a brick wall, a bubble), digs in:
+##           the wall crumbles, the crew hops, whistles and marches off.
+##   follow  The Caveman thaws and follows P1 down a tunnel and back to the shaft, then goes up.
+##   wake    The Dragon (met once) wakes for good as P1 walks up: two picture bubbles, a purr, and
+##           she goes up the shaft in three pieces.
+##   visit   The Mole's Lost & Found stands: he visits P1 near the bottle caps, they glow gold, and
+##           he leaves a little bundle of blocks.
 class_name HillBeatRunner
 extends Node
 
 const P1 := 0
 const P2 := 1
 const IDLE := {"move": Vector2.ZERO, "dig": false, "jump": false, "book": false, "horn": false}
-const BEATS := ["bonk", "float", "rescue", "cheer", "thaw", "reveal", "crystal", "garage", "truck", "crane", "drill", "treasure", "book", "shelf", "lineup"]
+const BEATS := ["bonk", "float", "rescue", "cheer", "thaw", "reveal", "crystal", "garage", "truck", "crane", "drill", "treasure", "book", "shelf", "lineup", "steal", "walled", "follow", "wake", "visit"]
 ## Seconds after the game starts before the stage is set (the wipe card clears).
 const START := 1.0
 
@@ -88,6 +97,11 @@ func _physics_process(delta: float) -> void:
 		"book": _book()
 		"shelf": _shelf()
 		"lineup": _lineup()
+		"steal": _steal()
+		"walled": _walled()
+		"follow": _follow()
+		"wake": _wake()
+		"visit": _visit()
 
 
 func _next(what: String) -> void:
@@ -578,3 +592,167 @@ func _lineup() -> void:
 		1:
 			if _since() > 3.0:
 				_next("done")
+
+
+# --- resident arcs (underground) ---------------------------------------------------------------
+
+func _steal() -> void:
+	var u := _ug()
+	var res := u.residents
+	match _stage:
+		0:
+			# A little Topsoil room off to the left of the landing; P1 digs right into the dirt.
+			var room := Rect2i(56, 14, 4, 2)
+			_stage_players(room, Vector2i(59, 15), Vector2i(56, 15))
+			res.shovel_stolen.connect(func(_p: int) -> void: log_event("shovel taken"), CONNECT_ONE_SHOT)
+			_next("stage: P1 digging in Topsoil")
+		1:
+			_hold(P1, Vector2(1, 0), true)
+			if res.theft_time() >= 0.0:
+				_next("mole pops up")
+		2:
+			_hold(P1, Vector2(1, 0), true)
+			if res.theft_time() >= UndergroundResidents.T_HOLD + 0.2:
+				_next("bubble")
+		3:
+			_hold(P1, Vector2(1, 0), true)
+			if res.theft_time() >= UndergroundResidents.T_GIVEN:
+				_next("shovel back")
+		4:
+			_hold(P1, Vector2(1, 0), true)
+			if res.theft_time() < 0.0 and _since() > 1.0:
+				_next("done (mole met %d)" % u.story.state(Story.MOLE).encounters)
+
+
+func _walled() -> void:
+	var u := _ug()
+	var res := u.residents
+	match _stage:
+		0:
+			var gr := Rect2i()
+			for sp in u.generator.treasure_spots:
+				if sp.id == &"gnome_room":
+					gr = sp.rect
+			var room := Rect2i(gr.position.x - 8, gr.end.y - 2, 5, 2)
+			_stage_players(room, Vector2i(gr.position.x - 4, gr.end.y - 1), Vector2i(room.position.x, gr.end.y - 1))
+			res.crew_freed.connect(func() -> void: log_event("wall crumbles"), CONNECT_ONE_SHOT)
+			_next("stage: beside the Gnome Room")
+		1:
+			# Step up to the wall: the hats hop and a bubble shows the wall.
+			_hold(P1, Vector2(1, 0))
+			if _since() > 0.4:
+				_next("at the wall (bubble)")
+		2:
+			if _since() > 2.2:
+				_next("dig in")
+		3:
+			_hold(P1, Vector2(1, 0), true)
+			if res.crew_state() != &"walled":
+				_next("crew free")
+		4:
+			if res.crew_state() == &"marching" and not _stage_flag("march"):
+				log_event("march")
+			if res.crew_state() == &"gone" and _since() > 1.0:
+				_next("done")
+
+
+func _follow() -> void:
+	var u := _ug()
+	var res := u.residents
+	match _stage:
+		0:
+			var ice := _layer(&"ice")
+			var room: Rect2i = u.generator.landings[ice]
+			var tunnel := Rect2i(room.end.x, room.position.y, 16, room.size.y)
+			_stage_players(tunnel, Vector2i(room.end.x - 1, room.end.y - 1), Vector2i(room.position.x + 1, room.end.y - 1))
+			_next("stage: P1 by the ice block")
+		1:
+			if res.caveman_state() == &"following":
+				_next("following")
+		2:
+			_hold(P1, Vector2(1, 0))
+			if _since() > 1.0:
+				_next("down the tunnel")
+		3:
+			_hold(P1, Vector2(0.15, 0))
+			if _since() > 1.2:
+				_next("back to the shaft")
+		4:
+			_hold(P1, Vector2(-1, 0))
+			if res.caveman_state() == &"leaving":
+				_next("caveman into the shaft")
+		5:
+			if res.caveman_state() == &"gone" and _since() > 0.8:
+				_next("done")
+
+
+func _wake() -> void:
+	var u := _ug()
+	var res := u.residents
+	match _stage:
+		0:
+			# Met once already (the first meeting's yawn is the "reveal" beat).
+			u.story.meet_dragon()
+			var d: Node2D = res.dragon
+			var feet_y := HillGenerator.CAVERN.end.y * 16.0 - 2.0
+			_place(P1, Vector2(d.position.x - 240.0, feet_y))
+			_place(P2, Vector2(d.position.x - 290.0, feet_y))
+			res.dragon_woke.connect(func() -> void: log_event("purr: she is coming up"), CONNECT_ONE_SHOT)
+			_next("stage: the Bottom cavern, the Dragon met once")
+		1:
+			_hold(P1, Vector2(0.6, 0))
+			_hold(P2, Vector2(0.6, 0))
+			if res.dragon_state() == &"waking_up":
+				_next("she wakes")
+		2:
+			if res.dragon_bubble().has(&"face_sheepish"):
+				_next("bubble: the shaken hill")
+		3:
+			if res.dragon_bubble().has(&"face_hopeful"):
+				_next("bubble: the Ruined Keep")
+		4:
+			if res.dragon_state() == &"leaving":
+				_next("pieces")
+		5:
+			_hold(P1, Vector2(-1, 0))
+			_hold(P2, Vector2(-1, 0))
+			if res.dragon_state() == &"gone" and _since() > 0.5:
+				_next("done")
+
+
+func _visit() -> void:
+	var u := _ug()
+	var res := u.residents
+	match _stage:
+		0:
+			for i in 3:
+				u.story.steal_shovel()
+			u.story.restore(Story.MOLE)
+			var r := Rect2i()
+			for sp in u.generator.treasure_spots:
+				if sp.id == &"bottle_caps":
+					r = sp.rect
+			var room := Rect2i(r.position.x - 9, r.end.y - 2, 5, 2)
+			_stage_players(room, Vector2i(r.position.x - 6, r.end.y - 1), Vector2i(room.position.x, r.end.y - 1))
+			res.mole_gift.connect(func(b: StringName, n: int) -> void: log_event("gift %d %s" % [n, b]), CONNECT_ONE_SHOT)
+			_next("stage: Lost & Found restored, P1 near the bottle caps")
+		1:
+			if _since() > 0.6 and res.visit_now(game.player_node(P1)):
+				_next("mole visits")
+		2:
+			if _since() > 1.0:
+				_next("glow %s" % [res.glowing_treasures()])
+		3:
+			if not res.mole_visiting():
+				_next("he leaves a bundle")
+		4:
+			if _since() > 1.5:
+				_next("done")
+
+
+## True the first time `key` is asked for in this beat (one-off log lines).
+func _stage_flag(key: String) -> bool:
+	if has_meta(key):
+		return true
+	set_meta(key, true)
+	return false

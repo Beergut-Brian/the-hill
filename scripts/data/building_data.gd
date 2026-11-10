@@ -11,7 +11,7 @@ extends Resource
 @export var needs_treasure: StringName
 ## &"" or the vehicle that can place it (crane for tall ones).
 @export var needs_vehicle: StringName
-## &"backpack", &"next_vehicle", &"light_layer", &"dig_power", &"drain", &"gnome_crew", &"museum", &"warm_ice", &"".
+## &"backpack", &"next_vehicle", &"light_layer", &"dig_power", &"drain", &"gnome_crew", &"museum", &"warm_ice", &"lost_and_found", &"".
 @export var effect: StringName
 @export var effect_amount: float = 1.0
 @export var scene: PackedScene
@@ -21,6 +21,9 @@ extends Resource
 @export var resident: StringName
 ## Ruins only: the BuildingData id it becomes.
 @export var restores_into: StringName
+## A restored ruin's row (Lost & Found, Gnome Village, Museum, Dragon Perch): the ruin it is
+## restored from. Never a book card of its own; the ruin's restore card shows it at the ruin's cost.
+@export var from_ruin: StringName
 
 
 ## Ruins show only once their resident has ARRIVED. Others show when their treasure is
