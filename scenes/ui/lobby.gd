@@ -5,6 +5,9 @@
 ## last beat the stamps flip to GO!, both characters jump, and the three-stripe wipe covers the
 ## screen as Game.finish_lobby() starts round 1 (with the skin's "ROUND 1" card). A ready player
 ## holding A on Play for HOLD_TO_START s starts alone. Back to Open Jar asks "Leave the game?" first.
+## The character chooser: joined and not ready, left / right (stick or D-pad) cycles your Roster
+## pick on your podium (swap, poof, bark); taken characters are skipped. Ready locks it; B unlocks.
+## Solo: Select picks which podium the pad drives.
 ## Games customise it with a MenuSkin (UiStyle.use_skin, or res://data/menu_skin.tres), in code.
 ## title_texture / title_text here still work and win over the skin. Keep the node names.
 extends Control
@@ -53,6 +56,8 @@ var _solo_pending := false
 var _launched := false
 var _tw: Tween
 var _wipe: ShowtimeWipe
+var _dpad := { P1: 0, P2: 0 }
+var _select_down := false
 
 @onready var _spots := { P1: $Spots/P1, P2: $Spots/P2 }
 @onready var _buttons := { Choice.PLAY: $Buttons/Play, Choice.SETTINGS: $Buttons/Settings, Choice.DOOR: $Buttons/Door }
@@ -74,6 +79,7 @@ func _ready() -> void:
 	Players.player_joined.connect(_on_player_joined)
 	Players.player_left.connect(_on_player_left)
 	Players.solo_changed.connect(_on_solo_changed)
+	Roster.pick_changed.connect(_on_pick_changed)
 	Game.state_changed.connect(_on_state_changed)
 	_settings.closed.connect(_on_settings_closed)
 	_confirm.chosen.connect(_on_confirm_chosen)
@@ -104,6 +110,7 @@ func open() -> void:
 		_set_joined(p, Players.is_active(p))
 	_buttons[Choice.PLAY].progress = 0.0
 	_set_focus(Choice.PLAY, false)
+	_update_choosers()
 	_countdown.queue_redraw()
 	if Players.solo and _live():
 		_ready_both()
@@ -151,11 +158,96 @@ func _process(delta: float) -> void:
 			press_a(p)
 		elif Input.is_action_just_pressed(Players.action(p, "jump")):
 			press_b(p)
+		else:
+			var dir := _left_right(p)
+			if dir != 0:
+				choose(p, dir)
+	_solo_select()
 	if freeze or in_submenu():
 		return
 	for p in [P1, P2]:
 		hold_step(p, Players.is_active(p) and Input.is_action_pressed(Players.action(p, "action")), delta)
 	count_step(delta)
+
+
+## This frame's left / right for the chooser: the stick or keys (the move actions) or the D-pad.
+func _left_right(p: int) -> int:
+	var dir := 0
+	if Input.is_action_just_pressed(Players.action(p, "move_left")):
+		dir = -1
+	elif Input.is_action_just_pressed(Players.action(p, "move_right")):
+		dir = 1
+	var dev := Players.device_of(p)
+	var pad := 0
+	if dev >= 0 and (not Players.solo or p == Players.solo_focus):
+		pad = -1 if Input.is_joy_button_pressed(dev, JOY_BUTTON_DPAD_LEFT) else \
+				(1 if Input.is_joy_button_pressed(dev, JOY_BUTTON_DPAD_RIGHT) else 0)
+	if pad != _dpad[p]:
+		_dpad[p] = pad
+		if pad != 0:
+			dir = pad
+	return dir
+
+
+## Solo: a tap of Select (without Start, which is the solo toggle) moves the pad to the other podium.
+func _solo_select() -> void:
+	if not Players.solo:
+		_select_down = false
+		return
+	var dev := Players.device_of(Players.solo_focus)
+	var down := dev >= 0 and Input.is_joy_button_pressed(dev, JOY_BUTTON_BACK) \
+			and not Input.is_joy_button_pressed(dev, JOY_BUTTON_START)
+	if down and not _select_down:
+		solo_switch()
+	_select_down = down
+
+
+## Solo: the pad now drives the other podium (A, B and the chooser).
+func solo_switch() -> void:
+	if not Players.solo or _launched or in_submenu():
+		return
+	Players.set_solo_focus(P2 if Players.solo_focus == P1 else P1)
+	UiSound.play("ui_move", 1.12 if Players.solo_focus == P1 else 0.89)
+	_spots[Players.solo_focus].name_pop()
+	_update_choosers()
+
+
+## Can this player change character right now? Joined, not ready, nothing else going on.
+func can_choose(player: int) -> bool:
+	if not _live() or _launched or in_submenu() or not Players.is_active(player) or readied[player]:
+		return false
+	return not Players.solo or player == Players.solo_focus
+
+
+## Left / right on the podium: the next character nobody else has. Nobody free: a bump.
+func choose(player: int, dir: int) -> bool:
+	if not can_choose(player):
+		return false
+	_spots[player].nudge(dir)
+	var id := Roster.next_free(player, dir)
+	if id == Roster.pick(player) or not Roster.set_pick(player, id):
+		UiSound.play("ui_back", 0.8)
+		var slot: Node = _spots[player].get_node_or_null("Character")
+		if slot and slot.has_method("shake"):
+			slot.shake()
+		return false
+	if not Roster.bark(id):
+		UiSound.play("char_swap", 1.08 if player == P1 else 0.92)
+	return true
+
+
+func _on_pick_changed(player: int, id: String) -> void:
+	if not _spots.has(player):
+		return
+	var slot: Node = _spots[player].get_node_or_null("Character")
+	if slot and slot.has_method("swap_to"):
+		slot.swap_to(id)
+	_spots[player].name_pop()
+
+
+func _update_choosers() -> void:
+	for p in [P1, P2]:
+		_spots[p].can_change = can_choose(p)
 
 
 func move_focus(dir: int) -> void:
@@ -207,9 +299,12 @@ func set_ready(player: int, on: bool, quiet := false) -> void:
 		var who: Node = _spots[player].get_node_or_null("Character")
 		if who and who.has_method("wave"):
 			who.wave()
+	elif Players.is_active(player):
+		_set_joined(player, true)   # back to idle: choosing again
 	if not quiet:
 		UiSound.play("player_ready" if on else "player_unready", (1.12 if player == P1 else 0.89) if on else 1.0)
 	_update_chip()
+	_update_choosers()
 	player_readied.emit(player, on)
 	if on and readied[P1] and readied[P2]:
 		start_countdown()
@@ -275,6 +370,7 @@ func count_step(delta: float) -> void:
 ## so that it covers the screen just as the round starts.
 func _launch() -> void:
 	_launched = true
+	_update_choosers()
 	launching.emit()
 	UiSound.play("ui_go")
 	_buttons[Choice.PLAY].press()
@@ -368,6 +464,7 @@ func _set_focus(to: Choice, sound := true) -> void:
 func _set_joined(player: int, on: bool) -> void:
 	_spots[player].joined = on
 	_update_chip()
+	_update_choosers()
 	var who: Node = _spots[player].get_node_or_null("Character")
 	if who and who.has_method("set_joined"):
 		who.set_joined(on)
@@ -403,6 +500,7 @@ func _on_player_left(player: int) -> void:
 
 
 func _on_solo_changed(on: bool) -> void:
+	_update_choosers.call_deferred()
 	if on and _live():
 		# From Settings: ready both once Settings closes, not behind it.
 		if in_submenu():
@@ -414,6 +512,7 @@ func _on_solo_changed(on: bool) -> void:
 ## Settings' wider wedge: the title shrinks and the podiums step left to make room.
 func _settings_stage(on: bool) -> void:
 	$Buttons.visible = not on
+	_update_choosers.call_deferred()
 	_countdown.visible = not on
 	if not is_inside_tree():
 		return

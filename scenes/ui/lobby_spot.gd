@@ -3,6 +3,8 @@
 ## dim, the character a shadow, the plate says "[a] JOIN" and pulses. Joined: lit, "[a] Ready up".
 ## Ready: a READY! stamp slams onto the plate (GO! once the round is starting). `hold` (0..1) fills
 ## the plate while that player holds A on Play to start alone. Colours here only mean "this player".
+## The chooser: while `can_change` (joined, not ready) small arrows sit either side of the name;
+## nudge(dir) kicks one, name_pop() bounces the name when the pick changes.
 extends Control
 
 @export var player: int = 0
@@ -26,6 +28,11 @@ var hold := 0.0:
 	set(v):
 		hold = clampf(v, 0.0, 1.0)
 		queue_redraw()
+## Joined and not ready: left / right changes the character; the arrows show.
+var can_change := false:
+	set(v):
+		can_change = v
+		queue_redraw()
 ## The round is starting: the stamp says GO!.
 var go := false:
 	set(v):
@@ -39,6 +46,8 @@ var _t := 0.0
 var _light := 0.0
 var _stamp := 1.0
 var _tw_light: Tween
+var _kick := { -1: 0.0, 1: 0.0 }
+var _pop := 0.0
 
 
 func _init() -> void:
@@ -82,6 +91,37 @@ func _stamp_in() -> void:
 	var tw := create_tween()
 	tw.tween_method(func(x: float) -> void: _stamp = x; queue_redraw(), 0.0, 1.0, 0.22) \
 			.set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+
+
+## Kick the left (-1) or right (+1) arrow: it jumps outward and flashes.
+func nudge(dir: int) -> void:
+	var d := -1 if dir < 0 else 1
+	if not is_inside_tree():
+		return
+	var tw := create_tween()
+	tw.tween_method(func(x: float) -> void: _kick[d] = x; queue_redraw(), 1.0, 0.0, 0.25) \
+			.set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+
+
+## The name on the plate changed: it bounces in.
+func name_pop() -> void:
+	if not is_inside_tree():
+		return
+	var tw := create_tween()
+	tw.tween_method(func(x: float) -> void: _pop = x; queue_redraw(), 1.0, 0.0, 0.3) \
+			.set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+
+
+## A chunky chooser arrow: cream with an ink edge, pointing dir (-1 left, +1 right).
+func _arrow(at: Vector2, dir: int, k: float) -> void:
+	var c := at + Vector2(dir * 10.0 * k, 0)
+	var s := 1.0 + 0.3 * k
+	var pts := PackedVector2Array([c + Vector2(dir * 15, 0) * s, c + Vector2(-dir * 11, -19) * s,
+			c + Vector2(-dir * 11, 19) * s])
+	var ink := PackedVector2Array([c + Vector2(dir * 23, 0) * s, c + Vector2(-dir * 16, -27) * s,
+			c + Vector2(-dir * 16, 27) * s])
+	draw_colored_polygon(ink, UiStyle.INK_SHOW)
+	draw_colored_polygon(pts, UiStyle.CREAM.lerp(UiStyle.accent, k))
 
 
 func _ellipse(c: Vector2, r: Vector2, col: Color, n := 48) -> PackedVector2Array:
@@ -131,11 +171,17 @@ func _draw() -> void:
 		UiStyle.draw_glyph(self, Vector2(nx + 26, cy), 46, "a", pulse)
 		UiStyle.draw_show(self, Vector2(nx + 64, cy), "JOIN", 58, Color(UiStyle.CREAM, pulse))
 	else:
-		UiStyle.draw_show(self, Vector2(nx, cy), UiStyle.skin().player_name(player), 62, Color.WHITE)
+		var name_x := nx + (40.0 if can_change else 0.0)
+		var size_n := int(62 * (1.0 + 0.18 * _pop))
+		var w := UiStyle.draw_show(self, Vector2(name_x, cy), UiStyle.skin().player_name(player), size_n, Color.WHITE)
+		if can_change:
+			_arrow(Vector2(nx + 12, cy), -1, _kick[-1])
+			_arrow(Vector2(minf(name_x + w + 30, plate.end.x - 30), cy), 1, _kick[1])
 	if hold > 0.0:
 		_tag(Vector2(plate.position.x + 130, PLATE_Y - 40), "STARTING SOLO")
 	elif joined and not readied:
-		_tag(Vector2(plate.end.x - 230, PLATE_Y - 40), "[a] Ready up")
+		var tag_text := "[lr] Pick   [a] Ready up" if can_change else "[a] Ready up"
+		_tag(Vector2(plate.end.x - UiStyle.rich_width(tag_text, UiStyle.Role.HINT, 28) - 50, PLATE_Y - 40), tag_text)
 	if readied:
 		_draw_stamp(Vector2(plate.end.x - 50, PLATE_Y - 14))
 

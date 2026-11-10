@@ -31,6 +31,7 @@ const CUES := {
 	"ui_wipe": "three fast whooshes, ~0.5 s",
 	"ui_card": "cymbal swell then quick tail, ~0.7 s",
 	"ui_pause": "record-scratch pitch dip then soft low pad, ~0.6 s",
+	"char_swap": "chooser swap: soft puff plus a rising cartoon pop, ~200 ms",
 }
 
 static var _cache: Dictionary = {}
@@ -238,6 +239,11 @@ static func _build(cue: String) -> PackedFloat32Array:
 		"player_join":
 			b = _blank(0.15)
 			_tone(b, 0.0, 0.15, 440.0, 1100.0, 1, 0.6, 2.5, 0.4, 0.04)
+		"char_swap":
+			b = _blank(0.2)
+			_noise(b, rng, 0.0, 0.16, 0.45, 1, 0.5, 0.08)
+			_tone(b, 0.02, 0.1, 260.0, 980.0, 0, 0.9, 3.0, 0.0, 0.08)
+			_tone(b, 0.1, 0.09, 1300.0, 1500.0, 0, 0.35, 5.0, 0.0, 0.05)
 		"count_tick":
 			b = _blank(0.09)
 			_tone(b, 0.0, 0.09, 880.0, 880.0, 0, 1.0, 2.5, 0.0, 0.05)

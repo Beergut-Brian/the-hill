@@ -2,7 +2,8 @@
 ## lamps, residents), Jeff on foot with his headlamp and Chuck driving the Front Loader (nose lamp)
 ## at landing N, after digging a short tunnel and a room off the landing. No input; camera at x2.
 ##   scripts/tools/shots.sh res://scenes/proto/art_underground.tscn 3 /tmp/x --layer=2
-## Args: --layer=0..5 (default 2), --at=car|tooth|gnomes|dragon (look at a treasure / the Dragon).
+## Args: --layer=0..5 (default 2), --at=car|tooth|gnomes|dragon (look at a treasure / the Dragon),
+## --dig (P1 keeps digging down where it stands). Players draw their Roster picks (--p1-char=...).
 extends Node2D
 
 const UNDERGROUND := preload("res://scenes/levels/underground.tscn")
@@ -10,6 +11,7 @@ const LIGHT_RADIUS := 110.0          # HillGame.LIGHT_RADIUS
 
 var layer := 2
 var at := ""
+var dig := false
 var u: Underground
 var cam: Camera2D
 var jeff: HillPlayer
@@ -22,6 +24,8 @@ func _ready() -> void:
 			layer = clampi(int(a.get_slice("=", 1)), 0, 5)
 		elif a.begins_with("--at="):
 			at = a.get_slice("=", 1)
+		elif a == "--dig":
+			dig = true
 	u = UNDERGROUND.instantiate()
 	add_child(u)
 	var feet := u.landing(layer)
@@ -37,6 +41,8 @@ func _ready() -> void:
 	jeff = _player(0, Vector2((x0 + 3) * 16.0, feet.y), 1)
 	chuck = _player(1, Vector2((x0 + 10) * 16.0, feet.y), -1)
 	chuck.drive(Progress.vehicle_data(&"front_loader"))
+	if dig:
+		jeff.intent_source = func() -> Dictionary: return {"move": Vector2(0, 1), "dig": true}
 	cam = Camera2D.new()
 	cam.zoom = Vector2(2, 2)
 	cam.position = Vector2((x0 + 4) * 16.0, feet.y - 40.0)

@@ -1,7 +1,23 @@
 ## The sprite wiring of players, vehicles, buildings and the lobby: manifest-driven frames, Jeff for
-## P1 and Chuck for P2, the vehicle body row by driver, and a driver's lamps.
+## P1 and Chuck for P2 by default (no picks), the vehicle body row by driver, and a driver's lamps.
 class_name TestArtSprites
 extends GdUnitTestSuite
+
+var _real_picks := ""
+
+
+## Default picks only: never the real shared picks file.
+func before() -> void:
+	_real_picks = Roster.picks_path
+	Roster.picks_path = "user://test_art_sprites_players.json"
+	Roster.args_override = PackedStringArray(["--no-picks"])
+	Roster.reload()
+
+
+func after() -> void:
+	Roster.picks_path = _real_picks
+	Roster.args_override = PackedStringArray()
+	Roster.reload()
 
 
 func test_sheet_frames_come_from_the_manifest() -> void:
@@ -18,7 +34,7 @@ func test_sheet_frames_come_from_the_manifest() -> void:
 	assert_bool(SpriteArt.has("characters/nobody.png")).is_false()
 
 
-func test_player_one_is_jeff_and_player_two_is_chuck() -> void:
+func test_by_default_player_one_is_jeff_and_player_two_is_chuck() -> void:
 	assert_str(SpriteArt.char_of(0)).is_equal("jeff")
 	assert_str(SpriteArt.char_of(1)).is_equal("chuck")
 	var mc: HillMenuCharacter = (load("res://scenes/ui/hill_menu_chuck.tscn") as PackedScene).instantiate()

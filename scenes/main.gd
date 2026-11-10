@@ -42,8 +42,8 @@ func _ready() -> void:
 		Game.to_lobby()
 
 
-## The lobby's look is the Showtime skin, data/menu_skin.tres (logo, Jeff and Chuck from the sprite
-## sheets, Hillville blurred behind). Here only the clock: the lobby's Hillville shows the time of
+## The lobby's look is the Showtime skin, data/menu_skin.tres (logo, each player's picked character
+## from the sprite sheets, Hillville blurred behind). Here only the clock: the lobby's Hillville shows the time of
 ## day the save left off at (--time=... freezes it instead; --demo keeps the default morning).
 func _restore_clock() -> void:
 	if Game.demo:

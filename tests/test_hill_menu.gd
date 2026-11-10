@@ -10,6 +10,7 @@ const P2 := 1
 var _main: Node
 var _real_settings := ""
 var _real_profile := ""
+var _real_picks := ""
 
 
 func before() -> void:
@@ -17,6 +18,11 @@ func before() -> void:
 	_real_profile = Save.profile
 	Save.settings_path = "user://test_settings_hill_menu.json"
 	Save.reload_settings()
+	# Default picks (Jeff, Chuck): never the real shared picks file.
+	_real_picks = Roster.picks_path
+	Roster.picks_path = "user://test_hill_menu_players.json"
+	Roster.args_override = PackedStringArray(["--no-picks"])
+	Roster.reload()
 	Game.quit_exits = false
 
 
@@ -26,6 +32,9 @@ func after() -> void:
 	Save.reload_settings()
 	Save.profile = _real_profile
 	Save._load()
+	Roster.picks_path = _real_picks
+	Roster.args_override = PackedStringArray()
+	Roster.reload()
 	Game.quit_exits = true
 
 

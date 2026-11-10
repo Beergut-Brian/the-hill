@@ -9,6 +9,7 @@ const Backdrop := preload("res://scenes/ui/kit/menu_backdrop.gd")
 
 var _main: Node
 var _real_settings := ""
+var _real_picks := ""
 var _launched := 0
 var _covered := 0
 
@@ -24,12 +25,17 @@ func _on_cover() -> void:
 func before() -> void:
 	_real_settings = Save.settings_path
 	Save.settings_path = "user://test_settings_showtime.json"
+	_real_picks = Roster.picks_path
+	Roster.picks_path = "user://test_showtime_players.json"
 
 
 func after() -> void:
 	Save.wipe_settings()
 	Save.settings_path = _real_settings
 	Save.reload_settings()
+	DirAccess.remove_absolute(Roster.picks_path)
+	Roster.picks_path = _real_picks
+	Roster.reload()
 
 
 func before_test() -> void:
@@ -110,8 +116,9 @@ func test_character_slot_hosts_every_kind() -> void:
 	assert_bool(s2.character is Node2D).is_true()
 	assert_that((s2.character as Node2D).scale).is_equal(Vector2(4, 4))
 	assert_int((s2.character as Node2D).texture_filter).is_equal(CanvasItem.TEXTURE_FILTER_NEAREST)
-	UiStyle.use_skin(null)   # back to the placeholder
-	assert_bool(s1.character is Control).is_true()
+	UiStyle.use_skin(null)   # back to the Roster picks: Jeff's and Chuck's .glb
+	assert_bool(s1.character is Node3D).is_true()
+	assert_str(s1.character.get("id")).is_equal(Roster.pick(P1))
 
 
 func test_backdrop_modes() -> void:

@@ -3,19 +3,23 @@ class_name TestSmoke
 extends GdUnitTestSuite
 
 var _real_settings := ""
+var _real_picks := ""
 
 
+## This suite boots main.tscn: its own settings and picks files, never the real ones.
 func before() -> void:
-	# Its own settings file: nothing here may write into the real user://settings.json.
 	_real_settings = Save.settings_path
 	Save.settings_path = "user://test_settings_smoke.json"
 	Save.reload_settings()
+	_real_picks = Roster.picks_path
+	Roster.picks_path = "user://test_smoke_players.json"
 
 
 func after() -> void:
 	Save.wipe_settings()
 	Save.settings_path = _real_settings
 	Save.reload_settings()
+	Roster.picks_path = _real_picks
 
 
 func test_main_scene_loads() -> void:

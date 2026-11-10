@@ -2,9 +2,11 @@
 ##   Control  fills the slot
 ##   Node2D   stands with its origin on the podium (feet), scaled by MenuSkin.character_scale
 ##   Node3D   shown in its own lit SubViewport with a transparent background, turning slowly
-## Empty skin: the template's placeholder (lobby_character.gd). The lobby calls set_joined(), wave()
-## and cheer() here; they go on to the character if it has them, and the slot itself hops on cheer.
-## Not joined: the character is a dark shadow.
+## Empty skin slot: the player's Roster pick (RosterCharacter: its .glb, or its pixel form when
+## MenuSkin.pixel_art), else the template's placeholder (lobby_character.gd). A skin scene with a
+## set_character(id) method is told the Roster pick too. The lobby calls set_joined(), wave(),
+## cheer() and swap_to(id) here; they go on to the character if it has them, and the slot itself
+## hops on cheer and squashes/pops with a poof on swap_to. Not joined: a dark shadow.
 class_name CharacterSlot
 extends Control
 
@@ -17,6 +19,7 @@ var _pivot3d: Node3D
 var _joined := false
 var _t := 0.0
 var _base_y := 0.0
+var _base_x := 0.0
 var _tw: Tween
 
 
@@ -26,6 +29,7 @@ func _init() -> void:
 
 func _ready() -> void:
 	_base_y = position.y
+	_base_x = position.x
 
 
 func host(p: int) -> void:
@@ -35,7 +39,12 @@ func host(p: int) -> void:
 	_pivot3d = null
 	var sk := UiStyle.skin()
 	var scene := sk.character(p)
+	var id := Roster.pick(p)
 	var node: Node = scene.instantiate() if scene else null
+	if node and id != "" and node.has_method("set_character"):
+		node.set_character(id)
+	elif node == null and id != "":
+		node = RosterCharacter.make(id, sk.pixel_art)
 	if node == null:
 		var ph := Control.new()
 		ph.set_script(PLACEHOLDER)
@@ -123,12 +132,58 @@ func cheer() -> void:
 	_hop(60.0)
 
 
+## The chooser: squash down, become `id` at the bottom of the squash, pop back up past full size,
+## with a poof. A character with set_character(id) changes in place; anything else is re-hosted.
+func swap_to(id: String) -> void:
+	if not is_inside_tree():
+		_become(id)
+		return
+	if _tw:
+		_tw.kill()
+	position = Vector2(_base_x, _base_y)
+	pivot_offset = Vector2(size.x * 0.5, size.y)
+	_tw = create_tween()
+	_tw.tween_property(self, "scale", Vector2(1.3, 0.55), 0.07).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+	_tw.tween_callback(func() -> void:
+		_become(id)
+		Poof.burst(get_parent(), position + Vector2(size.x * 0.5, size.y * 0.62), UiStyle.player_color(player))
+		scale = Vector2(0.7, 1.35))
+	_tw.tween_property(self, "scale", Vector2.ONE, 0.32).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+
+
+## Posed mid-swap for screenshots (0 = squashed, 1 = settled).
+func pose_swap(k: float) -> void:
+	pivot_offset = Vector2(size.x * 0.5, size.y)
+	scale = Vector2(0.7, 1.35).lerp(Vector2.ONE, k)
+
+
+## A wrong-way bump: nobody else is free. A quick side-to-side shake.
+func shake() -> void:
+	if not is_inside_tree():
+		return
+	if _tw:
+		_tw.kill()
+	position = Vector2(_base_x, _base_y)
+	scale = Vector2.ONE
+	_tw = create_tween()
+	for dx in [-14.0, 12.0, -8.0, 0.0]:
+		_tw.tween_property(self, "position:x", _base_x + dx, 0.045)
+
+
+func _become(id: String) -> void:
+	if character and character.has_method("set_character"):
+		character.set_character(id)
+	else:
+		host(player)
+
+
 func _hop(h: float) -> void:
 	if not is_inside_tree():
 		return
 	if _tw:
 		_tw.kill()
-	position.y = _base_y
+	position = Vector2(_base_x, _base_y)
+	scale = Vector2.ONE
 	_tw = create_tween()
 	_tw.tween_property(self, "position:y", _base_y - h, 0.16).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
 	_tw.tween_property(self, "position:y", _base_y, 0.24).set_trans(Tween.TRANS_BOUNCE).set_ease(Tween.EASE_OUT)

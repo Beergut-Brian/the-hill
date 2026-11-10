@@ -12,7 +12,7 @@
 4. Check the kid-design checklist in the PR description; verify the ticked items.
 5. Check any new asset has a `CREDITS.md` line.
 6. Check nothing contradicts `GAME.md` or `docs/contracts.md`.
-7. Check player-locked characters are on the right side.
+7. Check players spawn as their `Roster` pick (Jeff / Chuck only as defaults) and the slot colours stay green P1 / red P2.
 8. Merge with a squash; the squash message keeps the lane prefix.
 
 **Rejection** is a comment listing exactly what failed, with the command output. No style
