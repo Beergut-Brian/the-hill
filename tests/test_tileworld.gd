@@ -402,6 +402,80 @@ func test_breakable_prop_breaks_when_undercut() -> void:
 	assert_bool(is_instance_valid(prop)).is_false()
 
 
+## W-19: a `whole` prop drops as one upright body that carries its picture, and rests where it lands.
+func test_whole_prop_drops_as_one_body_and_rests_where_it_lands() -> void:
+	var w := _world(RectShape.new(64, 64, 32))
+	_tracker(w, Vector2i(10, 10))
+	w.update_chunks()
+	_carve(w, _box(Vector2i(10, 10), Vector2i.DOWN, Vector2i.RIGHT, [0], range(0, 2)))
+	_carve(w, _box(Vector2i(10, 12), Vector2i.DOWN, Vector2i.RIGHT, range(0, 3), range(0, 2)))
+	var prop := BreakableProp.new()
+	prop.footprint = Vector2i(2, 1)
+	prop.whole = true
+	prop.position = Vector2(10, 10) * 16.0
+	var art := Sprite2D.new()
+	art.centered = false
+	art.texture = ImageTexture.create_from_image(Image.create(32, 16, false, Image.FORMAT_RGBA8))
+	prop.add_child(art)
+	w.add_child(prop)
+	var broke: Array = []
+	w.prop_broke.connect(func(p, pieces): broke.append(pieces))
+	w.dig(Vector2i(10, 11))
+	assert_array(broke).is_empty()
+	w.dig(Vector2i(11, 11))
+	assert_int(broke.size()).is_equal(1)
+	var pieces: Array = broke[0]
+	assert_int(pieces.size()).is_equal(1)
+	var b: FallingBody = pieces[0]
+	assert_bool(b.lock_rotation).is_true()
+	assert_object(art.get_parent()).is_same(b)
+	assert_float(b.self_modulate.a).is_equal(0.0)
+	await _frames(5)
+	await _await_sleep(b, 400)
+	await _frames(10)
+	await _await_sleep(b, 400)
+	assert_bool(b.sleeping).is_true()
+	assert_int(w.shape.cell_at(b.position).y).is_equal(14)
+	var p0 := b.position
+	await _frames(30)
+	assert_bool(b.sleeping).is_true()
+	assert_float(b.position.distance_to(p0)).is_less(0.5)
+	# It rests on its own bottom row: the support it waits on is the floor row, not one further.
+	for c in w._bodies.support_cells(b):
+		assert_int(c.y).is_equal(15)
+
+
+## W-20: a break cuts the prop's picture into one region per piece, so the chunks show the prop.
+func test_breaking_prop_cuts_its_picture_into_the_pieces() -> void:
+	var w := _world(RectShape.new(64, 64, 32))
+	_tracker(w, Vector2i(10, 10))
+	w.update_chunks()
+	_carve(w, _box(Vector2i(10, 10), Vector2i.DOWN, Vector2i.RIGHT, range(0, 2), range(0, 3)))
+	var prop := BreakableProp.new()
+	prop.footprint = Vector2i(3, 2)
+	prop.position = Vector2(10, 10) * 16.0
+	var art := Sprite2D.new()
+	art.centered = false
+	art.texture = ImageTexture.create_from_image(Image.create(48, 32, false, Image.FORMAT_RGBA8))
+	prop.add_child(art)
+	w.add_child(prop)
+	var broke: Array = []
+	w.prop_broke.connect(func(p, pieces): broke.append(pieces))
+	prop.break_apart()
+	var pieces: Array = broke[0]
+	assert_int(pieces.size()).is_equal(6)
+	var regions: Array = []
+	for p: FallingBody in pieces:
+		var s := p.get_node("Art") as Sprite2D
+		assert_object(s).is_not_null()
+		assert_bool(s.region_enabled).is_true()
+		assert_vector(s.region_rect.size).is_equal(Vector2(16, 16))
+		assert_float(p.self_modulate.a).is_equal(0.0)
+		assert_float(p.physics_material_override.bounce).is_greater(0.0)
+		regions.append(s.region_rect.position)
+	assert_array(_sorted(regions)).is_equal(_sorted([Vector2(0, 0), Vector2(16, 0), Vector2(32, 0), Vector2(0, 16), Vector2(16, 16), Vector2(32, 16)]))
+
+
 # --- 6. water ----------------------------------------------------------------------------------
 
 func test_water_bounds_rect() -> void:
