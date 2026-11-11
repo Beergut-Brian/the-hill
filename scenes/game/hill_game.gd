@@ -70,7 +70,9 @@ func _ready() -> void:
 	# speed): they keep the old dig. The dig lane's own beats play the real rules. Set before the
 	# underground is built (its DigFeel picks its tuning in setup).
 	# (Loaded by path: a DigBeats class reference here would make a parse cycle, see below.)
-	var dig_beat := Game.demo and (load("res://scripts/gameplay/dig_beats.gd").get("DIG_BEATS") as Array).has(HillBeatRunner.beat_arg(OS.get_cmdline_user_args() + OS.get_cmdline_args()))
+	var beat_name := HillBeatRunner.beat_arg(OS.get_cmdline_user_args() + OS.get_cmdline_args())
+	var dig_beat := Game.demo and ((load("res://scripts/gameplay/dig_beats.gd").get("DIG_BEATS") as Array).has(beat_name)
+			or (load("res://scripts/gameplay/puzzle_beats.gd").get("REAL_RULES") as Array).has(beat_name))
 	DigFeel.demo_open = Game.demo and not dig_beat
 	HillPlayer.hand_clear = DigFeel.demo_open
 	name = "Game"
@@ -193,7 +195,8 @@ func _ready() -> void:
 			var story_beats: Script = load("res://scripts/gameplay/story_beats.gd")
 			var adj_beats: Script = load("res://scripts/gameplay/adjacency_beats.gd")
 			var dig_beats: Script = load("res://scripts/gameplay/dig_beats.gd")
-			runner = dig_beats.new() if dig_beats.get("DIG_BEATS").has(beat) else ctl.new() if ctl.get("CONTROLS_BEATS").has(beat) else adj_beats.new() if adj_beats.get("ADJACENCY_BEATS").has(beat) else story_beats.new() if story_beats.get("STORY_BEATS").has(beat) else LooseBeats.new() if LooseBeats.LOOSE_BEATS.has(beat) else gap.new() if gap.get("GAP_BEATS").has(beat) else load("res://scripts/gameplay/two_driver_beats.gd").new() if beat == "drivers" else DepthBeats.new() if DepthBeats.DEPTH_BEATS.has(beat) else CameraBeats.new() if CameraBeats.CAMERA_BEATS.has(beat) else HazardBeats.new() if HazardBeats.HAZARD_BEATS.has(beat) else VehicleBeats.new() if VehicleBeats.VEHICLE_BEATS.has(beat) else PolishBeats.new() if PolishBeats.POLISH_BEATS.has(beat) else ArcBeats.new() if ArcBeats.ARC_BEATS.has(beat) else HillBeatRunner.new()
+			var puzzle_beats: Script = load("res://scripts/gameplay/puzzle_beats.gd")
+			runner = puzzle_beats.new() if puzzle_beats.get("PUZZLE_BEATS").has(beat) else dig_beats.new() if dig_beats.get("DIG_BEATS").has(beat) else ctl.new() if ctl.get("CONTROLS_BEATS").has(beat) else adj_beats.new() if adj_beats.get("ADJACENCY_BEATS").has(beat) else story_beats.new() if story_beats.get("STORY_BEATS").has(beat) else LooseBeats.new() if LooseBeats.LOOSE_BEATS.has(beat) else gap.new() if gap.get("GAP_BEATS").has(beat) else load("res://scripts/gameplay/two_driver_beats.gd").new() if beat == "drivers" else DepthBeats.new() if DepthBeats.DEPTH_BEATS.has(beat) else CameraBeats.new() if CameraBeats.CAMERA_BEATS.has(beat) else HazardBeats.new() if HazardBeats.HAZARD_BEATS.has(beat) else VehicleBeats.new() if VehicleBeats.VEHICLE_BEATS.has(beat) else PolishBeats.new() if PolishBeats.POLISH_BEATS.has(beat) else ArcBeats.new() if ArcBeats.ARC_BEATS.has(beat) else HillBeatRunner.new()
 		runner.set("game", self)
 		if beat != "":
 			runner.set("beat", beat)

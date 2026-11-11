@@ -33,6 +33,10 @@ var _flash := {}
 var _pops: Array = []   # [{pos: Vector2, t: float, color: Color}]
 var _sign_pop := {}     # gate id -> 1..0 (a sign wiggles after a bonk on its band)
 var _t := 0.0
+## C-22: per player, seconds since they last stood facing a block they need a vehicle for (the
+## walk-up picture pops once per visit, again after WALK_UP_REARM s away).
+var _walk_up := {}
+const WALK_UP_REARM := 1.0
 
 
 static func of(w: TileWorld) -> DigFeel:
@@ -183,6 +187,46 @@ func bonk(pl: HillPlayer, cell: Vector2i) -> void:
 	queue_redraw()
 
 
+## C-22: the block beside `pl` (the side they face, feet or head height) that needs a vehicle they
+## are not in (Hard Rock on foot, a block too hard for their vehicle), or (-9999, -9999). Gate
+## Rock is left out: its band has signs.
+func walk_up_cell(pl: HillPlayer) -> Vector2i:
+	var none := Vector2i(-9999, -9999)
+	if pl == null or pl.world != world or demo_open:
+		return none
+	var feet := world.to_local(pl.global_position)
+	for dy in [-6.0, -22.0]:
+		var c := world.shape.cell_at(feet + Vector2(pl.facing * 12.0, dy))
+		if not world.is_solid(c):
+			continue
+		var def := block_at(c)
+		if def == null or def.id == &"gaterock" or not def.breakable:
+			continue
+		if (def.vehicle_only or def.dig_tier > 0) and not can_break(pl, c, def):
+			return c
+	return none
+
+
+## The vehicle picture `pl` sees walking up to a block they need one for, or &"" (tests, hints).
+func walk_up_need(pl: HillPlayer) -> StringName:
+	var c := walk_up_cell(pl)
+	return need_picture(c, block_at(c)) if c.x > -9999 else &""
+
+
+func _walk_ups(delta: float) -> void:
+	if u == null or not u.get("hazards"):
+		return
+	for pl: HillPlayer in u.hazards.players():
+		var away: float = float(_walk_up.get(pl.player, WALK_UP_REARM)) + delta
+		var pic := walk_up_need(pl)
+		if pic != &"":
+			if away >= WALK_UP_REARM and pl.need_hint() == &"":
+				pl.show_need(pic)
+				_flash[walk_up_cell(pl)] = 0.6
+			away = 0.0
+		_walk_up[pl.player] = away
+
+
 ## Stage 0..1 of the crack at `cell` (tests, beats).
 func crack_of(cell: Vector2i) -> float:
 	var def := block_at(cell)
@@ -195,6 +239,7 @@ func crack_of(cell: Vector2i) -> float:
 
 func _process(delta: float) -> void:
 	_t += delta
+	_walk_ups(delta)
 	for c in _flash.keys():
 		_flash[c] = float(_flash[c]) - delta * 6.0
 		if _flash[c] <= 0.0:
