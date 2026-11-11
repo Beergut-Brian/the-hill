@@ -115,6 +115,11 @@ Menu cues (`ui_move`, `ui_confirm`, `player_join`, `ui_back`, ...) stay with the
 | shovel_back | sfx/shovel_back.ogg | the shovel comes back | clink + notes | +0 | 0.05, 3 |
 | ice_drip | sfx/ice_drip_1.ogg, sfx/ice_drip_2.ogg | ice drips by the Caveman | drip | -6 | 0.5, 1 |
 | ice_crack | sfx/ice_crack.ogg | the Caveman's ice cracks | cracks + sparkle | +0 | 0.05, 3 |
+| worm_boop | sfx/worm_boop_1.ogg, sfx/worm_boop_2.ogg | a Topsoil worm waves out of the dirt (W-03; `DepthLife._physics_process` when it pops out) | round rising boop + three-chirp giggle | -3 | 0.25, 2 |
+| fish_flop | sfx/fish_flop_1.ogg, sfx/fish_flop_2.ogg | a frozen fish is dug out of its ice (W-11; HillAudio on `Events.tile_dug` at a `fish_at` cell) | wet flip-flop, two slaps + tail boing + glint | -2 | 0.05, 3 |
+| fish_free | sfx/fish_free.ogg | a later fish wiggles free and swims off (W-11; `DepthLife.free_fish`, after its `fish_flop`) | light ice crack, small splash, bubbles away | -2 | 0.05, 3 |
+| dig_sand | sfx/dig_sand_1.ogg .. sfx/dig_sand_3.ogg | digging sand (W-10) once `data/blocks/sand.tres` sets `dig_sound = &"dig_sand"` (it says `dig_dirt` now) | soft bright "shff", fine grains, no thump | -4 | 0.06, 3 |
+| drain_gurgle | sfx/drain_gurgle.wav | loop while a drain puzzle's water runs (C-22; HillAudio `_gurgle`, `Audio.engine`), -8 dB, a further -9 dB under a bark, stops 0.6 s after the water is still | low watery bed + rising bubbles, 2 s seamless | -10 | loop |
 | caveman_laugh | sfx/caveman_laugh.ogg | the Caveman laughs | ho ho ho | +0 | 0.05, 3 |
 | caveman_hoot | sfx/caveman_hoot.ogg | the Caveman hoots | oo-OO! | +0 | 0.05, 3 |
 | caveman_huh | sfx/caveman_huh.ogg | the Caveman is baffled | huh? | +0 | 0.05, 3 |

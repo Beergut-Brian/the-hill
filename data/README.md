@@ -4,6 +4,8 @@ Content rows for The Hill, as `.tres` resources. The content lane owns this fold
 The id of every row equals its file stem (`dirt.tres` has `id = &"dirt"`).
 
 - `blocks/`     BlockData: dirt .. crystal, plus edgestone and strangestone (unbreakable until 2.0.0).
+                `boulder_breaks` (+ `boulder_min_px`, `boulder_min_speed`, `boulder_reach`): a boulder
+                landing on it breaks it (C-22; on for Hard Rock, which the boulder walls are made of).
                 Sand (C-17) sits in the lower Stone layer (`depth_from` 100): the generator only puts a
                 block where the cell is at least its `depth_from`, else the layer's main block.
                 Minor kinds (W-31, W-32): pebbles and pipe in Clay, ore and geode in Stone. A layer's
@@ -17,6 +19,8 @@ The id of every row equals its file stem (`dirt.tres` has `id = &"dirt"`).
 - `vehicles/`   VehicleData: Front Loader .. Drill Rig, ordered 0..4.
 - `hazards/`    HazardData: how many boulders, water pockets and cave-ins each layer gets, and how
                 many of them sit near the layer's landing (Gameplay lane added the first rows, 2026-11-10).
+- `puzzles/`    PuzzleData (C-22): a boulder wall and a block only one vehicle clears, placed per seed
+                in a layer whose `hazards` lists the row's kind (Underground engineering lane, 2026-11-11).
 
 - `camera.tres` CameraTuning (`scripts/gameplay/camera_tuning.gd`): the base zoom (S-07), the
                 underground lead and the per-vehicle zoom-out (Camera lane, 2026-11-10).

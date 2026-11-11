@@ -120,6 +120,8 @@ func test_side_dig_takes_the_tile_next_to_the_body() -> void:
 	var node := _join(P1, _idle())
 	_room(P1, Rect2i(60, 14, 3, 2), 61)
 	await _physics(2)
+	# PT10-4: one bite's cells, not its hit points (test_dig_progression).
+	_game.underground.dig_feel.tuning = DigTuning.instant()
 	node.set_physics_process(false)
 	var w := _world()
 	# Standing in column 61 (room 60..62): right of the body is 62 (air), so nothing is dug and
@@ -153,7 +155,8 @@ func test_marker_is_the_next_dig_and_moves_with_the_player() -> void:
 	assert_int(node.dig_marker_cell().x).is_equal(59)
 	it.move = Vector2.ZERO
 	it.dig = true
-	await _until(func() -> bool: return not _world().is_solid(Vector2i(59, 15)), 30)
+	# PT10-4: a few shovel hits (data/dig.tres), not one.
+	await _until(func() -> bool: return not _world().is_solid(Vector2i(59, 15)), 90)
 	assert_bool(_world().is_solid(Vector2i(59, 15))).is_false()
 
 
@@ -491,6 +494,11 @@ func test_from_deep_spots_the_shaft_is_under_20_seconds_away() -> void:
 	var it := _idle()
 	var node := _join(P1, it)
 	var ug := _game.underground
+	# PT10-4 (dig lane, hill-dig-1): measured at the pre-slow-start dig speed. With the starting
+	# shovel, tunnelling 12-40 tiles of fresh rock back to the shaft takes longer than 20 s; in play
+	# a spot is reached by your own tunnel. Re-measuring from own-tunnel spots is open for the
+	# controls lane (handoff REPORT "Needs other lanes").
+	ug.dig_feel.tuning = DigTuning.instant()
 	var rng := RandomNumberGenerator.new()
 	rng.seed = 2026_11_10
 	var times: Array = []

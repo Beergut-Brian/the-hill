@@ -131,7 +131,7 @@ func has_fish(cell: Vector2i) -> bool:
 func free_fish(cell: Vector2i) -> void:
 	var at := (Vector2(cell) + Vector2(0.5, 0.5)) * CELL
 	_fish_free.append({"pos": at, "t": 0.0, "dir": 1 if _hash(cell, 5) % 2 == 0 else -1})
-	Audio.play("splash")
+	Audio.play("fish_free")
 	u.burst(at, Color(0.75, 0.9, 1.0), 14, 120.0)
 
 
@@ -174,7 +174,7 @@ func _physics_process(delta: float) -> void:
 				var dir := _open_side(c, b)
 				if dir != 0 and _face(c, dir).distance_to(b) <= NEAR_PX:
 					worms[c] = {"phase": Phase.OUT, "t": 0.0, "dir": dir, "away": 0.0}
-					Audio.play("pop")
+					Audio.play("worm_boop")
 					u.burst(_face(c, dir), Color("8b5a2b"), 6, 60.0)
 	for c in worms.keys():
 		var w: Dictionary = worms[c]

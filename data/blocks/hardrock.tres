@@ -1,0 +1,21 @@
+[gd_resource type="Resource" script_class="BlockData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/data/block_data.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = &"hardrock"
+color = Color(0.29, 0.31, 0.36, 1)
+dig_sound = &"dig_stone"
+depth_from = 30
+depth_to = 130
+value = 4
+toughness = 6
+vehicle_only = true
+boulder_breaks = true
+boulder_min_px = 20.0
+boulder_min_speed = 90.0
+boulder_reach = 1
+keeps_as = &"stone"
+haul = 4
+minor_shape = &"patch"

@@ -12,6 +12,21 @@ extends TileDef
 @export var value: int = 1
 ## Lowest VehicleData.dig_tier that can remove it (0 = shovel).
 @export var dig_tier: int = 0
+## PT10-4: hit points (DigTuning: each hit takes the digger's power). 1 = breaks on any hit.
+@export var toughness: int = 1
+## PT10-4/5: only a vehicle breaks it (any dig_tier >= dig_tier); on foot it bonks.
+@export var vehicle_only: bool = false
+## PT10-4: the block a dig keeps (&"" = this one), and how many (a big haul: Hard Rock).
+@export var keeps_as: StringName = &""
+@export var haul: int = 1
+## C-22: a boulder breaks it. A falling body at least `boulder_min_px` wide that lands on it at
+## `boulder_min_speed` px/s or more cracks it away (Puzzles): the cells under the body, and the same
+## block up to `boulder_reach` cells further along that row. A boulder-wall slab (data/puzzles) made of
+## this block breaks whole. Smaller or slower bodies (a pebble) only clink.
+@export var boulder_breaks: bool = false
+@export var boulder_min_px: float = 20.0
+@export var boulder_min_speed: float = 90.0
+@export var boulder_reach: int = 1
 ## Ice: the player slides.
 @export var slippery: bool = false
 ## Lava pockets: bounces the player.

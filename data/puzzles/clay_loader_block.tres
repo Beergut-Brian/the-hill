@@ -1,0 +1,16 @@
+[gd_resource type="Resource" script_class="PuzzleData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/data/puzzle_data.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+kind = &"vehicle_block"
+id = &"clay_loader_block"
+layer = &"clay"
+count = 1
+near_landing = 1
+size = Vector2i(2, 2)
+vehicle = &"front_loader"
+hits = 2
+gives = &"stone"
+gives_count = 2

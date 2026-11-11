@@ -10,3 +10,4 @@ dig_sound = &"dig_crystal"
 depth_from = 190
 depth_to = 260
 value = 10
+toughness = 6

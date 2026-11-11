@@ -6,9 +6,15 @@
 ##   (UndergroundResidents), so the sound, her puff and the cavern sway are one moment; louder by
 ##   depth (LayerData.snore_volume) for the deepest underground player. The sway is the residents'
 ##   (ScreenKick); this file never moves a camera.
-## - Barks: Jeff names rocks, Chuck narrates his driving, the Mole's "oh dear", the Foreman's
-##   whistle and mutters, the Dragon's rumbles. Audio.bark() rate-caps them.
+## - Barks: the walk-up and in-play barks (Jeff names rocks, Chuck narrates his driving, the
+##   residents talk when a player walks up) live in HillBarks, a child of this node, with their own
+##   cooldowns and picture bubbles. This file keeps the story-moment barks (encounter, arrival,
+##   the Dragon waking, the Foreman inspecting a new building). Audio.bark() rate-caps them all.
 ## - Resident arcs: arrival, light-on and each payoff from the Events signals.
+## - Frozen fish (W-11): digging a fish out of its ice plays `fish_flop` (a wet flip-flop).
+## - Drain puzzle (C-22): while its water runs (the wet cells in a drain puzzle move or drain away),
+##   the looped `drain_gurgle` plays, ducked under barks; GURGLE_HOLD s of still water stops it.
+##   Water that only appears (a chunk loading) or one jump (a chunk freeing) is not running.
 ##
 ## THEME RULE (the dynamic split): the theme follows where most players are. One up and one down
 ## (a tie) keeps whichever theme is already playing, so the music never flips back and forth on a
@@ -19,14 +25,17 @@ extends Node
 
 ## Snore quieter than this (linear) is skipped (Topsoil is 0).
 const SNORE_MIN := 0.05
-## Chuck narrates at most this often while driving, Jeff names a rock at most this often.
-const NARRATE_EVERY := 14.0
-const ROCK_EVERY := 10.0
-## Jeff only names "real" rocks.
-const ROCKS: Array[StringName] = [&"stone", &"edgestone", &"strangestone", &"ice", &"crystal", &"clay"]
 ## Resident id -> payoff cue.
 const PAYOFF := {&"mole": "payoff_mole", &"caveman": "payoff_caveman",
 	&"gnome_foreman": "payoff_gnomes", &"dragon": "payoff_dragon"}
+## The drain gurgle: its level, how far it dips under a bark, how often the water is checked and
+## how long the water must be still before it stops.
+const GURGLE_KEY := &"drain_gurgle"
+const GURGLE_DB := -8.0
+const GURGLE_BARK_DB := -9.0
+const GURGLE_POLL := 0.2
+const GURGLE_HOLD := 0.6
+const DRAIN_RECTS: Array[String] = ["rect", "pocket", "nook", "wall", "plug", "chute", "sump"]
 ## Treasure layer -> cue (bigger for rarer: deeper is rarer).
 const TREASURE_TIER := {&"topsoil": "treasure_small", &"clay": "treasure", &"stone": "treasure_big",
 	&"ice": "treasure_big", &"crystal": "treasure_huge", &"bottom": "treasure_huge"}
@@ -38,11 +47,15 @@ var last_snore := 0.0
 var _snore_src: Object = null
 var _layers: Array = []
 var _driving := {}         # player -> vehicle id
-var _narrate_at := {}      # player -> seconds since last narration
-var _rock_at := -100.0
-var _named := {}           # block types Jeff has named this session
+## A-15 / P-06: Jeff's rocks, Chuck's narration and the residents' walk-up barks.
+var barks: HillBarks
 var _dragon_awake := false
 var _t := 0.0
+var gurgling := false
+var _drain_sig := {}       # drain puzzle index -> [wet count, hash of the wet cells]
+var _gurgle_poll := 0.0
+var _gurgle_still := 0.0
+var _moving := 0           # drain checks in a row that saw the water move
 ## --audio-log: print voice counts every 30 s of game time (the soak reads it).
 var _log_every := 30.0 if "--audio-log" in OS.get_cmdline_args() + OS.get_cmdline_user_args() else 0.0
 var _log_at := 0.0
@@ -62,12 +75,15 @@ func _ready() -> void:
 		game = get_parent()
 	_layers = Underground.load_rows(Underground.LAYER_DIR)
 	_layers.sort_custom(func(a: LayerData, b: LayerData) -> bool: return a.depth_from < b.depth_from)
-	Events.tile_dug.connect(_on_tile_dug)
+	barks = HillBarks.new()
+	barks.game = game
+	add_child(barks)
 	Events.resident_encountered.connect(_on_encountered)
 	Events.resident_arrived.connect(_on_arrived)
 	Events.ruin_restored.connect(_on_restored)
 	Events.dragon_woken.connect(_on_dragon_woken)
 	Events.building_placed.connect(_on_building_placed)
+	Events.tile_dug.connect(_on_tile_dug)
 	var story = game.get("story")
 	if story != null and story.has_method("phase"):
 		_dragon_awake = story.phase(&"dragon") >= ResidentState.Phase.ARRIVED
@@ -78,6 +94,7 @@ func _exit_tree() -> void:
 	for p in _driving.keys():
 		Audio.engine_stop(p)
 	_driving.clear()
+	_gurgle_off()
 	Audio.music_state(&"up", 0, false)
 
 
@@ -94,6 +111,7 @@ func _physics_process(delta: float) -> void:
 	_engines(players)
 	_music(players)
 	_hook_snore()
+	_gurgle(delta)
 
 
 # --- engines -------------------------------------------------------------------------------------
@@ -111,17 +129,9 @@ func _engines(players: Dictionary) -> void:
 		if _driving.get(p, &"") != v.id:
 			_driving[p] = v.id
 			Audio.engine(p, String(v.sounds.get(&"engine", "%s_engine" % v.id)))
-			_narrate_at[p] = 0.0
-			if _pick(p) == "chuck":
-				Audio.bark("chuck", "narrate")
 		var vel = node.get("velocity")
 		var speed := absf(vel.x if vel is Vector2 else 0.0) / maxf(float(v.speed), 1.0)
 		Audio.engine_speed(p, speed)
-		# Chuck narrates while he is actually going somewhere.
-		if _pick(p) == "chuck" and speed > 0.5:
-			_narrate_at[p] = float(_narrate_at.get(p, 0.0)) + get_physics_process_delta_time()
-			if _narrate_at[p] >= NARRATE_EVERY and Audio.bark("chuck", "narrate"):
-				_narrate_at[p] = 0.0
 
 
 # --- music ---------------------------------------------------------------------------------------
@@ -219,20 +229,6 @@ func _on_dragon_snored(_sway: float) -> void:
 
 # --- barks and arcs ------------------------------------------------------------------------------
 
-func _pick(p: int) -> String:
-	return Roster.pick(p) if Roster.has_method("pick") else ""
-
-
-func _on_tile_dug(_cell: Vector2i, block: StringName, p: int) -> void:
-	if p < 0 or _pick(p) != "jeff" or not ROCKS.has(block):
-		return
-	# Every new kind of rock gets a name; after that, now and then.
-	var due := not _named.has(block) or _t - _rock_at >= ROCK_EVERY * 3.0
-	if due and Audio.bark("jeff", "rock_name"):
-		_named[block] = true
-		_rock_at = _t
-
-
 func _on_encountered(id: StringName, _count: int) -> void:
 	match id:
 		&"mole":
@@ -269,3 +265,84 @@ func _on_dragon_woken() -> void:
 func _on_building_placed(_id: StringName, _cell: Vector2i) -> void:
 	# The Foreman inspects every new building: a clipboard mutter once the march sets off.
 	get_tree().create_timer(1.2).timeout.connect(Audio.bark.bind("gnome_foreman", "mutter"))
+
+
+# --- depth life and puzzles ------------------------------------------------------------------------
+
+## W-11: a dug-out fish flops. Cue only: Jeff's rock bark is HillBarks', which skips fish cells,
+## so one dig gives one sound.
+func _on_tile_dug(cell: Vector2i, _block: StringName, _p: int) -> void:
+	if is_fish(game, cell):
+		Audio.play("fish_flop")
+
+
+## A frozen fish was in `cell` (HillGenerator.fish_at; -1 or no fish on this build: false).
+static func is_fish(g: Node, cell: Vector2i) -> bool:
+	var u = g.get("underground") if g != null else null
+	var gen = u.get("generator") if u != null else null
+	return gen != null and gen.has_method("fish_at") and int(gen.fish_at(cell)) >= 0
+
+
+## True when any drain puzzle's water moved (or drained away) since the last check.
+func _drain_moved() -> bool:
+	var u = game.get("underground") if game != null else null
+	var gen = u.get("generator") if u != null else null
+	var world = u.get("world") if u != null else null
+	var pzs = gen.get("puzzles") if gen != null else null
+	if world == null or not (pzs is Array):
+		return false
+	var moved := false
+	for i in pzs.size():
+		var pz: Dictionary = pzs[i]
+		if pz.get("kind") != &"drain":
+			continue
+		var seen := {}
+		var count := 0
+		var h := 0
+		for key in DRAIN_RECTS:
+			var r = pz.get(key)
+			if not (r is Rect2i):
+				continue
+			for y in range(r.position.y, r.end.y):
+				for x in range(r.position.x, r.end.x):
+					var c := Vector2i(x, y)
+					if seen.has(c):
+						continue
+					seen[c] = true
+					if world.has_water(c):
+						count += 1
+						h = hash([h, c])
+		var was: Array = _drain_sig.get(i, [])
+		_drain_sig[i] = [count, h]
+		# Running: still some water, no more of it than before (more = a chunk just loaded in),
+		# and not where it was.
+		if not was.is_empty() and count > 0 and count <= int(was[0]) and h != int(was[1]):
+			moved = true
+	return moved
+
+
+func _gurgle(delta: float) -> void:
+	_gurgle_poll += delta
+	if _gurgle_poll >= GURGLE_POLL:
+		_gurgle_poll = 0.0
+		if _drain_moved():
+			_gurgle_still = 0.0
+			_moving += 1
+			# Two moving checks in a row: a chunk half freeing (one jump) is not running water.
+			if not gurgling and _moving >= 2:
+				gurgling = true
+				Audio.engine(GURGLE_KEY, GURGLE_KEY)
+		else:
+			_moving = 0
+		if gurgling and _moving == 0:
+			_gurgle_still += GURGLE_POLL
+			if _gurgle_still >= GURGLE_HOLD:
+				_gurgle_off()
+	if gurgling:
+		Audio.engine_level(GURGLE_KEY, GURGLE_DB + (GURGLE_BARK_DB if Audio.is_barking() else 0.0))
+
+
+func _gurgle_off() -> void:
+	gurgling = false
+	_gurgle_still = 0.0
+	Audio.engine_stop(GURGLE_KEY)

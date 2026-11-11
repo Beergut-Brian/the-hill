@@ -46,6 +46,21 @@ var _forced: Array = []
 ## Columns of a hole: wide enough for every vehicle (the Drill Rig is 56 px).
 const HOLE_W := 4
 const NEST := Vector2i(8, 4)
+## C-22 puzzles (data/puzzles, PuzzleData), placed by _plan_puzzles on their own stream, last.
+## walls: [{id, slab: Rect2i (the cracked cells a boulder breaks), boulder_rect: Rect2i (where the
+## boulder rests; Puzzles spawns it, not boulder_spots, so earlier boulder indices never move), pillar: Rect2i (the dirt holding the boulder WALL_GAP rows over the slab), room:
+## Rect2i (the open air over the slab, the pillar and boulder in its middle), chamber: Rect2i (air
+## under the slab; its floor row is stone), sides: Array[Rect2i] (unbreakable), rect: Rect2i (the
+## whole puzzle), block: StringName (the slab's BlockData id: its boulder_* fields break it), layer: int}]
+var walls: Array = []
+## vehicle_blocks: [{id, rect: Rect2i (the heavy cells), vehicle: StringName, hits: int, gives:
+## StringName, gives_count: int, layer: int}]
+var vehicle_blocks: Array = []
+## Rows of the dirt pillar between a wall's boulder and its slab, and rows of chamber under the slab
+## (air then a stone floor).
+const WALL_GAP := 1
+const WALL_CHAMBER := 2
+var _puzzles: Array = []            # PuzzleData rows
 
 var _ids: Dictionary = {}           # block id -> palette index
 var _mix: Array = []                # per layer: [[tile, cumulative weight], ...] heaviest first
@@ -95,6 +110,37 @@ func configure(layers: Array, ids: Dictionary, treasures: Array = []) -> void:
 
 var _treasures: Array = []
 var _hazards: Array = []            # HazardData rows
+## PT10-4: the unlock zones, [{gate: DepthGate, from: int, to: int (exclusive), layer: int}] by
+## depth. Every cell of those rows (inside the edges) is Gate Rock, whatever was carved there.
+var gate_bands: Array = []
+var gate_tile := 0
+## Hard Rock's palette index (configure_gates) and the rows under a band it keeps clear of.
+var hard_tile := -1
+const HARD_CLEAR := 6
+
+
+## DepthGate rows (data/gates) and the Gate Rock palette index. Without them: no bands.
+func configure_gates(gates: Array, tile: int, p_hard_tile := -1) -> void:
+	gate_bands = []
+	gate_tile = tile
+	hard_tile = p_hard_tile
+	if tile <= 0:
+		return
+	for g: DepthGate in gates:
+		var li := _layer_index(g.opens)
+		if li <= 0:
+			continue
+		var from: int = (layer_rows[li] as LayerData).depth_from
+		gate_bands.append({"gate": g, "from": from - g.rows + 1, "to": from + 1, "layer": li})
+	gate_bands.sort_custom(func(a: Dictionary, b: Dictionary) -> bool: return a.from < b.from)
+
+
+## The band holding depth `row`, or {}.
+func gate_band_at(row: int) -> Dictionary:
+	for b: Dictionary in gate_bands:
+		if row >= b.from and row < b.to:
+			return b
+	return {}
 
 
 ## BlockData rows by id (Underground.blocks): mix entries obey each block's depth_from.
@@ -113,6 +159,11 @@ func configure_block_depths(blocks: Dictionary) -> void:
 				list.append([int(_ids[m.id]), float(l.minor_kinds[k]), m.minor_shape, m.depth_from, m.depth_to])
 		list.sort_custom(func(a: Array, b: Array) -> bool: return a[0] < b[0])
 		_minor.append(list)
+
+## PuzzleData rows (data/puzzles). Without them no puzzle is placed.
+func configure_puzzles(rows: Array) -> void:
+	_puzzles = rows.duplicate()
+	_puzzles.sort_custom(func(a: PuzzleData, b: PuzzleData) -> bool: return String(a.id) < String(b.id))
 
 ## Near a landing: this many tiles left or right of the shaft, this many rows under the room.
 const NEAR_X := Vector2i(10, 30)
@@ -253,6 +304,7 @@ func _plan(p_seed: int) -> void:
 	_plan_hazards(p_seed)
 	_plan_pickups(p_seed)
 	_plan_deep(p_seed)
+	_plan_puzzles(p_seed)
 	_carved.append(CAVERN)
 
 
@@ -382,6 +434,86 @@ func _try_ice_hole(r: Rect2i, li: int, ice_tile: int) -> bool:
 	return true
 
 
+## C-22: the puzzle rows on a fourth random stream, after everything else (so adding them moved
+## nothing already placed). A row is placed only in a layer whose LayerData.hazards lists its kind.
+## The puzzle cells are the world's border tile (edgestone: no hand, Mole or vehicle digs it), so
+## only Puzzles' rules open them; Puzzles draws them as a cracked wall / a heavy block.
+func _plan_puzzles(p_seed: int) -> void:
+	walls.clear()
+	vehicle_blocks.clear()
+	var rng := RandomNumberGenerator.new()
+	rng.seed = p_seed + 15485863
+	# The chamber's floor: Stone, a layer early (a main block, so the minor-kind layout is untouched).
+	var gift := int(_ids.get(&"stone", 0))
+	for row: PuzzleData in _puzzles:
+		var li := _layer_index(row.layer)
+		if li < 0 or not (layer_rows[li] as LayerData).hazards.has(row.kind):
+			continue
+		var l: LayerData = layer_rows[li]
+		for n in row.count:
+			var near := n < row.near_landing
+			match row.kind:
+				&"boulder_wall":
+					var w := maxi(row.size.x, 6)
+					var t := maxi(row.size.y, 1)
+					var foot := Vector2i(w + 2, 2 + WALL_GAP + t + WALL_CHAMBER)
+					var r := _hazard_spot(rng, l, li, foot, near)
+					if r.size == Vector2i.ZERO:
+						r = _hazard_spot(rng, l, li, foot, false)
+					if r.size == Vector2i.ZERO:
+						continue
+					# An open room over the slab; in its middle a dirt pillar WALL_GAP tall holds the
+					# boulder up. Dig the pillar away and the boulder drops onto the slab.
+					var x := r.position.x + 1
+					var y := r.position.y
+					var pc := x + w / 2 - 1
+					var b := Rect2i(pc, y, 2, 2)
+					var pillar := Rect2i(pc, b.end.y, 2, WALL_GAP)
+					var slab := Rect2i(x, pillar.end.y, w, t)
+					var chamber := Rect2i(x, slab.end.y, w, WALL_CHAMBER - 1)
+					var room_l := Rect2i(x, y, pc - x, 2 + WALL_GAP)
+					var room_r := Rect2i(pc + 2, y, x + w - pc - 2, 2 + WALL_GAP)
+					var sides: Array[Rect2i] = [Rect2i(x - 1, slab.position.y, 1, t + WALL_CHAMBER),
+							Rect2i(x + w, slab.position.y, 1, t + WALL_CHAMBER)]
+					walls.append({"id": row.id, "slab": slab, "boulder_rect": b, "pillar": pillar,
+							"room": Rect2i(x, y, w, 2 + WALL_GAP), "chamber": chamber, "sides": sides, "rect": r,
+							"block": row.block, "layer": li})
+					for c: Rect2i in [b, room_l, room_r, chamber]:
+						_carved.append(c)
+					_forced.append([slab, int(_ids.get(row.block, border_tile))])
+					for sd in sides:
+						_forced.append([sd, border_tile])
+					if gift > 0:
+						_forced.append([Rect2i(x, chamber.end.y, w, 1), gift])
+					_calm.append(r.grow(2))
+				&"vehicle_block":
+					var r := _hazard_spot(rng, l, li, row.size, near)
+					if r.size == Vector2i.ZERO:
+						r = _hazard_spot(rng, l, li, row.size, false)
+					if r.size == Vector2i.ZERO:
+						continue
+					vehicle_blocks.append({"id": row.id, "rect": r, "vehicle": row.vehicle, "hits": maxi(row.hits, 1),
+							"gives": row.gives, "gives_count": row.gives_count, "layer": li})
+					_forced.append([r, border_tile])
+					_calm.append(r.grow(2))
+
+
+## The boulder wall (index into walls) whose slab holds `cell`, or -1.
+func wall_at(cell: Vector2i) -> int:
+	for i in walls.size():
+		if (walls[i].slab as Rect2i).has_point(cell):
+			return i
+	return -1
+
+
+## The vehicle block (index into vehicle_blocks) that holds `cell`, or -1.
+func vehicle_block_at(cell: Vector2i) -> int:
+	for i in vehicle_blocks.size():
+		if (vehicle_blocks[i].rect as Rect2i).has_point(cell):
+			return i
+	return -1
+
+
 ## The ice hole (index into ice_holes) whose chute or nest holds `cell`, or -1.
 func ice_hole_at(cell: Vector2i) -> int:
 	for i in ice_holes.size():
@@ -453,6 +585,10 @@ func base_tile(cell: Vector2i) -> int:
 		return border_tile
 	if cell.y >= STRANGE_FROM:
 		return strange_tile
+	if gate_tile > 0:
+		for b: Dictionary in gate_bands:
+			if cell.y >= b.from and cell.y < b.to:
+				return gate_tile
 	for r in _carved:
 		if r.has_point(cell):
 			if r == CAVERN and not _in_cavern(cell):
@@ -498,6 +634,9 @@ func _mix_tile(cell: Vector2i) -> int:
 		pick = main
 	if pick == main and li < _minor.size() and not (_minor[li] as Array).is_empty():
 		var m := _minor_tile(cell, depth, _minor[li])
+		# PT10-4: no Hard Rock in a layer's first rows, so breaking a band never lands on it.
+		if m > 0 and m == hard_tile and depth < (layer_rows[li] as LayerData).depth_from + HARD_CLEAR:
+			return pick
 		if m > 0 and not _in_calm(cell):
 			return m
 	return pick

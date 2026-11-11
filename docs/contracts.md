@@ -560,6 +560,10 @@ class_name BlockData extends TileDef        # data/blocks/<id>.tres. TileDef giv
 @export var dig_tier: int = 0               # lowest VehicleData.dig_tier that can remove it (0 = shovel)
 @export var slippery: bool = false          # ice
 @export var bouncy: bool = false            # lava pockets
+@export var boulder_breaks: bool = false    # C-22: a falling body landing on it breaks it (Puzzles): Hard Rock
+@export var boulder_min_px: float = 20.0    #   ... at least this wide (a pebble only clinks)
+@export var boulder_min_speed: float = 90.0 #   ... landing at least this fast (px/s)
+@export var boulder_reach: int = 1          #   ... and this many more cells of it along the row (a wall slab breaks whole)
 @export var breakable_from_version: String = ""   # "" = by the `breakable` flag; else unbreakable until that game version
 func is_breakable_in(version: String) -> bool     # breakable, or version >= breakable_from_version (semver compare)
 
@@ -877,6 +881,10 @@ hold) and zoom; the split rules above are untouched. The shared camera (one view
 gets no lead and the wider zoom of the two. All values are in `data/camera.tres` (`CameraTuning`):
 base zoom 2.0 (S-07, until the TV check), lead 64 x 40 world px, vehicle zoom 0.85x (1.7).
 `ScreenKick` shakes use the camera offset and stack on top.
+C-22 (hill-c22-underground-1): `CameraLead.peek(p, offset: Vector2, secs := 1.6)` slides player p's
+view `offset` world px over and back (a fifth of the time to get there, a hold, an ease home) on top
+of the lead; `peek_of(p)` reads it. `Puzzles` asks for one when a boulder breaks something off a
+player's screen (more than 26 x 14 tiles away at the 2.0 zoom). CameraLead is in group `camera_lead`.
 
 Split is always player 0 left, player 1 right, with a divider in the two players' colours. Each
 scene lives in its own world (own physics space), so two scenes never collide with each other.

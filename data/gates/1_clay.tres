@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="DepthGate" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/data/depth_gate.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = &"1_clay"
+opens = &"clay"
+rows = 3
+shovel_level = 1
+vehicle_tier = 1
+treasure = &""
+resident = &""
+picture = &"shovel_gold"
+target_minute = 6

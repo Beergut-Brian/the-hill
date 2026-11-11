@@ -44,7 +44,7 @@ const POND := Rect2(104 * 48, -3, 6 * 48, 17)
 const PILE_X := 41 * 48 + 4.0
 const PILE_BASE := 6
 const PILE_ROWS := 6
-const ICON_COL := {&"dirt": 0, &"clay": 1, &"stone": 2, &"ice": 3, &"crystal": 4, &"edgestone": 5, &"strangestone": 6, &"sand": 7, &"pebbles": 8, &"pipe": 9, &"ore": 10, &"geode": 11}
+const ICON_COL := {&"dirt": 0, &"clay": 1, &"stone": 2, &"ice": 3, &"crystal": 4, &"edgestone": 5, &"strangestone": 6, &"sand": 7, &"pebbles": 8, &"pipe": 9, &"ore": 10, &"geode": 11, &"gaterock": 12, &"hardrock": 13}
 const BLOCK_ORDER := [&"dirt", &"clay", &"pebbles", &"pipe", &"stone", &"ore", &"geode", &"sand", &"ice", &"crystal", &"strangestone", &"edgestone"]
 const BLOCK_DIR := "res://data/blocks/"
 const OUTLINE := Color(0.23, 0.16, 0.27)
@@ -268,6 +268,32 @@ func scoop(at: Vector2, facing: int, area: Vector2i, player: int) -> int:
 		_scrub.queue_redraw()
 		_ground.queue_redraw()
 	return cleared
+
+
+## PT10-5: the scrub column a scoop from `at` facing `facing` would hit first (the same reach as
+## scoop() with a 1-wide area), or -1. On foot nothing clears it: the player bonks it instead.
+func scrub_in_reach(at: Vector2, facing: int) -> int:
+	var dir := 1 if facing >= 0 else -1
+	var c0 := floori(at.x / TILE)
+	for i in 2:
+		var c := c0 + i * dir
+		if c >= 0 and c < COLS and _h[c] > 0:
+			return c
+	return -1
+
+
+## PT10-5: a bonk on scrub by hand: it shakes (leaves or grit fly, nothing goes) and stays.
+func bonk_scrub(c: int) -> void:
+	if c < 0 or c >= COLS or _h[c] <= 0:
+		return
+	var cx := c * TILE + TILE * 0.5
+	var top := -float(_h[c]) * TILE
+	var leafy := _kind[c] == Scrub.TREE
+	var col := Color("6fae4a") if leafy else (Color("8d97a3") if _kind[c] == Scrub.ROCK else Color("8a5a2b"))
+	for i in 5:
+		_fx.append({"k": "p", "pos": Vector2(cx, top + 4), "vel": Vector2(randf_range(-60, 60), randf_range(-120, -40)),
+				"life": 0.0, "max": 0.5, "col": col, "r": randf_range(1.5, 3.0), "g": 420.0, "sq": not leafy})
+	_wake_fx()
 
 
 ## Scrub tiles left (tests / demo).

@@ -11,3 +11,4 @@ depth_from = 130
 depth_to = 190
 value = 6
 slippery = true
+toughness = 5
