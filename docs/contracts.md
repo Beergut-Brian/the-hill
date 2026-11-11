@@ -427,9 +427,21 @@ Save key `"time_of_day"`.
 
 ### Elevator rules (producer calls, 2026-11-10)
 
-- Step into a cage (up top, or any landing underground) and the door starts to close: it waits
-  `DOOR_WAIT` (1.0 s) so the other player can hop in; A skips the wait. Everyone in the cage
-  when it closes rides together. Stepping out before it closes leaves the ride.
+- **A rides (playtest 2026-11-10, PT10-9; supersedes the walk-in door).** Standing in a cage (up
+  top, or any landing underground) shows a blinking A over the player's head; **A** (with the
+  stick not pushed sideways: A + sideways still digs) starts the ride. Walking in does nothing by
+  itself. Everyone in that cage rides, plus any other player in the same scene within
+  `ElevatorTuning.pull_radius_tiles` (data/elevator.tres, 3 tiles) of the cage; further away
+  they stay. While the car comes or the ride is on, the A shows dim and steady. A held from before
+  a ride is not a new press. `HillElevator.prompt_of(p)` (0 none, 1 ready, 2 moving),
+  `wants_a(p)`, `HillPlayer.lift_ready()`. Scripted runners (the demo, beats) set
+  `HillElevator.walk_in = true`: standing `DOOR_WAIT` (1.0 s) in a cage they did not just arrive
+  in counts as A, the old door.
+- **The car on its rope (PT10-7b).** Underground the car hangs on a rope down the shaft
+  (`ShaftRope`), with a faint guide rope down to the deepest landing anyone has reached. A at a
+  landing the car is not at calls it there first (`ElevatorTuning.call_time`: 0.3 s + 0.12 s
+  per layer, at most 0.9 s; `elevator_clank`, then `elevator_ding`), then the ride goes.
+  `HillElevator.car_at` (-1 = up top), `car_position()`.
 - Going down lands at the deepest layer any rider has visited (`Progress.deepest`), at that
   layer's landing beside the shaft. The ride itself is under one second.
 - **Crane cable ride (Vehicles lane, 2026-11-10, H-05):** going down with the Crane aboard, the
