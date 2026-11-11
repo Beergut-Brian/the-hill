@@ -336,6 +336,24 @@ func test_moments_wait_while_a_scene_plays_and_never_while_a_player_rides() -> v
 	assert_int(_hs().queue.size()).is_equal(0)
 
 
+func test_an_up_top_scene_waiting_does_not_hold_up_one_below() -> void:
+	_make()
+	_join(P1)
+	_hs().auto = true
+	_stage(Rect2i(56, 14, 4, 2), Vector2i(58, 15))
+	await _physics(3)
+	assert_bool(_game.underground.residents.free_crew()).is_true()
+	await _until(func() -> bool: return _hs().is_playing(), 60)
+	assert_str(String(_hs().player.current())).is_equal("crew_freed")
+	# The Foreman's arrival waits for someone up top.
+	await _until(func() -> bool: return not _hs().is_playing(), 1200)
+	await _physics(5)
+	assert_bool(_hs().played.has(&"arrive")).is_false()
+	_game.place_player(P1, HillGame.HILLVILLE, Vector2(Hillville.SHAFT_X - 200.0, 0))
+	await _until(func() -> bool: return _hs().is_playing(), 60)
+	assert_str(String(_hs().player.current())).is_equal("arrive")
+
+
 func test_a_bare_test_game_and_the_full_demo_play_nothing_by_themselves() -> void:
 	_make()
 	_join(P1)

@@ -127,11 +127,14 @@ func _start(id: StringName, ctx: Dictionary) -> bool:
 func _pump() -> void:
 	if is_playing() or queue.is_empty():
 		return
-	var job: Dictionary = queue[0]
-	if not _ready_for(job.id, job.ctx):
-		return
-	queue.pop_front()
-	_start(job.id, job.ctx)
+	# The first one that can play now (an up-top scene waits for someone up top without holding
+	# up an underground one behind it).
+	for i in queue.size():
+		var job: Dictionary = queue[i]
+		if _ready_for(job.id, job.ctx):
+			queue.remove_at(i)
+			_start(job.id, job.ctx)
+			return
 
 
 ## Not while someone rides the elevator or the crane (they are locked by it), and up-top scenes

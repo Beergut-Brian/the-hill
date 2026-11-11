@@ -163,8 +163,8 @@ func _crew() -> void:
 			_next("stage")
 		1:
 			if _since() > 0.5:
-				_ug().residents.free_crew()
-				_next("crew freed")
+				var ok: bool = _ug().residents.free_crew()
+				_next("crew freed: %s (crew %d, state %s)" % [ok, _ug().residents.crew.size(), _ug().residents.crew_state()])
 		2:
 			if _since() > 1.0 and not _hs().is_playing():
 				_next("crew scene done")
