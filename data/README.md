@@ -17,6 +17,8 @@ The id of every row equals its file stem (`dirt.tres` has `id = &"dirt"`).
 - `vehicles/`   VehicleData: Front Loader .. Drill Rig, ordered 0..4.
 - `hazards/`    HazardData: how many boulders, water pockets and cave-ins each layer gets, and how
                 many of them sit near the layer's landing (Gameplay lane added the first rows, 2026-11-10).
+- `puzzles/`    PuzzleData (C-22): a boulder wall and a block only one vehicle clears, placed per seed
+                in a layer whose `hazards` lists the row's kind (Underground engineering lane, 2026-11-11).
 
 - `camera.tres` CameraTuning (`scripts/gameplay/camera_tuning.gd`): the base zoom (S-07), the
                 underground lead and the per-vehicle zoom-out (Camera lane, 2026-11-10).
