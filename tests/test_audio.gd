@@ -23,6 +23,14 @@ class FakeDirector extends RefCounted:
 		return scenes.get(p, &"")
 
 
+class FakeResidents extends Node:
+	signal dragon_snored(loudness: float)
+
+
+class FakeUnderground extends RefCounted:
+	var residents := FakeResidents.new()
+
+
 class FakeGame extends Node:
 	var players := {}
 	var director := FakeDirector.new()
@@ -300,6 +308,48 @@ func test_snore_gets_louder_with_depth() -> void:
 		last = ha.snore_volume(i)
 	assert_float(ha.snore_volume(0)).is_equal(0.0)
 	assert_float(ha.snore_volume(5)).is_equal(1.0)
+
+
+## W-17 / A-13: the snore sound has no clock of its own; it plays on the Dragon's `dragon_snored`,
+## louder by depth, silent up top, and HillAudio never moves a camera.
+func test_snore_plays_on_the_dragon_signal_louder_by_depth() -> void:
+	var g := FakeGame.new()
+	_game = g
+	var ug := FakeUnderground.new()
+	g.underground = ug
+	g.add_child(ug.residents)
+	var a := Node2D.new()
+	g.add_child(a)
+	g.players = {P1: a}
+	g.director.scenes = {P1: &"underground"}
+	var ha := HillAudio.new()
+	ha.game = g
+	g.add_child(ha)
+	get_tree().root.add_child(g)
+	assert_bool(ha.has_method("_shake")).is_false()
+	assert_bool("shake_left" in ha).is_false()
+	# Deep in the Bottom for 7 s with no signal: silence (the old 5.5 s clock is gone).
+	a.global_position = Vector2(100, 16 * 290)
+	for i in 70:
+		ha._physics_process(0.1)
+	assert_int(ha.snores_played).is_equal(0)
+	# Topsoil hears nothing even on a snore.
+	a.global_position = Vector2(100, 16 * 3)
+	ug.residents.dragon_snored.emit(0.0)
+	assert_int(ha.snores_played).is_equal(0)
+	# Each snore plays the same frame, deeper = louder.
+	var last := 0.0
+	for depth in [40, 100, 160, 220, 290]:
+		a.global_position = Vector2(100, 16 * depth)
+		for v in Audio._pool:      # one snore at a time (rate cap): let the last one finish
+			v.stop()
+		Audio.reset_caps()
+		var before := ha.snores_played
+		ug.residents.dragon_snored.emit(0.0)
+		assert_int(ha.snores_played).is_equal(before + 1)
+		assert_float(ha.last_snore).is_greater_equal(last)
+		last = ha.last_snore
+	assert_float(last).is_equal(1.0)
 
 
 func test_treasures_get_bigger_with_depth() -> void:
