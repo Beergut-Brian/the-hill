@@ -8,7 +8,7 @@ extends Node
 const PLOT := 48
 const BUILDING_DIR := "res://data/buildings/"
 ## Book card order; any other showable row comes after, by id.
-const ORDER := [&"barn", &"house", &"garage", &"lighthouse", &"water_tower"]
+const ORDER := [&"barn", &"house", &"garage", &"workshop", &"lighthouse", &"water_tower"]
 
 ## The HillGame (or a test fake). Falls back to the parent.
 var game: Node

@@ -198,3 +198,11 @@ func test_lights_strength_and_cap() -> void:
 	assert_bool(found).is_true()
 	w.remove_light(near)
 	assert_bool(w._darkness.pick_lights().has(near)).is_false()
+
+
+func before() -> void:
+	SuiteSandbox.enter("art_tileworld")   # never the real profile, settings or picks file
+
+
+func after() -> void:
+	SuiteSandbox.leave()

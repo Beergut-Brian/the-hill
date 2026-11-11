@@ -43,12 +43,17 @@
   ],
   "ids": {
    "1": "dirt",
+   "10": "pipe",
+   "11": "ore",
+   "12": "geode",
    "2": "clay",
    "3": "stone",
    "4": "ice",
    "5": "crystal",
    "6": "edgestone",
-   "7": "strangestone"
+   "7": "strangestone",
+   "8": "sand",
+   "9": "pebbles"
   }
  },
  "boot": {
@@ -777,6 +782,17 @@
    }
   }
  },
+ "frozen_fish": {
+  "file": "treasures/frozen_fish.png",
+  "frame": [
+   16,
+   16
+  ],
+  "tiles": [
+   1,
+   1
+  ]
+ },
  "fx": {
   "cone": {
    "file": "fx/cone.png",
@@ -1255,12 +1271,17 @@
   ],
   "ids": {
    "1": "dirt",
+   "10": "pipe",
+   "11": "ore",
+   "12": "geode",
    "2": "clay",
    "3": "stone",
    "4": "ice",
    "5": "crystal",
    "6": "edgestone",
-   "7": "strangestone"
+   "7": "strangestone",
+   "8": "sand",
+   "9": "pebbles"
   },
   "row": "open mask: 1 up, 2 right, 4 down, 8 left",
   "variants": 4
@@ -1399,6 +1420,23 @@
   "pivot": [
    0,
    144
+  ],
+  "pivot_note": "bottom-left on the ground"
+ },
+ "workshop": {
+  "door": [
+   48,
+   94
+  ],
+  "file": "buildings/workshop.png",
+  "frame": [
+   96,
+   96
+  ],
+  "lit": "buildings/workshop_lit.png",
+  "pivot": [
+   0,
+   96
   ],
   "pivot_note": "bottom-left on the ground"
  }

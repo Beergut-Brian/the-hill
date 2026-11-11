@@ -41,6 +41,8 @@ const ALIASES := {
 	"horn_dump_truck": "dump_truck_horn", "horn_crane": "crane_horn", "horn_drill_rig": "drill_rig_horn",
 	"gnome_whistle": "whistle", "tip": "dump_truck_tip", "build_move": "build_pickup",
 	"restore_plank": "plank", "dig_edgestone": "dig_stone", "dig_strangestone": "dig_stone",
+	# B-06 Workshop: stand-ins until Audio makes its own (gap-close-1, "Needs other lanes").
+	"workshop_hammer": "elevator_clank", "tool_upgrade": "treasure_pickup",
 }
 ## [minimum seconds between two starts, maximum voices at once]. A key ending in * is a prefix.
 ## Anything not listed: DEFAULT_CAP.
@@ -609,7 +611,16 @@ func bark(character: String, cue: String) -> bool:
 	return true
 
 
-## Where a bark comes from: the voice pack (real line) first, then the synth placeholder.
+## P-06: a game cue the shared character library has no line for -> the library lines that fit it
+## (openjar-characters voice packs record cheer, join, lose, oops, ready, swap_in, wait, win).
+const LIBRARY_CUES := {
+	"rock_name": ["cheer"], "narrate": ["ready", "wait"], "found": ["win", "cheer"],
+	"built": ["cheer"], "upgrade": ["cheer", "win"], "bonk": ["oops"], "hello": ["join"],
+}
+
+
+## Where a bark comes from: the voice pack's own line, then the pack's library line for that cue
+## (LIBRARY_CUES), then the synth placeholder.
 func bark_stream(character: String, cue: String) -> AudioStream:
 	var dirs: Array[String] = []
 	var roster := get_node_or_null("/root/Roster")
@@ -622,6 +633,10 @@ func bark_stream(character: String, cue: String) -> AudioStream:
 		var s := _pick(d, cue, true)
 		if s != null:
 			return s
+		for alt in LIBRARY_CUES.get(cue, []):
+			s = _pick(d, alt, true)
+			if s != null:
+				return s
 	return _pick(VOICE_DIR, "%s_%s" % [character, cue], true)
 
 

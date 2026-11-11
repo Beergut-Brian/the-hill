@@ -116,7 +116,7 @@ func test_book_cards_affordable_greyed_and_garage_gate() -> void:
 	_build.book_pressed(0)
 	assert_bool(_build.captures(0)).is_true()
 	var book := _build.book_of(0) as BuildBook
-	assert_array(book.card_ids()).is_equal([&"barn", &"house"])
+	assert_array(book.card_ids()).is_equal([&"barn", &"house", &"workshop"])
 	assert_bool(book.card_affordable(0)).is_false()
 	Inventory.add(&"dirt", 10)
 	assert_bool(book.card_affordable(0)).is_true()
@@ -125,7 +125,7 @@ func test_book_cards_affordable_greyed_and_garage_gate() -> void:
 	assert_bool(_build.captures(0)).is_false()
 	Progress.find_treasure(&"buried_car")
 	_build.book_pressed(0)
-	assert_array((_build.book_of(0) as BuildBook).card_ids()).is_equal([&"barn", &"house", &"garage"])
+	assert_array((_build.book_of(0) as BuildBook).card_ids()).is_equal([&"barn", &"house", &"garage", &"workshop"])
 
 
 func test_book_moves_and_closes_with_b() -> void:
@@ -395,3 +395,11 @@ func test_rebuild_from_progress() -> void:
 	await get_tree().create_timer(1.2).timeout
 	assert_bool(Progress.has_vehicle(&"excavator")).is_false()
 	assert_int(_rolled.size()).is_equal(0)
+
+
+func before() -> void:
+	SuiteSandbox.enter("hill_build")   # never the real profile, settings or picks file
+
+
+func after() -> void:
+	SuiteSandbox.leave()

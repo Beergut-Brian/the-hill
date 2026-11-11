@@ -154,3 +154,11 @@ func test_gnome_award() -> void:
 	assert_int(Rules.gnome_award(5.0 * 3600.0)).is_equal(50)
 	assert_int(Rules.gnome_award(100.0 * 3600.0)).is_equal(50)
 	assert_int(Rules.gnome_award(100.0 * 3600.0, 10)).is_equal(60)
+
+
+func before() -> void:
+	SuiteSandbox.enter("data")   # never the real profile, settings or picks file
+
+
+func after() -> void:
+	SuiteSandbox.leave()

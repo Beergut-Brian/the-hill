@@ -328,3 +328,11 @@ func test_barks_fall_back_to_placeholders_and_are_rate_capped() -> void:
 	Audio.advance(Audio.BARK_GAP + 0.1)
 	assert_bool(Audio.bark("jeff", "rock_name")).is_false()     # BARK_REPEAT for the same line
 	Audio._voice.stop()
+
+
+func before() -> void:
+	SuiteSandbox.enter("audio")   # never the real profile, settings or picks file
+
+
+func after() -> void:
+	SuiteSandbox.leave()

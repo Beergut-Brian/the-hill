@@ -12,7 +12,7 @@ signal treasure_dug(id: StringName, player: int)
 ## The Crane hauled boulder `index` (into boulders / generator.boulder_spots) out.
 signal boulder_hauled(index: int, player: int)
 
-const BLOCK_ORDER: Array[StringName] = [&"dirt", &"clay", &"stone", &"ice", &"crystal", &"edgestone", &"strangestone"]
+const BLOCK_ORDER: Array[StringName] = [&"dirt", &"clay", &"stone", &"ice", &"crystal", &"edgestone", &"strangestone", &"sand", &"pebbles", &"pipe", &"ore", &"geode"]
 const BLOCK_DIR := "res://data/blocks/"
 const LAYER_DIR := "res://data/layers/"
 const TREASURE_DIR := "res://data/treasures/"
@@ -60,6 +60,8 @@ var _gushes: Array = []
 ## Kid-safe hazards (bonk, float, cave-in) and the residents' behaviour; see their scripts.
 var hazards: Hazards
 var residents: UndergroundResidents
+## W-03 / W-11: roots, waving worms, snow drifts on the rinks and the frozen fish (pictures only).
+var life: DepthLife
 ## Which residents have been met (thaw, reveal); HillGame swaps in its saved Story.
 var story := Story.new()
 var _drain_t := 0.0
@@ -77,6 +79,7 @@ func _ready() -> void:
 	generator = HillGenerator.new()
 	generator.configure(_layers, ids, load_rows(TREASURE_DIR))
 	generator.configure_hazards(load_rows(HAZARD_DIR))
+	generator.configure_block_depths(blocks)
 	var back := Node2D.new()
 	back.name = "Backdrop"
 	back.z_index = -100
@@ -120,6 +123,9 @@ func _ready() -> void:
 	residents = UndergroundResidents.new()
 	add_child(residents)
 	residents.setup(self)
+	life = DepthLife.new()
+	world.add_child(life)
+	life.setup(self)
 	world.tile_dug.connect(_on_tile_dug)
 	world.dig_blocked.connect(_on_dig_blocked)
 	world.body_landed.connect(_on_body_landed)
@@ -184,6 +190,9 @@ func treasure_cell(id: StringName) -> Vector2i:
 	for s in generator.treasure_spots:
 		if s.id == id:
 			return (s.rect as Rect2i).position
+	# The frozen fish is not a seeded spot: the first rink's fish.
+	if id == HillGenerator.FISH and not generator.fish_cells.is_empty():
+		return generator.fish_cells[0]
 	return Vector2i(-1, -1)
 
 
@@ -248,6 +257,8 @@ func _on_tile_dug(cell: Vector2i, block: StringName, player: int) -> void:
 	for s in generator.treasure_spots:
 		if (s.rect as Rect2i).grow(2).has_point(cell):
 			_found(s.id, player, (s.rect as Rect2i))
+	if generator.fish_at(cell) >= 0:
+		_dig_fish(cell, player)
 	for i in _gushes.size():
 		var g: Dictionary = _gushes[i]
 		if g.t < 0.0 and not g.done and (g.rect as Rect2i).grow(1).has_point(cell):
@@ -265,6 +276,16 @@ func _found(id: StringName, player: int, rect: Rect2i) -> void:
 	if td != null and not td.stays:
 		_pick_up(id, player, center)
 	treasure_dug.emit(id, player)
+
+
+## W-11: a frozen fish dug out of a rink floor. The first one is the treasure (the reveal flies it
+## into the bag, onto the shelf); every later one wiggles free and swims off (a splash, no treasure).
+func _dig_fish(cell: Vector2i, player: int) -> void:
+	if Progress.has_treasure(HillGenerator.FISH):
+		if life != null:
+			life.free_fish(cell)
+		return
+	_found(HillGenerator.FISH, player, Rect2i(cell, Vector2i.ONE))
 
 
 ## A pickup treasure: its prop (and any pieces) leaves the ground and the reveal pops it up over

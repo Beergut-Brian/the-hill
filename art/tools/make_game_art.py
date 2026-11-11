@@ -36,11 +36,25 @@ WHITE = (255, 255, 255)
 CLEAR = (0, 0, 0, 0)
 LAMP = hp.hx("#ffec96")                 # pale warm lamp lens
 LIT_WIN = hp.hx("#ffe08a")              # night window glow
+SAND = hp.hx("#ecd08a")                 # C-17 sand: pale gold, between Stone and Ice
+R["sand"] = hp.ramp(SAND, P)
+P["back"]["sand"] = hp.backwall(SAND, P)
+# Minor kinds (content-2 lane): each sits on its layer's main block (same base ramp and back wall,
+# so a run of them joins its neighbours), with its own bits drawn on top.
+PEBBLE = hp.hx("#b9ab98")               # pebbles in Clay: warm grey stones
+PIPE = hp.hx("#4f9aa8")                 # old pipes in Clay: weathered blue-teal metal
+ORE = hp.hx("#f0bf3a")                  # ore veins in Stone: gold nuggets
+GEODE = hp.hx("#b98be6")                # geodes in Stone: lilac crystals in a round shell
+for _k, _base in (("pebbles", "clay"), ("pipe", "clay"), ("ore", "stone"), ("geode", "stone")):
+    R[_k] = R[_base]
+    P["back"][_k] = P["back"][_base]
+MINOR_BASE = {"pebbles": "clay", "pipe": "clay", "ore": "stone", "geode": "stone"}
 COMB = hp.hx("#D63384")                 # Jeff's comb, approved raspberry (characters repo)
 
 # Underground palette ids 1..7 (underground.gd BLOCK_ORDER) and wall layers 0..5.
-BLOCKS = ["top", "clay", "stone", "ice", "crys", "edge", "strange"]
-BLOCK_NAMES = ["dirt", "clay", "stone", "ice", "crystal", "edgestone", "strangestone"]
+BLOCKS = ["top", "clay", "stone", "ice", "crys", "edge", "strange", "sand", "pebbles", "pipe", "ore", "geode"]
+BLOCK_NAMES = ["dirt", "clay", "stone", "ice", "crystal", "edgestone", "strangestone", "sand",
+               "pebbles", "pipe", "ore", "geode"]
 WALLS = ["top", "clay", "stone", "ice", "crys", "cav"]
 WALL_NAMES = ["topsoil", "clay", "stone", "ice", "crystal", "bottom"]
 
@@ -99,9 +113,90 @@ def grid(im, rows, legend, ox=0, oy=0):
 
 
 # =============================================================================== tiles
+def minor_texture(kind, v):
+    """Pebbles, pipe, ore, geode: the layer's main-block texture with the kind's bits on top."""
+    im = texture(MINOR_BASE[kind], v)
+    p = im.load()
+    r = rng("minor", kind, v)
+
+    def S(x, y, c):
+        if 0 <= x < T and 0 <= y < T:
+            p[x, y] = A(c)
+
+    if kind == "pebbles":
+        dp, lo, mid, hi = hp.ramp(PEBBLE, P)
+        spots = [[(2, 2, 4), (9, 6, 4), (3, 10, 3)], [(8, 2, 4), (2, 6, 3), (9, 11, 4)],
+                 [(2, 3, 3), (8, 4, 4), (4, 11, 4)], [(3, 2, 4), (10, 9, 3), (2, 10, 4)]][v]
+        for x, y, w in spots:                       # chunky round pebbles: lit top-left, dark under
+            for i in range(w):
+                S(x + i, y - 1, OL)
+                S(x + i, y, hi if i < w - 1 else mid)
+                S(x + i, y + 1, mid if i else hi)
+                S(x + i, y + 2, lo if i else mid)
+                S(x + i, y + 3, OL)
+            for yy in range(y, y + 3):
+                S(x - 1, yy, OL)
+                S(x + w, yy, OL)
+            S(x + 1, y, WHITE)
+    elif kind == "pipe":
+        dp, lo, mid, hi = hp.ramp(PIPE, P)
+        for x in range(T):                          # a pipe straight across: joins its neighbours
+            S(x, 4, OL)
+            S(x, 5, hi)
+            S(x, 6, hi if x % 5 else mid)
+            S(x, 7, mid)
+            S(x, 8, mid)
+            S(x, 9, lo)
+            S(x, 10, dp)
+            S(x, 11, OL)
+        cx = [3, 10, 6, 12][v]                      # a collar where two lengths meet
+        for y in range(3, 13):
+            S(cx, y, OL if y in (3, 12) else (hi if y < 7 else lo))
+            S(cx + 1, y, OL if y in (3, 12) else (mid if y < 9 else dp))
+        S(cx, 7, WHITE)                             # a rivet that catches the lamp
+        if v % 2:                                   # a soft rust freckle
+            S((cx + 5) % 14 + 1, 8, mix(mid, C["gold"], .45))
+    elif kind == "ore":
+        dp, lo, mid, hi = hp.ramp(ORE, P)
+        # three fat gold nuggets in a streak corner to corner (direction per variant)
+        nug = [[(1, 2), (6, 6), (11, 11)], [(1, 11), (6, 6), (11, 1)], [(1, 7), (6, 4), (11, 7)], [(2, 1), (5, 7), (10, 11)]][v]
+        for x, y in nug:
+            for i in range(3):
+                S(x - 1, y + i, OL), S(x + 3, y + i, OL), S(x + i, y - 1, OL), S(x + i, y + 3, OL)
+            for j in range(3):
+                for i in range(3):
+                    S(x + i, y + j, hi if i + j == 0 else (lo if i + j >= 3 else mid))
+            S(x, y, WHITE)
+        for (x0, y0), (x1, y1) in zip(nug, nug[1:]):  # a thin seam joining them
+            for t in (0.4, 0.6):
+                S(round(x0 + 1 + (x1 - x0) * t), round(y0 + 1 + (y1 - y0) * t), dp)
+    elif kind == "geode":
+        dp, lo, mid, hi = hp.ramp(GEODE, P)
+        sdp, slo, smid, shi = R["stone"]
+        cx, cy = [(7.5, 7.5), (7.0, 8.0), (8.0, 7.0), (7.5, 8.0)][v]
+        rad = [6.2, 5.8, 6.0, 6.4][v]
+        for y in range(T):
+            for x in range(T):
+                d = math.hypot(x - cx, y - cy)
+                if d < rad - 2.6:                   # the hollow: dark violet, crystals pointing in
+                    ang = math.atan2(y - cy, x - cx)
+                    tooth = (math.cos(ang * 7 + v) * .5 + .5) * 1.6
+                    S(x, y, dp if d < rad - 2.6 - tooth else (hi if x + y < cx + cy else mid))
+                elif d < rad - 1.4:                 # the crystal lining
+                    S(x, y, hi if x + y < cx + cy else lo)
+                elif d < rad - .4:                  # the shell: pale rock, lit top-left
+                    S(x, y, shi if x + y < cx + cy else slo)
+                elif d < rad + .5:
+                    S(x, y, OL)
+        S(int(cx) - 1, int(cy) - 2, WHITE)          # one sparkle
+    return im
+
+
 def texture(kind, v):
     """16x16 seamless texture: features stay inside the tile, the base is the ramp's mid,
     so any two variants sit side by side with no seam."""
+    if kind in MINOR_BASE:
+        return minor_texture(kind, v)
     dp, lo, mid, hi = R[kind]
     r = rng("tex", kind, v)
     im = Image.new("RGBA", (T, T), A(mid))
@@ -175,6 +270,19 @@ def texture(kind, v):
                 for dx in range(-hw, hw + 1):
                     S(cx + dx, cy + i, hi if dx < 0 else (dp if dx > 0 else mid))
             S(cx - 1, cy + 2, WHITE)
+    elif kind == "sand":
+        # soft grains and one wind ripple (same height at the tile edges, so variants tile)
+        specks(9, lo)
+        specks(5, hi)
+        amp = [1.0, 1.4, .8, 1.2][v]
+        base = [6, 9, 5, 10][v]
+        for x in range(T):
+            y = base + round(amp * math.sin(2 * math.pi * x / T))
+            if x % 4 != 3:
+                S(x, y, lo)
+                S(x, y - 1, hi)
+        if v % 2:
+            S(r.randrange(3, 13), r.randrange(2, 5), dp)
     elif kind == "edge":
         # big dressed blocks, joints never on the tile border
         for y in (5, 11):
@@ -2526,12 +2634,31 @@ def dragon_egg():
     return outline(f)
 
 
+def frozen_fish():
+    """W-11: a round, friendly fish (big eye, little smile), frozen in the Ice layer's rinks."""
+    f = Image.new("RGBA", (16, 16), CLEAR)
+    d = ImageDraw.Draw(f)
+    o = R["beak"]                                                        # warm orange body
+    d.polygon([(1, 4), (5, 8), (1, 12)], fill=A(o[1]))                   # tail
+    d.ellipse([3, 4, 14, 12], fill=A(o[2]))
+    d.chord([3, 8, 14, 12], 0, 180, fill=A(o[1]))                        # belly shade
+    d.line([6, 5, 10, 5], fill=A(o[3]))                                  # lit back
+    d.polygon([(7, 4), (9, 1), (11, 4)], fill=A(o[3]))                   # top fin
+    d.point((6, 9), fill=A(o[0]))                                        # side fin
+    d.point((7, 9), fill=A(o[0]))
+    d.ellipse([10, 5, 13, 8], fill=A(WHITE))                             # big eye
+    d.point((12, 7), fill=A(OL))
+    d.point((11, 7), fill=A(OL))
+    d.line([11, 10, 12, 10], fill=A(o[0]))                               # small smile
+    return outline(f)
+
+
 def make_treasures2():
     fs = finds()
     crop = {n: fs.crop((i * 16, 0, i * 16 + 16, 16)) for i, n in enumerate(("cap", "boot", "bike", "fossil"))}
     for tid, im in (("bottle_caps", bottle_caps()), ("boot", crop["boot"]), ("bike", bike2()),
                     ("bathtub", bathtub()), ("fossil", crop["fossil"]), ("dino_skeleton", dino_skeleton()),
-                    ("pirate_chest", pirate_chest()), ("dragon_egg", dragon_egg())):
+                    ("pirate_chest", pirate_chest()), ("dragon_egg", dragon_egg()), ("frozen_fish", frozen_fish())):
         save(im, "treasures/%s.png" % tid)
         MANIFEST[tid] = {"file": "treasures/%s.png" % tid, "frame": list(im.size),
                          "tiles": [im.width // 16, im.height // 16]}
