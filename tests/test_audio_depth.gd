@@ -113,18 +113,28 @@ func test_digging_a_frozen_fish_out_flops() -> void:
 
 
 
-## One trigger per event: Jeff digging a fish out flops; he names the ice on the next plain ice tile.
+## One trigger per event: Jeff digging a fish out flops (HillAudio) and HillBarks, the only owner of
+## his rock bark, stays quiet; he names the ice on the next plain ice tile. Through the real signal,
+## so both listeners hear the same dig.
 func test_a_fish_dug_by_jeff_flops_without_a_rock_name() -> void:
 	var real: String = Roster._picks.get(Roster.P1, "")
 	Roster._picks[Roster.P1] = "jeff"
+	var jeff := Node2D.new()
+	_game.add_child(jeff)
+	_game.players[Roster.P1] = jeff
 	_u().generator.fish[Vector2i(4, 5)] = 0
-	_ha._on_tile_dug(Vector2i(4, 5), &"ice", Roster.P1)
+	var rock_names := func() -> int:
+		return _ha.barks.fired.filter(func(f: Dictionary) -> bool:
+			return f.who == "jeff" and f.cue == "rock_name").size()
+	Events.tile_dug.emit(Vector2i(4, 5), &"ice", Roster.P1)
 	assert_int(Audio.playing_count("fish_flop")).is_equal(1)
-	assert_bool(_ha._named.has(&"ice")).is_false()
+	assert_int(rock_names.call()).is_equal(0)
 	assert_bool(Audio._voice.playing).is_false()
-	_ha._on_tile_dug(Vector2i(3, 5), &"ice", Roster.P1)
-	assert_bool(_ha._named.has(&"ice")).is_true()
+	Events.tile_dug.emit(Vector2i(3, 5), &"ice", Roster.P1)
+	assert_int(rock_names.call()).is_equal(1)
+	assert_int(Audio.playing_count("fish_flop")).is_equal(1)   # plain ice: no second flop
 	Roster._picks[Roster.P1] = real
+
 
 func test_gurgle_runs_only_while_the_drain_water_moves() -> void:
 	_u().generator.puzzles = [{"kind": &"boulder_wall", "rect": Rect2i(0, 0, 4, 4)}, _drain()]

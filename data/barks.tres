@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="BarkTuning" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/audio/bark_tuning.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+rock_every = 30.0
+narrate_every = 14.0
+narrate_speed = 0.5
+near_radius = 112.0
+mole_every = 25.0
+foreman_every = 25.0
+dragon_every = 30.0
+bubble_secs = 1.6

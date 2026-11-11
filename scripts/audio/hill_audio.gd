@@ -6,8 +6,10 @@
 ##   (UndergroundResidents), so the sound, her puff and the cavern sway are one moment; louder by
 ##   depth (LayerData.snore_volume) for the deepest underground player. The sway is the residents'
 ##   (ScreenKick); this file never moves a camera.
-## - Barks: Jeff names rocks, Chuck narrates his driving, the Mole's "oh dear", the Foreman's
-##   whistle and mutters, the Dragon's rumbles. Audio.bark() rate-caps them.
+## - Barks: the walk-up and in-play barks (Jeff names rocks, Chuck narrates his driving, the
+##   residents talk when a player walks up) live in HillBarks, a child of this node, with their own
+##   cooldowns and picture bubbles. This file keeps the story-moment barks (encounter, arrival,
+##   the Dragon waking, the Foreman inspecting a new building). Audio.bark() rate-caps them all.
 ## - Resident arcs: arrival, light-on and each payoff from the Events signals.
 ## - Frozen fish (W-11): digging a fish out of its ice plays `fish_flop` (a wet flip-flop).
 ## - Drain puzzle (C-22): while its water runs (the wet cells in a drain puzzle move or drain away),
@@ -23,11 +25,6 @@ extends Node
 
 ## Snore quieter than this (linear) is skipped (Topsoil is 0).
 const SNORE_MIN := 0.05
-## Chuck narrates at most this often while driving, Jeff names a rock at most this often.
-const NARRATE_EVERY := 14.0
-const ROCK_EVERY := 10.0
-## Jeff only names "real" rocks.
-const ROCKS: Array[StringName] = [&"stone", &"edgestone", &"strangestone", &"ice", &"crystal", &"clay"]
 ## Resident id -> payoff cue.
 const PAYOFF := {&"mole": "payoff_mole", &"caveman": "payoff_caveman",
 	&"gnome_foreman": "payoff_gnomes", &"dragon": "payoff_dragon"}
@@ -50,9 +47,8 @@ var last_snore := 0.0
 var _snore_src: Object = null
 var _layers: Array = []
 var _driving := {}         # player -> vehicle id
-var _narrate_at := {}      # player -> seconds since last narration
-var _rock_at := -100.0
-var _named := {}           # block types Jeff has named this session
+## A-15 / P-06: Jeff's rocks, Chuck's narration and the residents' walk-up barks.
+var barks: HillBarks
 var _dragon_awake := false
 var _t := 0.0
 var gurgling := false
@@ -79,12 +75,15 @@ func _ready() -> void:
 		game = get_parent()
 	_layers = Underground.load_rows(Underground.LAYER_DIR)
 	_layers.sort_custom(func(a: LayerData, b: LayerData) -> bool: return a.depth_from < b.depth_from)
-	Events.tile_dug.connect(_on_tile_dug)
+	barks = HillBarks.new()
+	barks.game = game
+	add_child(barks)
 	Events.resident_encountered.connect(_on_encountered)
 	Events.resident_arrived.connect(_on_arrived)
 	Events.ruin_restored.connect(_on_restored)
 	Events.dragon_woken.connect(_on_dragon_woken)
 	Events.building_placed.connect(_on_building_placed)
+	Events.tile_dug.connect(_on_tile_dug)
 	var story = game.get("story")
 	if story != null and story.has_method("phase"):
 		_dragon_awake = story.phase(&"dragon") >= ResidentState.Phase.ARRIVED
@@ -130,17 +129,9 @@ func _engines(players: Dictionary) -> void:
 		if _driving.get(p, &"") != v.id:
 			_driving[p] = v.id
 			Audio.engine(p, String(v.sounds.get(&"engine", "%s_engine" % v.id)))
-			_narrate_at[p] = 0.0
-			if _pick(p) == "chuck":
-				Audio.bark("chuck", "narrate")
 		var vel = node.get("velocity")
 		var speed := absf(vel.x if vel is Vector2 else 0.0) / maxf(float(v.speed), 1.0)
 		Audio.engine_speed(p, speed)
-		# Chuck narrates while he is actually going somewhere.
-		if _pick(p) == "chuck" and speed > 0.5:
-			_narrate_at[p] = float(_narrate_at.get(p, 0.0)) + get_physics_process_delta_time()
-			if _narrate_at[p] >= NARRATE_EVERY and Audio.bark("chuck", "narrate"):
-				_narrate_at[p] = 0.0
 
 
 # --- music ---------------------------------------------------------------------------------------
@@ -238,24 +229,6 @@ func _on_dragon_snored(_sway: float) -> void:
 
 # --- barks and arcs ------------------------------------------------------------------------------
 
-func _pick(p: int) -> String:
-	return Roster.pick(p) if Roster.has_method("pick") else ""
-
-
-func _on_tile_dug(cell: Vector2i, block: StringName, p: int) -> void:
-	# A fish cell is the fish's moment: the flop plays and Jeff does not name the ice on top of it.
-	if _is_fish(cell):
-		Audio.play("fish_flop")
-		return
-	if p < 0 or _pick(p) != "jeff" or not ROCKS.has(block):
-		return
-	# Every new kind of rock gets a name; after that, now and then.
-	var due := not _named.has(block) or _t - _rock_at >= ROCK_EVERY * 3.0
-	if due and Audio.bark("jeff", "rock_name"):
-		_named[block] = true
-		_rock_at = _t
-
-
 func _on_encountered(id: StringName, _count: int) -> void:
 	match id:
 		&"mole":
@@ -296,9 +269,16 @@ func _on_building_placed(_id: StringName, _cell: Vector2i) -> void:
 
 # --- depth life and puzzles ------------------------------------------------------------------------
 
+## W-11: a dug-out fish flops. Cue only: Jeff's rock bark is HillBarks', which skips fish cells,
+## so one dig gives one sound.
+func _on_tile_dug(cell: Vector2i, _block: StringName, _p: int) -> void:
+	if is_fish(game, cell):
+		Audio.play("fish_flop")
+
+
 ## A frozen fish was in `cell` (HillGenerator.fish_at; -1 or no fish on this build: false).
-func _is_fish(cell: Vector2i) -> bool:
-	var u = game.get("underground") if game != null else null
+static func is_fish(g: Node, cell: Vector2i) -> bool:
+	var u = g.get("underground") if g != null else null
 	var gen = u.get("generator") if u != null else null
 	return gen != null and gen.has_method("fish_at") and int(gen.fish_at(cell)) >= 0
 
