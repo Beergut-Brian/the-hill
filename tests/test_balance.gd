@@ -19,6 +19,7 @@ const ROLL_OUT_S := 1.0           # Garage door opens, the Excavator rolls out (
 const CLIMB_ROW_S := 0.75         # dig a step and hop up one row
 const INTRO_S := 41.0             # docs/cutscenes.md
 const UNLOCK_SCENE_S := 6.0       # docs/cutscenes.md, vehicle_unlock
+const PUZZLE_SEEDS := 200         # seeds 0..199 swept for C-22 puzzles on the floors' routes
 
 var _u: Underground
 var _tun: DigTuning
@@ -203,6 +204,46 @@ func floors() -> Dictionary:
 			f[key + "_foot_s"] = roundi(pre + ride_s() + shaft_s(g, top_floor, b.from, lvl, -1))
 		if gate.shovel_level <= 0 and gate.treasure == &"" and gate.resident == &"":
 			foot_blocked = true
+	# C-22 puzzles (data/puzzles, Clay): the cells that stop the floors' straight lines. A boulder
+	# wall's slab is Hard Rock (vehicle-only) between unbreakable sides; a vehicle block opens only
+	# for its vehicle. Count, over PUZZLE_SEEDS seeds, how often one sits in the car tunnel (on foot,
+	# the Sturdy Shovel) or the Clay stretch of the shaft (the Excavator to the tooth). The floors
+	# assume the line is clear, so these seeds pay a detour the floors leave out.
+	var shaft_clay := Rect2i(HillGenerator.SHAFT_X, g.landing_floor(clay_li),
+			2, g.landing_floor(stone_li) - g.landing_floor(clay_li))
+	var on_car := 0
+	var on_shaft := 0
+	var default_seed := g.world_seed
+	var default_clear := true
+	for i in PUZZLE_SEEDS + 1:
+		var s := default_seed if i == 0 else i - 1
+		g._plan(s)
+		var car_tunnel := Rect2i()
+		for t: Dictionary in g.treasure_spots:
+			if t.id == &"buried_car":
+				var cr: Rect2i = t.rect
+				car_tunnel = Rect2i(cr.end.x, cr.position.y, HillGenerator.SHAFT_X - cr.end.x, cr.size.y)
+		var stops: Array[Rect2i] = []
+		for w: Dictionary in g.walls:
+			stops.append(w.slab)
+			stops.append_array(w.sides)
+		for vb: Dictionary in g.vehicle_blocks:
+			stops.append(vb.rect)
+		var hit_car := false
+		var hit_shaft := false
+		for r in stops:
+			hit_car = hit_car or r.intersects(car_tunnel)
+			hit_shaft = hit_shaft or r.intersects(shaft_clay)
+		if i == 0:
+			default_clear = not (hit_car or hit_shaft)
+			continue
+		on_car += int(hit_car)
+		on_shaft += int(hit_shaft)
+	g._plan(default_seed)
+	f["puzzle_seeds"] = PUZZLE_SEEDS
+	f["puzzle_car_seeds"] = on_car
+	f["puzzle_shaft_seeds"] = on_shaft
+	f["puzzle_default_seed_clear"] = default_clear
 	return f
 
 

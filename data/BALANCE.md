@@ -6,7 +6,10 @@ Pacing targets from the plan (`GAME.md`, Content lane deliverables): **the Burie
 First written 2026-11-11 by the Balance lane from `dev` at `52d17db`; re-derived the same day by
 the Balance re-check lane (`hill-balance-recheck-1`) on `feature/hill-dig-1` after merging
 `origin/dev` at `e773164`, so the floors now include the dig lane's hit points (`data/dig.tres`),
-Gate Rock bands (`data/gates/`) and Hard Rock. `tests/test_balance.gd` recomputes every number in
+Gate Rock bands (`data/gates/`) and Hard Rock. Checked again by `hill-balance-recheck-2` on
+`origin/dev` at `39a2212` (after PR 49, the C-22 boulder walls and vehicle blocks in Clay, and PRs
+50 to 53): every floor below is unchanged, and the C-22 puzzles are now counted against the routes
+("C-22 puzzles on the routes" below). `tests/test_balance.gd` recomputes every number in
 a `name = value` line below from the data rows and code constants, so a data change that moves one
 fails CI until this sheet is updated.
 
@@ -161,6 +164,27 @@ band stops everyone on foot.
 No vehicle-only band is unreachable: `test_every_band_opens_with_something_reachable` checks that
 each band opens for a shovel level, a resident, or a vehicle whose treasure lies above it.
 
+### C-22 puzzles on the routes (re-check 2, computed)
+
+PR 49 put one boulder wall (an 8-cell Hard Rock slab between two unbreakable side columns) and one
+2×2 Front-Loader-only block into Clay (`data/puzzles/`, `HillGenerator._plan_puzzles`). Neither
+can be dug on foot, so either one in the floors' straight lines would cost a detour the floors
+leave out. The test plans seeds 0 to 199 (`puzzle_seeds = 200`) and counts the seeds where a slab,
+a side or the block sits in the car tunnel (between the car's right edge and the shaft, the car's
+rows) or in the Clay stretch of the shaft (Clay landing floor to Stone landing floor, the
+Excavator's way to the tooth):
+
+| Route | Seeds with a puzzle in it |
+| --- | --- |
+| Car tunnel (on foot, Sturdy Shovel) | `puzzle_car_seeds = 6` of 200 (3%) |
+| Clay shaft (the Excavator to the Giant Tooth) | `puzzle_shaft_seeds = 13` of 200 (6.5%) |
+| The game's seed (`Underground.DEFAULT_SEED`, which every new game uses) | `puzzle_default_seed_clear = true`: both lines clear |
+
+So the floors hold for the hill the game actually builds. On another seed the car tunnel can need
+a dig round the 2×2 block (a few extra tiles, seconds at the Sturdy Shovel) or a way round a wall; the
+Excavator breaks the Hard Rock slab but not the side columns. None of this moves a floor past a
+target.
+
 
 ### Dig speed (time per tile with A held)
 
@@ -217,5 +241,5 @@ as a known miss and fails if the bottom ever gets faster than the Excavator.
 
 ## What changed in data
 
-Nothing. No number contradicts GAME.md's own text (toughness, dig powers and intervals, band
+Nothing (re-check 2 too: C-22's rows contradict no GAME.md text and move no floor). No number contradicts GAME.md's own text (toughness, dig powers and intervals, band
 openers and target minutes all match "Playtest 2026-11-10 changes"), so there was no bug to fix.
