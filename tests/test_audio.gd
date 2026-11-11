@@ -23,6 +23,14 @@ class FakeDirector extends RefCounted:
 		return scenes.get(p, &"")
 
 
+class FakeResidents extends Node:
+	signal dragon_snored(loudness: float)
+
+
+class FakeUnderground extends RefCounted:
+	var residents := FakeResidents.new()
+
+
 class FakeGame extends Node:
 	var players := {}
 	var director := FakeDirector.new()
@@ -44,6 +52,7 @@ func before_test() -> void:
 
 func after_test() -> void:
 	Audio.synth_missing = true
+	Audio.pack_root = Audio.CHARACTERS_DIR
 	for k in [97, 98, 99]:
 		Audio.engine_stop(k)
 	if is_instance_valid(_game):
@@ -301,6 +310,48 @@ func test_snore_gets_louder_with_depth() -> void:
 	assert_float(ha.snore_volume(5)).is_equal(1.0)
 
 
+## W-17 / A-13: the snore sound has no clock of its own; it plays on the Dragon's `dragon_snored`,
+## louder by depth, silent up top, and HillAudio never moves a camera.
+func test_snore_plays_on_the_dragon_signal_louder_by_depth() -> void:
+	var g := FakeGame.new()
+	_game = g
+	var ug := FakeUnderground.new()
+	g.underground = ug
+	g.add_child(ug.residents)
+	var a := Node2D.new()
+	g.add_child(a)
+	g.players = {P1: a}
+	g.director.scenes = {P1: &"underground"}
+	var ha := HillAudio.new()
+	ha.game = g
+	g.add_child(ha)
+	get_tree().root.add_child(g)
+	assert_bool(ha.has_method("_shake")).is_false()
+	assert_bool("shake_left" in ha).is_false()
+	# Deep in the Bottom for 7 s with no signal: silence (the old 5.5 s clock is gone).
+	a.global_position = Vector2(100, 16 * 290)
+	for i in 70:
+		ha._physics_process(0.1)
+	assert_int(ha.snores_played).is_equal(0)
+	# Topsoil hears nothing even on a snore.
+	a.global_position = Vector2(100, 16 * 3)
+	ug.residents.dragon_snored.emit(0.0)
+	assert_int(ha.snores_played).is_equal(0)
+	# Each snore plays the same frame, deeper = louder.
+	var last := 0.0
+	for depth in [40, 100, 160, 220, 290]:
+		a.global_position = Vector2(100, 16 * depth)
+		for v in Audio._pool:      # one snore at a time (rate cap): let the last one finish
+			v.stop()
+		Audio.reset_caps()
+		var before := ha.snores_played
+		ug.residents.dragon_snored.emit(0.0)
+		assert_int(ha.snores_played).is_equal(before + 1)
+		assert_float(ha.last_snore).is_greater_equal(last)
+		last = ha.last_snore
+	assert_float(last).is_equal(1.0)
+
+
 func test_treasures_get_bigger_with_depth() -> void:
 	assert_str(HillAudio.treasure_cue(&"bottle_caps")).is_equal("treasure_small")
 	assert_str(HillAudio.treasure_cue(&"buried_car")).is_equal("treasure")
@@ -311,11 +362,55 @@ func test_treasures_get_bigger_with_depth() -> void:
 
 # --- barks -----------------------------------------------------------------------------------
 
-func test_barks_fall_back_to_placeholders_and_are_rate_capped() -> void:
-	for pair in [["jeff", "rock_name"], ["chuck", "narrate"], ["mole", "oh_dear"],
-			["gnome_foreman", "mutter"], ["gnome_foreman", "whistle"], ["dragon", "rumble"], ["dragon", "yawn"]]:
-		assert_object(Audio.bark_stream(pair[0], pair[1])).is_not_null()
+## Fixtures only (never the real roster): tests/fixtures/voice_packs/ is laid out the way
+## openjar-characters plans the packs (<id>/voice/<line id>.ogg) with renamed placeholders;
+## voice_packs_none/ has no packs at all.
+const PACKS := "res://tests/fixtures/voice_packs/"
+const NO_PACKS := "res://tests/fixtures/voice_packs_none/"
+const RESIDENT_BARKS := [["mole", "oh_dear"], ["gnome_foreman", "mutter"], ["gnome_foreman", "whistle"],
+		["dragon", "rumble"], ["dragon", "yawn"]]
+
+
+func test_a_resident_pack_line_replaces_the_placeholder_when_it_lands() -> void:
+	Audio.pack_root = NO_PACKS
+	assert_bool(Audio.bark_is_real("mole", "oh_dear")).is_false()
+	# The same bark once a pack lands: found under the line ids the pack's README plans.
+	Audio.pack_root = PACKS
+	var got := {}
+	for i in 8:
+		var s := Audio.bark_stream("mole", "oh_dear")
+		got[s.resource_path.get_file()] = true
+	assert_array(got.keys()).contains_exactly_in_any_order(["mole_oh_dear.ogg", "mole_oh_dear_dear.ogg"])
+	assert_str(Audio.bark_stream("dragon", "rumble").resource_path).is_equal(PACKS + "dragon/voice/dragon_rumble_low.ogg")
+	assert_str(Audio.bark_stream("gnome_foreman", "mutter").resource_path).is_equal(PACKS + "gnome_foreman/voice/foreman_hm.ogg")
+	assert_bool(Audio.bark_is_real("mole", "oh_dear")).is_true()
+	# A line the pack has not recorded (no whistle, no yawn) keeps the placeholder.
+	assert_str(Audio.bark_stream("gnome_foreman", "whistle").resource_path).starts_with(Audio.VOICE_DIR)
+	assert_str(Audio.bark_stream("dragon", "yawn").resource_path).starts_with(Audio.VOICE_DIR)
+	# The rate caps are the same for real lines.
+	Audio.advance(30.0)
+	assert_bool(Audio.bark("mole", "oh_dear")).is_true()
+	assert_bool(Audio.bark("dragon", "rumble")).is_false()      # one bark at a time
+	Audio._voice.stop()
+
+
+func test_a_missing_pack_keeps_the_placeholder_and_still_speaks() -> void:
+	Audio.pack_root = NO_PACKS
+	for pair in RESIDENT_BARKS:
+		var s := Audio.bark_stream(pair[0], pair[1])
+		assert_object(s).is_not_null()
+		assert_str(s.resource_path).starts_with(Audio.VOICE_DIR + "%s_%s" % pair)
 		assert_bool(Audio.bark_is_real(pair[0], pair[1])).is_false()
+	Audio.advance(30.0)
+	assert_bool(Audio.bark("dragon", "rumble")).is_true()
+	Audio._voice.stop()
+
+
+func test_barks_fall_back_to_placeholders_and_are_rate_capped() -> void:
+	Audio.pack_root = NO_PACKS
+	# Every Hill bark has something to say (a pack line or its placeholder), whatever is synced.
+	for pair in [["jeff", "rock_name"], ["chuck", "narrate"]] + RESIDENT_BARKS:
+		assert_object(Audio.bark_stream(pair[0], pair[1])).is_not_null()
 	assert_object(Audio.bark_stream("jeff", "no_such_line")).is_null()
 	Audio.advance(30.0)
 	assert_bool(Audio.bark("mole", "oh_dear")).is_true()

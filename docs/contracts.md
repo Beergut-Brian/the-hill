@@ -396,8 +396,15 @@ HillGame adds one `VoiceLines` node. The players' picked characters speak with t
 buildings (`built`, at most every 20 s) and `resident_arrived` (`hello`). Game cues map to the library's
 recorded lines in `Audio.LIBRARY_CUES` (`found` -> `win`/`cheer`, `rock_name` -> `cheer`, `narrate` ->
 `ready`/`wait`, `upgrade` -> `cheer`/`win`, `built` -> `cheer`, `bonk` -> `oops`, `hello` -> `join`);
-`Audio.bark_stream` tries the pack's own cue, then those, then the synth placeholder. Characters without
-a pack say nothing from VoiceLines.
+`Audio.bark_stream` tries the pack's own cue, then the pack's planned lines (`Audio.PACK_LINES`), then
+those, then the synth placeholder. Characters without a pack say nothing from VoiceLines.
+
+Resident barks (Audio lane, voice-packs-1): `Audio.PACK_LINES` maps `"<id>/<cue>"` to the line ids the
+resident's openjar-characters pack plans (its `voice/README.md` bark table); every id found joins one
+shuffled bag. Resident packs are vendored to `assets/characters/<id>/voice/` by `sync_characters.sh`
+for the ids in `scripts/tools/sync_residents.txt`, listed under `"residents"` in `data/roster.json`
+(`{id: {name, voice, barks}}`; absent when none has audio). Roster ignores that block: residents are
+never playable. A missing pack or line keeps the placeholder; caps are the same for real lines.
 
 ### `TimeOfDay` (`scripts/autoload/TimeOfDay.gd`): the surface clock (Art lane, 2026-11-10)
 
@@ -427,9 +434,21 @@ Save key `"time_of_day"`.
 
 ### Elevator rules (producer calls, 2026-11-10)
 
-- Step into a cage (up top, or any landing underground) and the door starts to close: it waits
-  `DOOR_WAIT` (1.0 s) so the other player can hop in; A skips the wait. Everyone in the cage
-  when it closes rides together. Stepping out before it closes leaves the ride.
+- **A rides (playtest 2026-11-10, PT10-9; supersedes the walk-in door).** Standing in a cage (up
+  top, or any landing underground) shows a blinking A over the player's head; **A** (with the
+  stick not pushed sideways: A + sideways still digs) starts the ride. Walking in does nothing by
+  itself. Everyone in that cage rides, plus any other player in the same scene within
+  `ElevatorTuning.pull_radius_tiles` (data/elevator.tres, 3 tiles) of the cage; further away
+  they stay. While the car comes or the ride is on, the A shows dim and steady. A held from before
+  a ride is not a new press. `HillElevator.prompt_of(p)` (0 none, 1 ready, 2 moving),
+  `wants_a(p)`, `HillPlayer.lift_ready()`. Scripted runners (the demo, beats) set
+  `HillElevator.walk_in = true`: standing `DOOR_WAIT` (1.0 s) in a cage they did not just arrive
+  in counts as A, the old door.
+- **The car on its rope (PT10-7b).** Underground the car hangs on a rope down the shaft
+  (`ShaftRope`), with a faint guide rope down to the deepest landing anyone has reached. A at a
+  landing the car is not at calls it there first (`ElevatorTuning.call_time`: 0.5 s + 0.15 s
+  per layer, at most 1.2 s; `elevator_clank`, then `elevator_ding`), then the ride goes.
+  `HillElevator.car_at` (-1 = up top), `car_position()`.
 - Going down lands at the deepest layer any rider has visited (`Progress.deepest`), at that
   layer's landing beside the shaft. The ride itself is under one second.
 - **Crane cable ride (Vehicles lane, 2026-11-10, H-05):** going down with the Crane aboard, the
@@ -445,6 +464,13 @@ Save key `"time_of_day"`.
   they were, `ride_finished(riders, &"hillville")`, no dump, no save). Each press keeps the cage
   going `PICK_LINGER` (0.7 s) longer, never past `PICK_MAX` (4 s). `HillElevator.pick_of(p)`,
   `nudge_pick(p, dir)`. Rides up are unchanged.
+- **Getting back up (PT10-7a, c).** On foot underground, stick up or diagonal-up + A carves a
+  step (the rock over your head and the two cells over the block in front) in one swing and
+  climbs onto it (`HillPlayer.step_dig()`, `is_stepping_aim()`); the dig marker shows what it
+  takes. Ladders: `HillGame.ladders` (`LadderSet`, data/ladders.tres, empty), `add(column, top,
+  bottom)`; up / down climbs, letting go hangs. The Gnome crew lane adds them.
+- The dig respects the story lane's `has_shovel` / `can_dig` flags on the player when they exist
+  (`HillPlayer.shovel_ok()`): no dig, no step, no marker without the shovel.
 - Going up empties the riders' backpacks into the shaft pile.
 - Every ride autosaves (also every 60 s, and on `Game.quit_requested`).
 - A vehicle rides with its driver.
@@ -487,7 +513,13 @@ func is_dropping(p: int) -> bool
 func on_ice(pl: HillPlayer) -> bool          # BlockData.slippery underfoot, unless Story.ice_warm()
 func bounce(pl: HillPlayer) -> void
 func hop_height() -> float
+const HOT_SECS := 1.0      # hill-lava-1: after a bounce the player shows a flame icon and a warm flash this long
+const LAVA_CUE := "lava_boing"   # the bounce's own cue; until the Audio lane adds it, `dragon_boing` plays
+func is_hot(p: int) -> bool                  # since_bounce(p) < HOT_SECS (the "that's why" callback)
 ```
+
+A bounce also kicks the bounced player's camera (`ScreenKick.kick(p, 2.5, 0.25)`), a small beat
+on the cause. A bounce never checks the player's tool (`has_shovel`): no shovel, still a bounce.
 
 The ice glide is applied inside the same `intent_source` wrapper (only `move.x` changes), so it
 works for pads, demos and tests alike, on foot and driving. `Hazards` runs its physics before the
@@ -629,6 +661,36 @@ func HillGame.restore_ruin(ruin_id) -> bool # Rules.can_restore, Inventory.spend
 The build book's restore cards come from `BuildController.restore_rows(player)`: copies of the
 restored row at the ruin's cost. Restored buildings are not in `Progress.buildings`.
 
+### Story and cutscenes (Story lane, 2026-11-10; GAME.md playtest items 1-3)
+
+`HillGame.story_scenes` (`HillStory`) hosts the reusable `CutscenePlayer` (`docs/cutscenes.md`):
+scenes in `data/cutscenes/*.json`, spoken lines in `data/story/lines.json`, voice files (when Gary
+makes them) at `res://assets/story/voice/<line id>.ogg`. Group `"hill_story"`: the pause menu's
+Story entry calls `replay_intro()` on it.
+
+**Shovel (the controls lane's dig code respects this; coordinate only through it):**
+
+```gdscript
+# HillPlayer
+var has_shovel := true          # false while the Mole has it (between his theft and the return)
+func can_dig() -> bool          # has_shovel or in a vehicle
+signal no_shovel()              # a dig press on foot with no shovel: nothing is dug, the hands swing
+```
+
+A dig press on foot when `can_dig()` is false must dig nothing and emit `no_shovel` (HillStory
+shows the shovel-and-question bubble and plays `dig_blocked`). Today the check sits at the top of
+`HillPlayer._dig`; if the controls lane rewrites the dig path, keep that check. Vehicles always dig.
+The flag is never saved (a reload always has the shovel).
+
+**Cutscene input lock:** a scene sets `HillPlayer.locked` on every player that was not already
+locked and releases only those (never one the elevator is carrying). Scenes do not start while any
+player is locked (elevator ride, crane ride); they wait in `HillStory.queue`.
+
+`resident_arcs` (`Story.extras`) also holds `"intro_seen"` (bool) and `"mole_arc"`
+(`{secs, tiles, hints}` since the last theft). `UndergroundResidents.auto_steal` (false under
+HillStory: the old quick theft no longer fires on digging; `steal()` stays for the "steal" beat) and
+`hide_home` (the Mole is out of sight at home while he still steals).
+
 ### The gnome-crew rule
 
 On load, once the Gnome Village stands: `away = now - Save "gnome_stamp"` (unix seconds).
@@ -651,7 +713,7 @@ never idling. A pile appears at the shaft with the march clip; never a number.
 
 `"world"` (`TileWorld.to_save()`), `"inventory"`, `"treasures"` (found ids), `"buildings"`
 (`[{id, cell:[x,y]}]`), `"vehicles"` (unlocked ids), `"players"` (`[{deepest, scene}]`),
-`"gnome_stamp"` (unix seconds, written on every save), `"residents"` (`{id: ResidentState.to_save()}`), `"resident_arcs"` (`Story.extras`), `"seed"`, and `"hillville"`
+`"gnome_stamp"` (unix seconds, written on every save), `"residents"` (`{id: ResidentState.to_save()}`), `"resident_arcs"` (`Story.extras`, including `intro_seen` and `mole_arc`), `"seed"`, and `"hillville"`
 (`Hillville.to_save()`: which scrub is cleared), `"time_of_day"` (`TimeOfDay.to_save()`). `"treasures"`, `"vehicles"`, `"buildings"`
 and `"players"` are `Progress.to_save()`'s keys. Placed buildings are rebuilt from `"buildings"`.
 

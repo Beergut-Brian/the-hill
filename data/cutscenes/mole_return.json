@@ -1,0 +1,166 @@
+{
+	"id": "mole_return",
+	"scene": "hillville",
+	"steps": [
+		{
+			"do": "fade",
+			"to": 1.0,
+			"time": 0.6
+		},
+		{
+			"do": "call",
+			"fn": "wake_top",
+			"always": true,
+			"wait": 0.1
+		},
+		{
+			"do": "camera",
+			"to": "victim",
+			"dy": -16,
+			"zoom": 3.0,
+			"time": 0.05,
+			"wait": 0.15
+		},
+		{
+			"do": "bubble",
+			"who": "victim",
+			"pics": [
+				"zzz"
+			],
+			"time": 2.0,
+			"wait": 0.4
+		},
+		{
+			"do": "fade",
+			"to": 0.0,
+			"time": 0.9,
+			"wait": 1.4
+		},
+		{
+			"do": "call",
+			"fn": "bump",
+			"args": {
+				"who": "victim"
+			}
+		},
+		{
+			"do": "sound",
+			"cue": "jump"
+		},
+		{
+			"do": "line",
+			"who": "victim",
+			"line": "wake_{char}",
+			"pics": [
+				"question"
+			]
+		},
+		{
+			"do": "spawn",
+			"who": "mole",
+			"sheet": "mole",
+			"at": "victim",
+			"dx": 30,
+			"face": -1
+		},
+		{
+			"do": "call",
+			"fn": "dirt",
+			"args": {
+				"who": "mole"
+			}
+		},
+		{
+			"do": "sound",
+			"cue": "mole_pop"
+		},
+		{
+			"do": "hold",
+			"who": "mole",
+			"pic": "shovel"
+		},
+		{
+			"do": "hop",
+			"who": "mole",
+			"height": 6
+		},
+		{
+			"do": "face",
+			"who": "victim",
+			"toward": "mole"
+		},
+		{
+			"do": "line",
+			"who": "mole",
+			"line": "mole_return",
+			"pics": [
+				"shovel",
+				"face_sheepish"
+			]
+		},
+		{
+			"do": "item",
+			"pic": "shovel",
+			"from": "mole",
+			"to": "victim",
+			"time": 0.7,
+			"sound": "shovel_back",
+			"wait": 0.75
+		},
+		{
+			"do": "call",
+			"fn": "give_shovel",
+			"always": true
+		},
+		{
+			"do": "line",
+			"who": "victim",
+			"line": "thanks_{char}",
+			"pics": [
+				"shovel",
+				"heart"
+			]
+		},
+		{
+			"do": "line",
+			"who": "mole",
+			"line": "{mole_line}",
+			"pics": [
+				"heart",
+				"face_hopeful"
+			]
+		},
+		{
+			"do": "walk",
+			"who": "mole",
+			"to": "mole_wait",
+			"time": 1.2,
+			"if": "last"
+		},
+		{
+			"do": "call",
+			"fn": "dirt",
+			"args": {
+				"who": "mole"
+			},
+			"unless": "last"
+		},
+		{
+			"do": "hide",
+			"who": "mole",
+			"unless": "last"
+		},
+		{
+			"do": "sound",
+			"cue": "mole_dig",
+			"unless": "last"
+		},
+		{
+			"do": "wait",
+			"time": 0.4
+		},
+		{
+			"do": "camera_back"
+		}
+	]
+}

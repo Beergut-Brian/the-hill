@@ -8,6 +8,9 @@ extends Resource
 @export var zoom: float = 2.0
 ## How far ahead the camera sits at full lead (world px, x sideways, y up/down).
 @export var lead_px: Vector2 = Vector2(64, 40)
+## PT10-6: on foot the lead is this instead (no sideways lead: a kid turning to dig the other way
+## saw the whole view swing 128 px and lost where they were; up / down still leads the dig).
+@export var foot_lead_px: Vector2 = Vector2(0, 40)
 ## How fast the lead grows toward the move direction (1/s, exponential ease).
 @export var lead_in: float = 2.5
 ## How fast it eases back to the player when they stop (1/s).

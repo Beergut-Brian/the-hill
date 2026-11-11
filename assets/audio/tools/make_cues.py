@@ -708,6 +708,21 @@ def treasure_hint(rng):
     return [v * 0.6 for v in sparkle(rng, 4, 0.0, 0.35, 0.3, D_HI)]
 
 
+def town_hearts(rng):         # two buildings like each other: a warm rising "aww" of bells + sparkles
+    x = silence(1.4)
+    for k, (n, at) in enumerate(((74, 0.0), (78, 0.09), (81, 0.18), (86, 0.30))):
+        mix(x, struck(midi(n), 0.32, rng, BELL, click=0.05), at, 0.55 if k < 3 else 0.7)
+    mix(x, sparkle(rng, 6, 0.32, 0.8, 0.22, D_HI), 0.0, 1.0)
+    return x
+
+
+def heart_preview(rng):       # the ghost would be happy here: a soft two-note ping
+    x = silence(0.6)
+    mix(x, struck(midi(86), 0.12, rng, BELL, click=0.03), 0.0, 0.5)
+    mix(x, struck(midi(93), 0.14, rng, BELL, click=0.03), 0.08, 0.45)
+    return x
+
+
 def shelf_place(rng):
     x = silence(0.6)
     mix(x, struck(220, 0.04, rng, WOOD, click=0.3), 0.0, 0.8)
@@ -1421,6 +1436,8 @@ add("treasure_reveal", treasure_reveal)
 add("treasure_pickup", treasure_pickup)
 add("treasure_hint", treasure_hint, trim=-4.0)
 add("shelf_place", shelf_place)
+add("town_hearts", town_hearts)
+add("heart_preview", heart_preview, trim=-5.0)
 add("polish", polish, trim=-2.0)
 
 for i, f in enumerate((95, 85, 108), 1):

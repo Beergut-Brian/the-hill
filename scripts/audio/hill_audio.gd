@@ -2,8 +2,10 @@
 ## - Engines: one looped engine per driving player (vehicle.sounds.engine), pitched by speed.
 ## - Music: the layered theme follows the players (see THEME RULE below), a layer per depth zone,
 ##   the Dragon's choir in her cavern.
-## - Dragon snore: while she sleeps, a snore every SNORE_EVERY s for anyone underground, louder by
-##   depth (LayerData.snore_volume); at the Bottom it nudges that player's camera, gently.
+## - Dragon snore (W-17, A-13): no clock of its own. It plays on the Dragon's `dragon_snored`
+##   (UndergroundResidents), so the sound, her puff and the cavern sway are one moment; louder by
+##   depth (LayerData.snore_volume) for the deepest underground player. The sway is the residents'
+##   (ScreenKick); this file never moves a camera.
 ## - Barks: Jeff names rocks, Chuck narrates his driving, the Mole's "oh dear", the Foreman's
 ##   whistle and mutters, the Dragon's rumbles. Audio.bark() rate-caps them.
 ## - Resident arcs: arrival, light-on and each payoff from the Events signals.
@@ -19,11 +21,8 @@
 class_name HillAudio
 extends Node
 
-const SNORE_EVERY := 5.5
 ## Snore quieter than this (linear) is skipped (Topsoil is 0).
 const SNORE_MIN := 0.05
-const SHAKE_PX := 1.5
-const SHAKE_SECS := 0.6
 ## Chuck narrates at most this often while driving, Jeff names a rock at most this often.
 const NARRATE_EVERY := 14.0
 const ROCK_EVERY := 10.0
@@ -32,7 +31,6 @@ const ROCKS: Array[StringName] = [&"stone", &"edgestone", &"strangestone", &"ice
 ## Resident id -> payoff cue.
 const PAYOFF := {&"mole": "payoff_mole", &"caveman": "payoff_caveman",
 	&"gnome_foreman": "payoff_gnomes", &"dragon": "payoff_dragon"}
-## Treasure layer -> cue (bigger for rarer: deeper is rarer).
 ## The drain gurgle: its level, how far it dips under a bark, how often the water is checked and
 ## how long the water must be still before it stops.
 const GURGLE_KEY := &"drain_gurgle"
@@ -41,12 +39,15 @@ const GURGLE_BARK_DB := -9.0
 const GURGLE_POLL := 0.2
 const GURGLE_HOLD := 0.6
 const DRAIN_RECTS: Array[String] = ["rect", "pocket", "nook", "wall", "plug", "chute", "sump"]
+## Treasure layer -> cue (bigger for rarer: deeper is rarer).
 const TREASURE_TIER := {&"topsoil": "treasure_small", &"clay": "treasure", &"stone": "treasure_big",
 	&"ice": "treasure_big", &"crystal": "treasure_huge", &"bottom": "treasure_huge"}
 
 var game: Node
-var snore_clock := 0.0
-var shake_left := 0.0
+## Snores played, and the linear loudness of the last one (tests, the snore beat).
+var snores_played := 0
+var last_snore := 0.0
+var _snore_src: Object = null
 var _layers: Array = []
 var _driving := {}         # player -> vehicle id
 var _narrate_at := {}      # player -> seconds since last narration
@@ -110,7 +111,7 @@ func _physics_process(delta: float) -> void:
 	var players: Dictionary = game.get("players") if game.get("players") is Dictionary else {}
 	_engines(players)
 	_music(players)
-	_snore(players, delta)
+	_hook_snore()
 	_gurgle(delta)
 
 
@@ -206,47 +207,33 @@ func snore_volume(layer_index: int) -> float:
 	return float(_layers[clampi(layer_index, 0, _layers.size() - 1)].snore_volume)
 
 
-func _snore(players: Dictionary, delta: float) -> void:
-	if shake_left > 0.0:
-		shake_left -= delta
-		_shake(players, shake_left > 0.0)
+## Listens to the Dragon (the Underground's residents); re-hooks if the Underground is rebuilt.
+func _hook_snore() -> void:
+	var u = game.get("underground")
+	var r = u.get("residents") if u != null else null
+	if r == _snore_src or r == null or not r.has_signal(&"dragon_snored"):
+		return
+	_snore_src = r
+	r.dragon_snored.connect(_on_dragon_snored)
+
+
+## One of her snores: as loud as the deepest underground player hears it, or nothing up top.
+## `_sway` is how strongly the cavern felt it (the residents sway the camera; we only sound).
+func _on_dragon_snored(_sway: float) -> void:
 	if _dragon_awake:
 		return
-	snore_clock += delta
-	if snore_clock < SNORE_EVERY:
-		return
-	snore_clock = 0.0
+	var players: Dictionary = game.get("players") if game.get("players") is Dictionary else {}
 	var dir = game.get("director")
 	var loudest := 0.0
-	var at_bottom := false
 	for p: int in players:
 		if dir == null or dir.scene_of(p) != &"underground":
 			continue
-		var li := _layer_index(players[p].global_position)
-		loudest = maxf(loudest, snore_volume(li))
-		at_bottom = at_bottom or li >= _layers.size() - 1
+		loudest = maxf(loudest, snore_volume(_layer_index(players[p].global_position)))
 	if loudest < SNORE_MIN:
 		return
-	if Audio.play("dragon_snore", null, linear_to_db(loudest)) and at_bottom:
-		shake_left = SHAKE_SECS
-
-
-## A slow, small sway (not a jitter) on the camera of every player at the Bottom.
-func _shake(players: Dictionary, on: bool) -> void:
-	var dir = game.get("director")
-	if dir == null or not dir.has_method("camera_of"):
-		return
-	for p: int in players:
-		if dir.scene_of(p) != &"underground" or _layer_index(players[p].global_position) < _layers.size() - 1:
-			continue
-		var cam: Camera2D = dir.camera_of(p)
-		if cam == null:
-			continue
-		if on and SettingsPanel.screen_shake():
-			var k := shake_left / SHAKE_SECS
-			cam.offset = Vector2(0.0, sin(_t * 18.0) * SHAKE_PX * k)
-		else:
-			cam.offset = Vector2.ZERO
+	if Audio.play("dragon_snore", null, linear_to_db(loudest)):
+		snores_played += 1
+		last_snore = loudest
 
 
 # --- barks and arcs ------------------------------------------------------------------------------

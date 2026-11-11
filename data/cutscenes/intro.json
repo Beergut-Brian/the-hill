@@ -1,0 +1,259 @@
+{
+	"id": "intro",
+	"scene": "hillville",
+	"steps": [
+		{
+			"do": "camera",
+			"to": "players_mid",
+			"dy": -20,
+			"zoom": 3.0,
+			"time": 1.0,
+			"wait": 0.9
+		},
+		{
+			"do": "spawn",
+			"who": "pip",
+			"sheet": "mayor_pip",
+			"at": "players_left",
+			"dx": -150
+		},
+		{
+			"do": "walk",
+			"who": "pip",
+			"to": "players_left",
+			"dx": -34,
+			"time": 2.0
+		},
+		{
+			"do": "face",
+			"who": "p1",
+			"toward": "pip"
+		},
+		{
+			"do": "face",
+			"who": "p2",
+			"toward": "pip",
+			"needs": "p2"
+		},
+		{
+			"do": "hop",
+			"who": "pip",
+			"height": 6,
+			"sound": "pop"
+		},
+		{
+			"do": "line",
+			"who": "pip",
+			"line": "intro_pip_hello",
+			"pics": [
+				"face_happy"
+			]
+		},
+		{
+			"do": "hold",
+			"who": "pip",
+			"pic": "deed"
+		},
+		{
+			"do": "line",
+			"who": "pip",
+			"line": "intro_pip_deed",
+			"pics": [
+				"deed",
+				"heart"
+			]
+		},
+		{
+			"do": "item",
+			"pic": "deed",
+			"from": "pip",
+			"to": "p1",
+			"time": 0.8,
+			"sound": "treasure",
+			"wait": 0.9
+		},
+		{
+			"do": "call",
+			"fn": "confetti",
+			"args": {
+				"who": "p1"
+			}
+		},
+		{
+			"do": "hop",
+			"who": "p1",
+			"height": 10,
+			"times": 2,
+			"time": 0.7
+		},
+		{
+			"do": "line",
+			"who": "p1",
+			"line": "intro_react_{char}",
+			"pics": [
+				"face_happy",
+				"star"
+			]
+		},
+		{
+			"do": "hop",
+			"who": "p2",
+			"height": 10,
+			"times": 2,
+			"time": 0.7,
+			"needs": "p2"
+		},
+		{
+			"do": "line",
+			"who": "p2",
+			"line": "intro_react_{char}",
+			"pics": [
+				"face_happy",
+				"heart"
+			],
+			"needs": "p2"
+		},
+		{
+			"do": "camera",
+			"to": "shaft",
+			"dx": -70,
+			"dy": -30,
+			"zoom": 2.5,
+			"time": 1.4,
+			"wait": 1.0
+		},
+		{
+			"do": "face",
+			"who": "pip",
+			"dir": 1
+		},
+		{
+			"do": "line",
+			"who": "pip",
+			"line": "intro_pip_shaft",
+			"pics": [
+				"shaft",
+				"question",
+				"sparkle"
+			]
+		},
+		{
+			"do": "line",
+			"who": "pip",
+			"line": "intro_pip_careful",
+			"pics": [
+				"hardhat",
+				"face_hopeful"
+			]
+		},
+		{
+			"do": "camera",
+			"to": "loader",
+			"dy": -20,
+			"zoom": 3.0,
+			"time": 1.2
+		},
+		{
+			"do": "spawn",
+			"who": "dot",
+			"sheet": "foreman_dot",
+			"at": "loader",
+			"dx": 160,
+			"face": -1
+		},
+		{
+			"do": "walk",
+			"who": "dot",
+			"to": "loader",
+			"dx": 46,
+			"time": 1.4
+		},
+		{
+			"do": "hop",
+			"who": "dot",
+			"height": 6,
+			"sound": "whistle"
+		},
+		{
+			"do": "line",
+			"who": "dot",
+			"line": "intro_dot_hello",
+			"pics": [
+				"hardhat",
+				"face_happy"
+			]
+		},
+		{
+			"do": "hop",
+			"who": "loader",
+			"height": 5,
+			"times": 2,
+			"time": 0.6,
+			"sound": "front_loader_horn"
+		},
+		{
+			"do": "line",
+			"who": "dot",
+			"line": "intro_dot_loader",
+			"pics": [
+				"vehicle:front_loader",
+				"tree"
+			]
+		},
+		{
+			"do": "line",
+			"who": "dot",
+			"line": "intro_dot_go",
+			"pics": [
+				"tree",
+				"rock",
+				"sparkle"
+			]
+		},
+		{
+			"do": "camera",
+			"to": "players_mid",
+			"dy": -20,
+			"zoom": 2.5,
+			"time": 1.0,
+			"wait": 0.6
+		},
+		{
+			"do": "line",
+			"who": "pip",
+			"line": "intro_pip_open",
+			"pics": [
+				"star",
+				"face_happy"
+			]
+		},
+		{
+			"do": "call",
+			"fn": "confetti",
+			"args": {
+				"who": "pip"
+			}
+		},
+		{
+			"do": "sound",
+			"cue": "cheer"
+		},
+		{
+			"do": "walk",
+			"who": "pip",
+			"dx": -420,
+			"time": 2.6,
+			"wait": 0.4
+		},
+		{
+			"do": "walk",
+			"who": "dot",
+			"dx": 420,
+			"time": 2.6,
+			"wait": 1.2
+		},
+		{
+			"do": "camera_back"
+		}
+	]
+}

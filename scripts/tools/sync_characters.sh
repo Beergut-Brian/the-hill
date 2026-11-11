@@ -13,6 +13,11 @@
 # then writes data/roster.json (roster order, names, defaults, player colours, res:// paths, the
 # tag) and the characters block in assets/CREDITS.md. Folders of ids no longer in the roster are
 # removed. Rerun it with a new tag to pick up new characters: no code change.
+# Residents (non-playable library characters the game's barks speak as) are listed one id per
+# line in scripts/tools/sync_residents.txt (# comments allowed; SYNC_RESIDENTS="a b" overrides).
+# For each one with recorded barks it copies only voice/*.ogg into assets/characters/<id>/voice/,
+# adds a "residents" block to data/roster.json and its CREDITS rows. A resident with no recorded
+# audio gets no folder (a stale one is removed), so the game keeps its placeholder.
 # SYNC_CHARACTERS_ROOT=<dir> writes into another project (the tests use it).
 # Reads the tag with `git show`, so the characters checkout can be on any branch.
 set -euo pipefail
@@ -23,6 +28,12 @@ fi
 LIB="$(cd "$1" && pwd)"
 TAG="$2"
 ROOT="$(cd "${SYNC_CHARACTERS_ROOT:-$(dirname "${BASH_SOURCE[0]}")/../..}" && pwd)"
+if [[ -z "${SYNC_RESIDENTS+x}" ]]; then
+	SYNC_RESIDENTS=""
+	RES_FILE="$ROOT/scripts/tools/sync_residents.txt"
+	[[ -f "$RES_FILE" ]] && SYNC_RESIDENTS="$(sed -e 's/#.*//' "$RES_FILE" | tr -s ' \t\n' ' ')"
+fi
+export SYNC_RESIDENTS
 git -C "$LIB" rev-parse -q --verify "refs/tags/$TAG" >/dev/null \
 	|| { echo "sync_characters: no tag $TAG in $LIB" >&2; exit 1; }
 WORK="$ROOT/.scratch/sync_characters.$$"
@@ -117,11 +128,35 @@ for cid in index.get("roster", []):
     roster.append(cid)
     chars[cid] = entry
 
+# Residents: voice barks only (voice/*.ogg at the top level of the pack, no lib/, no source/).
+residents = {}
+for cid in os.environ.get("SYNC_RESIDENTS", "").split():
+    c = by_id.get(cid)
+    if not c or c.get("playable") or cid in chars:
+        print(f"sync_characters: skipping resident {cid}: not a non-playable character in {tag}", file=sys.stderr)
+        continue
+    d = os.path.join(out_dir, cid)
+    if os.path.isdir(d):
+        shutil.rmtree(d)
+    voice = (c.get("voice") or "").rstrip("/") + "/"
+    oggs = sorted(f for f in files if voice != "/" and f.startswith(voice) and f.endswith(".ogg")
+                  and "/" not in f[len(voice):])
+    if not oggs:
+        print(f"sync_characters: resident {cid} has no recorded barks in {tag}; it keeps its placeholder")
+        continue
+    for f in oggs:
+        show(f, os.path.join(d, "voice", os.path.basename(f)))
+    barks = [os.path.splitext(os.path.basename(f))[0] for f in oggs]
+    residents[cid] = {"name": c["name"], "voice": f"res://assets/characters/{cid}/voice/", "barks": barks}
+    credits.append((f"characters/{cid}/voice/*.ogg", f"`openjar-characters` `{tag}`, `{voice}`",
+                    f"{c['name']} voice barks (resident, not playable): {', '.join(barks)}; "
+                    "see the library's CREDITS.md"))
+
 for name in sorted(os.listdir(out_dir)):
     p = os.path.join(out_dir, name)
-    if os.path.isdir(p) and name not in roster:
+    if os.path.isdir(p) and name not in roster and name not in residents:
         shutil.rmtree(p)
-        print(f"sync_characters: removed {name} (no longer in the roster)")
+        print(f"sync_characters: removed {name} (no longer in the roster or the resident list)")
 
 data = {
     "source": "openjar-characters",
@@ -131,6 +166,8 @@ data = {
     "player_colours": index.get("player_colours", {}),
     "characters": chars,
 }
+if residents:
+    data["residents"] = residents
 os.makedirs(os.path.join(root, "data"), exist_ok=True)
 with open(os.path.join(root, "data", "roster.json"), "w") as f:
     json.dump(data, f, indent="\t")
@@ -148,4 +185,6 @@ m = re.search(r"<!-- characters:begin.*?<!-- characters:end -->", text, re.S)
 text = text[:m.start()] + "\n".join(block) + text[m.end():] if m else text.rstrip("\n") + "\n\n" + "\n".join(block) + "\n"
 open(cp, "w").write(text)
 print(f"sync_characters: {tag}: {', '.join(roster)} -> assets/characters/, data/roster.json")
+if residents:
+    print(f"sync_characters: {tag}: residents {', '.join(residents)} -> assets/characters/<id>/voice/")
 PY

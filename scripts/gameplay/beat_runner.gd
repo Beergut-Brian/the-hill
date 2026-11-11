@@ -60,6 +60,9 @@ static func beat_arg(args: PackedStringArray) -> String:
 
 func _ready() -> void:
 	name = "BeatRunner"
+	# PT10-9: A rides the elevator now; scripted beats keep the old walk-in cage.
+	if game != null and game.get("elevator") != null:
+		game.elevator.walk_in = true
 	log_event("start %s" % beat)
 
 

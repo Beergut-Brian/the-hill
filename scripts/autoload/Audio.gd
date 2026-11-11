@@ -619,8 +619,23 @@ const LIBRARY_CUES := {
 }
 
 
-## Where a bark comes from: the voice pack's own line, then the pack's library line for that cue
-## (LIBRARY_CUES), then the synth placeholder.
+## A-15: a Hill bark -> the line ids its speaker's openjar-characters pack plans for it (the bark
+## tables in characters/<id>/voice/README.md; v0.5.0 has the tables but no audio yet for any of
+## these). Every id found in the pack folder joins one shuffled bag, so the lines take turns.
+const PACK_LINES := {
+	"mole/oh_dear": ["mole_oh_dear", "mole_oh_deary_me", "mole_oh_dear_dear"],
+	"gnome_foreman/whistle": ["foreman_whistle_noted", "foreman_whistle_shift"],
+	"gnome_foreman/mutter": ["foreman_hm", "foreman_hm_hm", "foreman_mm", "foreman_pencil_hm"],
+	"dragon/rumble": ["dragon_rumble_low", "dragon_rumble_happy"],
+	"dragon/yawn": ["dragon_yawn_small", "dragon_yawn_big"],
+}
+
+## Where pack folders live (<root><id>/voice/); tests point it at a fixture.
+var pack_root := CHARACTERS_DIR
+
+
+## Where a bark comes from: the voice pack's own line, the pack's planned lines for it (PACK_LINES),
+## the pack's library line for that cue (LIBRARY_CUES), then the synth placeholder.
 func bark_stream(character: String, cue: String) -> AudioStream:
 	var dirs: Array[String] = []
 	var roster := get_node_or_null("/root/Roster")
@@ -628,9 +643,12 @@ func bark_stream(character: String, cue: String) -> AudioStream:
 		var v: String = roster.info(character).get("voice", "")
 		if v != "":
 			dirs.append(v if v.ends_with("/") else v + "/")
-	dirs.append("%s%s/voice/" % [CHARACTERS_DIR, character])
+	dirs.append("%s%s/voice/" % [pack_root, character])
 	for d in dirs:
 		var s := _pick(d, cue, true)
+		if s != null:
+			return s
+		s = _pick_lines(d, PACK_LINES.get("%s/%s" % [character, cue], []))
 		if s != null:
 			return s
 		for alt in LIBRARY_CUES.get(cue, []):
@@ -661,6 +679,24 @@ func _pick(dir: String, cue: String, quiet := false) -> AudioStream:
 			_warned[key] = true
 			push_warning("Audio: no file for cue '%s' in %s" % [cue, dir])
 		return null
+	return _from_bag(key, variants)
+
+
+## One line out of several named lines in one folder (each may have _n variants), taking turns.
+func _pick_lines(dir: String, ids: Array) -> AudioStream:
+	if ids.is_empty():
+		return null
+	var key := dir + "|".join(ids)
+	if not _cache.has(key):
+		var all: Array = []
+		for id in ids:
+			all.append_array(_variants(dir, id))
+		_cache[key] = all
+	var variants: Array = _cache[key]
+	return null if variants.is_empty() else _from_bag(key, variants)
+
+
+func _from_bag(key: String, variants: Array) -> AudioStream:
 	if variants.size() == 1:
 		return variants[0]
 	var bag: Array = _bags.get(key, [])

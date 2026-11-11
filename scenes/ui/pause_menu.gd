@@ -1,11 +1,12 @@
 ## Pause menu, Showtime style: the game stays visible, softened and tinted, and a dark wedge slides
 ## in from the left edged in the pauser's colour, with a big PAUSED, a "PLAYER 2 PAUSED" tag and
-## slanted bars: Resume, Restart (back to the lobby), Settings, Back to Open Jar (asks first).
+## slanted bars: Resume, Restart (back to the lobby), Settings, Story (the intro scene again, via
+## the "hill_story" group), Back to Open Jar (asks first).
 ## Either pad moves the cursor, A presses, B resumes or backs out of Settings / the question.
 ## Start is Game's (it resumes from anywhere). Shown while Game.state == PAUSED.
 extends Control
 
-enum Choice { RESUME, RESTART, SETTINGS, DOOR }
+enum Choice { RESUME, RESTART, SETTINGS, STORY, DOOR }
 
 var focus := Choice.RESUME
 ## The player whose Start opened the menu (P1 for the keyboard).
@@ -17,7 +18,7 @@ var paused_by := Players.P1:
 
 var _tw: Tween
 
-@onready var _buttons: Array = [$Card/Buttons/Resume, $Card/Buttons/Restart, $Card/Buttons/Settings, $Card/Buttons/Door]
+@onready var _buttons: Array = [$Card/Buttons/Resume, $Card/Buttons/Restart, $Card/Buttons/Settings, $Card/Buttons/Story, $Card/Buttons/Door]
 @onready var _card: Control = $Card
 @onready var _wedge: Control = $Wedge
 @onready var _by: Control = $Card/PausedBy
@@ -86,6 +87,10 @@ func press(choice: Choice = focus) -> void:
 			Game.to_lobby()
 		Choice.SETTINGS:
 			_settings.open()
+		Choice.STORY:
+			UiSound.play("ui_confirm")
+			Game.resume()
+			get_tree().call_group(&"hill_story", &"replay_intro")
 		Choice.DOOR:
 			_confirm.open()
 

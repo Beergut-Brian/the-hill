@@ -1,0 +1,29 @@
+{
+	"note": "Mole arc spacing (GAME.md playtest item 3). Each theft needs this much since the last one: real play time with someone underground on foot (secs), tiles dug on foot in these layers (tiles), and the digger at least this many rows below the Topsoil landing (depth; 0 = anywhere). hints_at: share of the gap at which each hint shows (wobbling tile, dirt trail, shovel shadow). Thefts 2 and 3 never come back to back.",
+	"thefts": [
+		{
+			"secs": 75,
+			"tiles": 12,
+			"depth": 0
+		},
+		{
+			"secs": 180,
+			"tiles": 30,
+			"depth": 14
+		},
+		{
+			"secs": 180,
+			"tiles": 30,
+			"depth": 26
+		}
+	],
+	"hints_at": [
+		0.3,
+		0.55,
+		0.8
+	],
+	"layers": [
+		"topsoil",
+		"clay"
+	]
+}

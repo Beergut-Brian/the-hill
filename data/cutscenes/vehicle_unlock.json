@@ -1,0 +1,62 @@
+{
+	"id": "vehicle_unlock",
+	"scene": "hillville",
+	"steps": [
+		{
+			"do": "camera",
+			"to": "vehicle",
+			"dy": -24,
+			"zoom": 2.8,
+			"time": 0.9,
+			"wait": 1.0
+		},
+		{
+			"do": "spawn",
+			"who": "dot",
+			"sheet": "foreman_dot",
+			"at": "vehicle",
+			"dx": -90
+		},
+		{
+			"do": "walk",
+			"who": "dot",
+			"to": "vehicle",
+			"dx": -44,
+			"time": 1.0
+		},
+		{
+			"do": "hop",
+			"who": "dot",
+			"height": 6,
+			"sound": "whistle"
+		},
+		{
+			"do": "line",
+			"who": "dot",
+			"line": "{line}",
+			"pics": "@pics"
+		},
+		{
+			"do": "hop",
+			"who": "vehicle",
+			"height": 5,
+			"times": 2,
+			"time": 0.6,
+			"sound": "horn"
+		},
+		{
+			"do": "wait",
+			"time": 0.6
+		},
+		{
+			"do": "walk",
+			"who": "dot",
+			"dx": -300,
+			"time": 1.8,
+			"wait": 0.6
+		},
+		{
+			"do": "camera_back"
+		}
+	]
+}
