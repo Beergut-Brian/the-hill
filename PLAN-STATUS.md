@@ -302,6 +302,16 @@ and `assets/audio/music/` (seeded synth SFX from `assets/audio/tools/make_cues.p
 | F-6 | S1 | Polish: final art, all vehicles, all buildings, Dragon, music, store art, tuning | partial | V-09, A-14, V-08 | |
 | F-7 | S1 | Release `v1.0.0` on the TV main tile | later | | |
 
+## Playtest 2026-11-10 (GAME.md "Playtest 2026-11-10 changes")
+
+IDs `PT10-<n>` match the numbered list in GAME.md. Rows added by the lane that builds each item.
+
+| ID | Source | Item | Status | Proof | Notes |
+| --- | --- | --- | --- | --- | --- |
+| PT10-1 | Playtest 2026-11-10 | "Something telling us that we got the hill as an inheritance ... be careful of the mineshaft": an intro scene, Mayor Pip with the deed and the warning, Foreman Dot with the Front Loader | built | tests/test_story_cutscenes.gd::test_the_intro_plays_once_on_a_new_save_locks_input_and_is_saved, ::test_a_skips_the_intro_at_once_and_the_pause_menu_replays_it; handoff/frames/intro_*.png (`--demo-beat=intro`) | Story lane (hill-story-1). About 41 s, once per save (`resident_arcs.intro_seen`), Story entry in the pause menu replays it. Lines in data/story/lines.json wait on Gary's voice files (library barks until then) |
+| PT10-2 | Playtest 2026-11-10 | "With the major or important NPC interactions, let's do some kind of cutscenes": a reusable cutscene player used for the intro, each resident's encounter, arrival and move-in, the Dragon reveal, each vehicle unlock | built | tests/test_story_cutscenes.gd (data, skip, queue, unlock cases); docs/cutscenes.md; handoff/frames/npc_*.png (`--demo-beat=unlock|arrive_scene|movein_scene|crew_scene|dragon_scene`) | Story lane. `CutscenePlayer` is game-agnostic (host interface) for Life of a Worm. Split screen: both halves show it when in the same world; the other scene keeps its camera under the bars |
+| PT10-3 | Playtest 2026-11-10 | "The mole does not show itself right away ... sneaks in, you see it, steals your shovel ... you can't dig ... you wake up ... he hands it to you", spaced out, the third brings him up | built | tests/test_story_cutscenes.gd::test_hints_come_first_in_order_and_the_theft_waits_for_its_gap, ::test_the_theft_takes_the_shovel_you_cannot_dig_then_you_wake_up_top_with_it, ::test_the_third_return_brings_him_up_without_a_second_arrival_scene, ::test_the_second_theft_needs_more_play_and_more_depth_than_the_first; handoff/frames/theft_*.png, hints_*.png | Story lane. Gap per theft in data/story/mole_arc.json (75 s / 12 tiles; then 180 s / 30 tiles and 14, 26 rows below the landing). `HillPlayer.has_shovel` / `can_dig()` is the contract the controls lane's dig code keeps |
+
 ## Totals
 
 Counted from the Status column, 192 rows, on `dev` at `8ee8d2d` (2026-11-10) plus M-08 (chooser-catchphrase lane):

@@ -79,11 +79,11 @@ mouse_filter = 2
 [node name="Buttons" type="VBoxContainer" parent="Card"]
 layout_mode = 0
 offset_left = 60.0
-offset_top = 420.0
+offset_top = 400.0
 offset_right = 860.0
-offset_bottom = 960.0
+offset_bottom = 1000.0
 mouse_filter = 2
-theme_override_constants/separation = 26
+theme_override_constants/separation = 16
 
 [node name="Resume" type="Control" parent="Card/Buttons"]
 layout_mode = 2
@@ -112,6 +112,17 @@ layout_mode = 2
 mouse_filter = 2
 script = ExtResource("2_item")
 text = "Settings"
+bleed = 1
+height = 96.0
+height_focused = 140.0
+text_size = 62
+text_size_focused = 108
+
+[node name="Story" type="Control" parent="Card/Buttons"]
+layout_mode = 2
+mouse_filter = 2
+script = ExtResource("2_item")
+text = "Story"
 bleed = 1
 height = 96.0
 height_focused = 140.0

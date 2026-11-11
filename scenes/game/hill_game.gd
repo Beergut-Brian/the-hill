@@ -44,6 +44,8 @@ var camera: CameraLead
 var shelf: TreasureShelf
 ## The four ruins and the buildings they become (restore, door lights, Lost & Found, the crew).
 var ruins: RuinSites
+## Story lane: the intro, the Mole's arc and every NPC moment's cutscene (HillStory).
+var story_scenes: HillStory
 var vehicles: Dictionary = {}      # StringName -> Vehicle (the parked node; out of the tree while driven)
 var drivers: Dictionary = {}       # StringName -> player driving it
 
@@ -144,6 +146,10 @@ func _ready() -> void:
 			ruins.crew_return(save.away_seconds)
 	TimeOfDay.running = true
 	_spawn_vehicles()
+	if hillville != null:
+		story_scenes = HillStory.new()
+		story_scenes.game = self
+		add_child(story_scenes)
 	_anchor = Node2D.new()
 	_anchor.name = "Anchor"
 	_anchor.position = _loader_spawn() + Vector2(80, -40)
@@ -160,7 +166,8 @@ func _ready() -> void:
 			# TwoDriverBeats is loaded by path: a direct class reference from here makes a parse cycle
 			# (HillGame -> TwoDriverBeats -> VehicleBeats -> HillGame) that breaks every script.
 			var gap: Script = load("res://scripts/gameplay/gap_beats.gd")
-			runner = gap.new() if gap.get("GAP_BEATS").has(beat) else load("res://scripts/gameplay/two_driver_beats.gd").new() if beat == "drivers" else DepthBeats.new() if DepthBeats.DEPTH_BEATS.has(beat) else CameraBeats.new() if CameraBeats.CAMERA_BEATS.has(beat) else HazardBeats.new() if HazardBeats.HAZARD_BEATS.has(beat) else VehicleBeats.new() if VehicleBeats.VEHICLE_BEATS.has(beat) else PolishBeats.new() if PolishBeats.POLISH_BEATS.has(beat) else ArcBeats.new() if ArcBeats.ARC_BEATS.has(beat) else HillBeatRunner.new()
+			var story_beats: Script = load("res://scripts/gameplay/story_beats.gd")
+			runner = story_beats.new() if story_beats.get("STORY_BEATS").has(beat) else gap.new() if gap.get("GAP_BEATS").has(beat) else load("res://scripts/gameplay/two_driver_beats.gd").new() if beat == "drivers" else DepthBeats.new() if DepthBeats.DEPTH_BEATS.has(beat) else CameraBeats.new() if CameraBeats.CAMERA_BEATS.has(beat) else HazardBeats.new() if HazardBeats.HAZARD_BEATS.has(beat) else VehicleBeats.new() if VehicleBeats.VEHICLE_BEATS.has(beat) else PolishBeats.new() if PolishBeats.POLISH_BEATS.has(beat) else ArcBeats.new() if ArcBeats.ARC_BEATS.has(beat) else HillBeatRunner.new()
 		runner.set("game", self)
 		if beat != "":
 			runner.set("beat", beat)
