@@ -336,8 +336,23 @@ Every partial row on `dev` at `5f31a57` was checked in the code and, where it sh
 (`handoff/frames/audit_*.png`). To built: S-16 (grown-up lobby, solo, `--demo`/`--shots`, `store/jar.glb`
 tests; frame `audit_s16_lobby.png`) and F-4 (tag `v0.1.0` at aaefdc3 is on dev, playtests/2026-11-10.md).
 Stay partial: C-22 (being built on `feature/hill-puzzles-audit-1`), C-27 (no depth gates on dev), P-06 and
-S-15 (built next by this lane), A-15 (no voice packs), V-03 (Kaden's pick), V-09 (gnome/cow art running on
+S-15 (built next by this lane; P-06 then landed on dev as PR 46, see the reconcile below), A-15 (no voice packs), V-03 (Kaden's pick), V-09 (gnome/cow art running on
 `feature/hill-gnome-cow-art-1`), W-27, S-07, S-13 (TV check), F-0 (Q-02, Kaden), F-3 and F-6 (roll-ups).
+
+## Gap-close-3 reconcile 2026-11-11
+
+`origin/dev` at `5d00fc5` (PR 46, barks-personality-1) merged in. Where both sides built the same barks, dev's
+code was kept: `scripts/audio/hill_barks.gd`, `bark_bubble.gd` (BarkBubble), `bark_tuning.gd`, `data/barks.tres`,
+`tests/test_barks.gd` are byte-for-byte dev. Kept from this branch: the PictoBubble scene
+(`scenes/ui/picto_bubble.tscn`, `scripts/gameplay/picto_bubble_node.gd`), `PictoBubble.draw_cost` /
+`draw_round` / `cost_columns`, the build book drawing its costs and bubbles through them, the audit rows.
+Re-checked: S-16 and F-4 stay built (every cited test, `store/jar.glb`, the smoke-boot step, `--shots=`, tag
+`v0.1.0` at aaefdc3 on dev and playtests/2026-11-10.md are there). P-06 and A-15 stay built, with dev's row text
+(every cited test is in dev's `tests/test_barks.gd` / `test_audio.gd`). S-15 stays partial, and its note was
+corrected: after the merge the barks draw through dev's `BarkBubble`, not `PictoBubbleNode`, so the claim
+"the barks use it" and the `test_barks` proof were taken off the row. The scene is tested on its own
+(`tests/test_picto_bubble.gd`) but nothing in play pops one yet; moving the barks onto it is a follow-up
+for the audio lane. Still left: the move to `openjar-addons/ui/`. No status changed, so the totals hold.
 
 ## Plan-sync 2026-11-11
 
