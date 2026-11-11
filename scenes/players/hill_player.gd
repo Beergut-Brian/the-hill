@@ -297,14 +297,14 @@ func _physics_process(delta: float) -> void:
 		_b_used = false
 	if y_press:
 		honk()
-	if ability != null:
-		ability.step(delta, it, a_press)
-	var build := _build()
 	# PT10-9: in the elevator's cage, A rides (the elevator reads a_press_frame): no dig, no build.
 	if _lift_wants_a():
 		if a_press:
 			_dig_used = true
 		a_press = false
+	if ability != null:
+		ability.step(delta, it, a_press)
+	var build := _build()
 	if build != null and build.captures(player):
 		if x_press:
 			build.book_pressed(player)

@@ -527,3 +527,23 @@ func test_from_deep_spots_the_shaft_is_under_20_seconds_away() -> void:
 	print("controls: back to the shaft from deep spots (s): %s" % [times])
 	for t in times:
 		assert_float(t).is_less(20.0)
+
+
+func test_a_in_the_cage_rides_instead_of_the_vehicles_own_a() -> void:
+	_make()
+	var it := _idle()
+	var node := _join(P1, it)
+	Progress.visit_layer(P1, 0)
+	if not Progress.has_vehicle(&"dump_truck"):
+		Progress.vehicles.append(&"dump_truck")
+	var at := _game.hillville.arrival() + Vector2(0, -1)
+	_game.park_new(&"dump_truck", at, &"hillville")
+	_game.place_player(P1, &"hillville", at)
+	assert_bool(_game.hop_in(node)).is_true()
+	for i in 4:
+		node.keep_block(&"dirt")
+	await _physics(3)
+	await _press_a(it)
+	# It rides; the truck's A (tip the bed) did not fire.
+	assert_bool(_game.elevator.is_riding(P1)).is_true()
+	assert_int(node.backpack_count()).is_equal(4)
