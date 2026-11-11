@@ -12,7 +12,7 @@ signal treasure_dug(id: StringName, player: int)
 ## The Crane hauled boulder `index` (into boulders / generator.boulder_spots) out.
 signal boulder_hauled(index: int, player: int)
 
-const BLOCK_ORDER: Array[StringName] = [&"dirt", &"clay", &"stone", &"ice", &"crystal", &"edgestone", &"strangestone", &"sand"]
+const BLOCK_ORDER: Array[StringName] = [&"dirt", &"clay", &"stone", &"ice", &"crystal", &"edgestone", &"strangestone", &"sand", &"pebbles", &"pipe", &"ore", &"geode"]
 const BLOCK_DIR := "res://data/blocks/"
 const LAYER_DIR := "res://data/layers/"
 const TREASURE_DIR := "res://data/treasures/"

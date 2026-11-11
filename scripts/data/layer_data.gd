@@ -8,6 +8,10 @@ extends Resource
 @export var depth_to: int
 ## Block id -> weight (float).
 @export var block_mix: Dictionary
+## Minor kinds (GAME.md's Blocks column): block id -> share (0..1) of the layer's main-block cells
+## it takes, laid out by the block's `minor_shape`. Applied after block_mix and only to main-block
+## cells, so every other cell of a seeded world is the same with or without them.
+@export var minor_kinds: Dictionary = {}
 ## &"water_pocket", &"boulder", &"mole", &"lava" ...
 @export var hazards: Array[StringName]
 ## 0 daylight .. 1 black, before Lighthouses.

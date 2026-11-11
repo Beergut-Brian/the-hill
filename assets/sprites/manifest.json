@@ -43,13 +43,17 @@
   ],
   "ids": {
    "1": "dirt",
+   "10": "pipe",
+   "11": "ore",
+   "12": "geode",
    "2": "clay",
    "3": "stone",
    "4": "ice",
    "5": "crystal",
    "6": "edgestone",
    "7": "strangestone",
-   "8": "sand"
+   "8": "sand",
+   "9": "pebbles"
   }
  },
  "boot": {
@@ -1267,13 +1271,17 @@
   ],
   "ids": {
    "1": "dirt",
+   "10": "pipe",
+   "11": "ore",
+   "12": "geode",
    "2": "clay",
    "3": "stone",
    "4": "ice",
    "5": "crystal",
    "6": "edgestone",
    "7": "strangestone",
-   "8": "sand"
+   "8": "sand",
+   "9": "pebbles"
   },
   "row": "open mask: 1 up, 2 right, 4 down, 8 left",
   "variants": 4
