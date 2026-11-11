@@ -12,6 +12,9 @@
 ##   and his home sprite is hidden; he still comes for every cave-in. Once his Lost & Found stands
 ##   (RESTORED) he visits a player underground every VISIT_EVERY s with a bundle: unfound treasure
 ##   near him glows gold, and when he leaves he drops a found thing (3 blocks of that layer).
+##   W-19: when the ground under his feet is dug out at home he falls (a cartoon bounce, a dust
+##   puff, never hurt), waves at the nearest player and shuffles on from where he landed; walls
+##   turn him round. Going home after a rescue, theft or visit puts him back on his home floor.
 ## - Gnome crew (Gnome Room, Stone): the Foreman is up top from the start; his crew of three is
 ##   walled in, hard hats bobbing over the bricks (a muffled whistle when a player comes near).
 ##   Opening the Gnome Room (the treasure) crumbles the wall: they hop, whistle, Story.free_crew,
@@ -48,6 +51,11 @@ const DRAGON_FILE := "characters/dragon.png"
 const WAVE_NEAR := 96.0
 const WAVE_REARM := 170.0
 const MOLE_SPEED := 18.0
+## W-19 fall: gravity (px/s^2), the bounce kept (share of the landing speed) and the least speed
+## that still bounces.
+const MOLE_GRAVITY := 900.0
+const MOLE_BOUNCE := 0.4
+const MOLE_BOUNCE_MIN := 90.0
 ## Mole rescue timeline (seconds after the cave-in).
 const DIVE_AT := 0.15
 const POP_AT := 0.9
@@ -127,6 +135,10 @@ var crew: Array[SheetSprite] = []
 var caveman: SheetSprite
 var dragon: SheetSprite
 var mole_home := Vector2.ZERO
+## The floor he shuffles on (his feet y): home, or wherever he landed after a fall.
+var mole_floor := 0.0
+## Falls he has taken (for tests and beats).
+var mole_falls := 0
 var warmth := 0.0
 ## Tunable for tests and beats (the GAME.md numbers are the constants).
 var steal_cooldown := STEAL_COOLDOWN
@@ -192,6 +204,7 @@ func setup(p_u: Underground) -> void:
 		_wall = Rect2(x0 - 16.0, fy - WALL_H, x1 - x0 + 32.0, WALL_H)
 	if mole != null:
 		mole_home = mole.position
+		mole_floor = mole_home.y
 		var room: Rect2i = u.generator.landings[0]
 		_mole_room = Vector2(room.position.x * 16.0 + 12.0, HillGenerator.SHAFT_X * 16.0 - 14.0)
 		_mole.target = mole_home.x
@@ -340,6 +353,8 @@ func _tick_mole(ps: Array[HillPlayer], delta: float) -> void:
 	if u.story.in_town(Story.MOLE):
 		mole.visible = false
 		return
+	if _mole_fall(ps, delta):
+		return
 	# Home: shuffle between spots in the landing room, pausing to squint; wave at visitors.
 	var near := _nearest(ps, mole.position)
 	var dist := _local(near).distance_to(mole.position) if near != null else INF
@@ -347,11 +362,11 @@ func _tick_mole(ps: Array[HillPlayer], delta: float) -> void:
 		_mole.armed = true
 	if _mole.wave > 0.0:
 		_mole.wave -= delta
-		mole.position.y = mole_home.y - absf(sin(_mole.wave * 12.0)) * 4.0
+		mole.position.y = mole_floor - absf(sin(_mole.wave * 12.0)) * 4.0
 		if near != null:
 			mole.flip_h = _local(near).x < mole.position.x
 		return
-	mole.position.y = mole_home.y
+	mole.position.y = mole_floor
 	if dist < WAVE_NEAR and _mole.armed:
 		_mole.armed = false
 		_mole.wave = 1.3
@@ -367,8 +382,68 @@ func _tick_mole(ps: Array[HillPlayer], delta: float) -> void:
 		_mole.pause = 1.2 + fmod(_t * 7.31, 1.6)
 		_mole.target = lerpf(_mole_room.x, _mole_room.y, fmod(_t * 0.618 + 0.3, 1.0))
 		return
+	if _mole_solid(mole.position + Vector2(signf(dx) * 7.0, -6.0)):
+		# A wall (he fell into a hole, or the room changed): squint and turn round.
+		_mole.target = mole.position.x - signf(dx) * 24.0
+		_mole.pause = 0.8
+		return
 	mole.position.x += signf(dx) * minf(absf(dx), MOLE_SPEED * delta)
 	mole.flip_h = dx < 0.0
+
+
+func _mole_solid(at: Vector2) -> bool:
+	return u.world.is_solid(u.world.shape.cell_at(at))
+
+
+## W-19: the ground under the Mole's feet went (checked while he is at home). He drops with the
+## world's own feel (no tiles pass through him), bounces once like a cartoon, puffs dust, waves at
+## the nearest player and walks on from there. True while he is falling.
+func _mole_fall(ps: Array[HillPlayer], delta: float) -> bool:
+	var falling: bool = _mole.get("falling", false)
+	if not falling:
+		# His floor, not his feet: a wave hop lifts him off it for a moment.
+		if _mole_solid(Vector2(mole.position.x, mole_floor + 2.0)) or mole_floor >= Underground.HEIGHT * 16.0 - 16.0:
+			return false
+		mole.position.y = mole_floor
+		_mole.falling = true
+		_mole.vy = 0.0
+		_mole.wave = 0.0
+		_mole.bounced = false
+		mole_falls += 1
+		Audio.play("mole_pop")
+	var vy: float = _mole.vy + MOLE_GRAVITY * delta
+	var y := mole.position.y + vy * delta
+	# Land on the first solid cell top between here and y.
+	var cs := float(u.world.shape.cell_size)
+	var row := int(floor((mole.position.y + 1.0) / cs))
+	var last := int(floor((y + 1.0) / cs))
+	for r in range(row, last + 1):
+		if _mole_solid(Vector2(mole.position.x, r * cs + 1.0)) and r * cs >= mole.position.y - 0.5:
+			y = r * cs
+			if vy > 0.0:
+				if not _mole.bounced and vy > MOLE_BOUNCE_MIN:
+					_mole.bounced = true
+					Audio.play("fall")
+					u.burst(Vector2(mole.position.x, y - 2.0), DIRT, 10, 90.0)
+					vy = -vy * MOLE_BOUNCE
+				else:
+					_mole.falling = false
+					vy = 0.0
+			break
+	_mole.vy = vy
+	mole.position.y = y
+	if _mole.falling:
+		return true
+	# Landed: a happy wave at whoever is nearest, then he shuffles on from this floor.
+	mole_floor = y
+	_mole.target = mole.position.x
+	_mole.pause = 1.4
+	_mole.wave = 1.3
+	Audio.play("mole_wave")
+	var near := _nearest(ps, mole.position)
+	var dir := -1.0 if near != null and _local(near).x < mole.position.x else 1.0
+	_waves.append({"pos": mole.position + Vector2(dir * 12.0, -20.0), "t": 0.0, "dir": dir})
+	return true
 
 
 func _start_rescue(job: Dictionary) -> void:
@@ -418,6 +493,7 @@ func _step_rescue(delta: float) -> void:
 			mole.visible = false
 	elif r.stage == 4 and t >= HOME_AT:
 		mole.position = mole_home
+		mole_floor = mole_home.y
 		# Up top for good (ARRIVED or living in his Lost & Found): he goes back up, not home.
 		mole.visible = not u.story.in_town(Story.MOLE)
 		if mole.visible:
@@ -550,6 +626,7 @@ func _end_theft(now: bool) -> void:
 	_mole.state = &"wander"
 	_mole.pause = 1.0
 	mole.position = mole_home
+	mole_floor = mole_home.y
 	_mole.target = mole_home.x
 	mole.visible = not u.story.in_town(Story.MOLE)
 	if mole.visible and not now:
@@ -655,6 +732,7 @@ func _end_visit() -> void:
 	_visit_in = lerpf(VISIT_EVERY.x, VISIT_EVERY.y, fmod(_t * 0.618, 1.0))
 	_mole.state = &"wander"
 	mole.position = mole_home
+	mole_floor = mole_home.y
 	mole.visible = false
 
 
