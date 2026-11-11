@@ -116,10 +116,10 @@ X out of scope, Q open questions, F build phases.
 | --- | --- | --- | --- | --- | --- |
 | B-01 | S1 | Barn, 10 dirt: +1 backpack per barn, no cap | built | tests/test_hill_game.gd::test_backpack_fills_and_capacity_follows_barns | |
 | B-02 | S1 | Barn: cows wander out; more barns, more cows | built | tests/test_polish.gd::test_every_barn_has_a_cow_in_its_yard_and_a_new_one_trots_out, ::test_a_hundred_barns_is_a_hundred_cows, ::test_walking_into_a_cow_makes_her_hop; handoff/frames/cows_*.png | Polish-2: scripts/gameplay/barn_cows.gd. **Placeholder cow drawn in code**: the library cow is only a proposal (openjar-characters `feature/quadruped-cow`, name open as D53), not approved for play. TODO(audio): `cow_moo` is not in CUES.md |
-| B-03 | S1 | House, 15 dirt + 5 clay: lights at dusk; Jeff and Chuck sleep here | partial | data/buildings/house.tres; assets/sprites/buildings/house_lit.png | building.gd swaps in the lit sprite at night (not checked in a frame with a House). Nobody sleeps there |
+| B-03 | S1 | House, 15 dirt + 5 clay: lights at dusk; Jeff and Chuck sleep here | built | data/buildings/house.tres; assets/sprites/buildings/house_lit.png; tests/test_gap_close.gd::test_by_night_the_absent_p2_sleeps_in_the_house_and_by_day_in_the_bucket, ::test_waking_at_night_comes_out_of_the_house_door; handoff/frames/house_sleeper_zs_night.png, house_wake_out_of_door.png (gap-close-1) | building.gd swaps in the lit sprite at night (town-life-1 checked it in frames, on its branch). Gap-close-1: by night (lights >= 0.5) the player not yet in the game sleeps in the first House instead of the Loader's bucket: Zs in their slot colour drift out of the attic window; a press wakes them out of the House door with a puff (`hop_out`). By day the bucket, as GAME.md's drop-in says. Beat `--demo-beat=house` |
 | B-04 | S1 | Garage, 20 clay + 10 stone, needs the Buried Car; each opens the next vehicle | built | tests/test_hill_build.gd::test_garage_unlocks_excavator_then_still_allowed; tests/test_vehicles_treasures.gd::test_each_garage_gives_the_next_vehicle_and_the_drill_garage_waits_for_the_tooth | |
 | B-05 | S1 / S7 | Vehicles park at their Garage; a Garage built early waits with its door shut | built | tests/test_vehicles_treasures.gd::test_vehicles_treasures_buildings_survive_a_reload | |
-| B-06 | S1 | **Workshop**, 15 stone: bigger shovel, faster vehicles; hammering and sparks | missing | none (no data row; not in the book: .scratch/shots/book/t008.0s.png) | Dropped without a recorded decision; see REPORT |
+| B-06 | S1 | **Workshop**, 15 stone: bigger shovel, faster vehicles; hammering and sparks | built | tests/test_gap_close.gd::test_the_workshop_is_a_book_card_for_fifteen_stone, ::test_tool_level_counts_workshops_up_to_the_cap, ::test_the_bigger_shovel_bites_one_cell_deeper_on_foot, ::test_a_workshop_digs_quicker_and_drives_faster_capped, ::test_building_a_workshop_pops_the_shovel_over_every_player_with_one_sound, ::test_the_workshop_hammers_with_sparks_and_clangs_only_near_a_player; data/buildings/workshop.tres; handoff/frames/workshop_*.png, big_shovel_*.png (gap-close-1) | Gap-close-1: a book card for 15 stone (after the Garage). Each Workshop is a `dig_power` level (`Progress.tool_level()`, max 2): on foot the bigger shovel takes one more cell per dig with a gold glint; digging is 35% quicker and vehicles 15% faster per level. Built: a big gold shovel pops over every player with sparks (`tool_upgrade`). The building hammers the anvil with sparks and chimney smoke; the clang (`workshop_hammer`) only near a player. Sounds are stand-in aliases (see A-01). Beats: `--demo-beat=workshop|shovel` |
 | B-07 | S1 | Lighthouse, 20 stone + 5 crystal: lights the next layer down per one built; sweeping beam at night | built | tests/test_polish.gd::test_a_lighthouse_lights_stone_and_each_more_lights_the_next_layer_down, ::test_a_saved_lighthouse_lights_stone_after_a_reload, ::test_building_a_lighthouse_flares_its_lamp; handoff/frames/lighthouse_*.png (polish-2) | Polish-2: the first Lighthouse lights Stone, each more lights the next layer down (UndergroundLook "lit layers": darkness x0.22, warm tint, 1.2 s fade, a lantern and sweeping beam at the lit landing). Up top the lamp flares and shines down when placed, and sweeps the sky at night (scenes/buildings/lighthouse_beam.gd). TODO(audio): a `lighthouse_on` cue for the light-up moment is not in CUES.md |
 | B-08 | S1 | Museum: restore the Flooded Cabin; shows every treasure and how many are left per layer | built | tests/test_resident_arcs.gd::test_restore_card_only_while_arrived_and_paying_rebuilds_plank_by_plank, ::test_museum_takes_the_treasure_shelf_and_the_caveman_polishes; data/buildings/museum.tres | Restoring the Flooded Cabin makes the Museum; it takes over the Treasure Shelf (PR 9) |
 | B-09 | S1 | Gnome Village: restore the Crooked Watchtower; the crew digs 20–50 blocks while the game is closed, up to a cap | built | tests/test_resident_arcs.gd::test_gnome_village_crew_leaves_a_capped_pile_after_time_away; handoff/frames/crew_overnight_march.png | Merged with resident-arcs (b9966b0); checked by polish-2 |
@@ -162,7 +162,7 @@ X out of scope, Q open questions, F build phases.
 | H-08 | S1 | Hop in/out with one button; on foot is always an option | built | tests/test_hill_game.gd::test_hop_in_drive_and_hop_out | |
 | H-09 | S1 | Both players can drive different vehicles at once | partial | none found | Nothing in the code stops it, but no test or frame shows it |
 | H-10 | S1 Art / S2 | Vehicles big, round, friendly; **no eyes or faces** (D45 supersedes "faces in the headlights") | built | tests/test_vehicles_treasures.gd::test_ladder_is_five_vehicles_with_their_own_abilities_and_faceless_art; .scratch/shots/lineup/t008.0s.png | |
-| H-11 | S1 Art | Two-frame idle wobble, exhaust puffs, player's stripe when driven | partial | .scratch/shots/demo/t018.0s.png (green stripe on the Loader) | The frames show the stripe and the bob. Exhaust puffs aren't confirmed |
+| H-11 | S1 Art | Two-frame idle wobble, exhaust puffs, player's stripe when driven | built | tests/test_gap_close.gd::test_exhaust_puffs_quicker_while_rolling_from_each_vehicles_stack; .scratch/shots/demo/t018.0s.png (stripe); handoff/frames/exhaust_loader_idle.png, exhaust_loader_zoom.png (gap-close-1) | Stripe and bob were on dev. Gap-close-1: while someone drives, the stack in each sprite puffs round smoke, slow idling and streaming back while rolling (the Dump Truck gets a small drawn stack; the Crane has none). Beat `--demo-beat=exhaust` |
 | H-12 | S1 | v1.1 vehicle pack: Bulldozer, Cement Mixer, Steamroller, Paver, Tunneler (+ roads) | later | GAME.md Vehicles, "v1.1 vehicle pack" | Garages 5–9 |
 
 ## Players
@@ -174,7 +174,7 @@ X out of scope, Q open questions, F build phases.
 | P-03 | S5 | Plays whoever was picked; other characters get a sheet built at runtime | built | tests/test_hill_chooser.gd::test_a_pixel_form_only_character_gets_a_built_sheet, ::test_swapped_picks_swap_the_bodies | |
 | P-04 | S1 | Drop-in: P2 asleep in the Loader's bucket; a button press tips him out | built | tests/test_hill_game.gd::test_p2_sleeps_in_the_bucket_then_drops_in_and_plays | |
 | P-05 | S2 | The library gains a 2D pixel format for Jeff, Chuck and the four residents | built | assets/sprites/characters/{jeff,chuck,mole,foreman,caveman,dragon}.png | |
-| P-06 | S1 | Personalities: Jeff names every rock; Chuck narrates his driving | partial | scripts/audio/hill_audio.gd (`Audio.bark("jeff", "rock_name")`, `Audio.bark("chuck", "narrate")`); tests/test_audio.gd::test_barks_fall_back_to_placeholders_and_are_rate_capped | On dev since PR 12. Jeff names rocks and Chuck narrates, but the lines are synth gibberish placeholders (assets/audio/voice/) until voice packs land |
+| P-06 | S1 | Personalities: Jeff names every rock; Chuck narrates his driving | partial | scripts/audio/hill_audio.gd (`Audio.bark("jeff", "rock_name")`, `Audio.bark("chuck", "narrate")`); tests/test_audio.gd::test_barks_fall_back_to_placeholders_and_are_rate_capped; tests/test_gap_close.gd::test_a_library_voice_pack_says_its_lines_for_game_cues | Jeff names rocks and Chuck narrates (PR 12). Gap-close-1: `Audio.LIBRARY_CUES` maps `rock_name` -> `cheer` and `narrate` -> `ready`/`wait`, so the moment Jeff's and Chuck's library packs land these lines play in their real voices. openjar-characters v0.5.0 has no voice pack for Jeff or Chuck, so they are still synth placeholders: needs the characters repo |
 
 ## Systems, camera, tech
 
@@ -223,7 +223,7 @@ X out of scope, Q open questions, F build phases.
 | V-06 | S1 Art | Treasures sparkle through the dirt from two tiles away | built | .scratch/shots/rescue/t005.0s.png (car and chest sparkle) | |
 | V-07 | S1 Art | Juice: dig particles in block colour, shake on big scoops/falls, dust when a building lands, sparkle burst and ding | built | tests/test_polish.gd::test_a_big_scoop_kicks_and_a_loader_scoop_does_not, ::test_a_boulder_landing_near_kicks_and_far_does_not, ::test_kicks_are_small_short_and_off_with_screen_shake_off; handoff/frames/excavator_big_scoop.png | Polish-2: scripts/gameplay/screen_kick.gd. A scoop of 3+ tiles (Excavator, Crane, Drill) kicks 2-3 px for 0.22 s; a boulder landing within 14 tiles kicks up to 3.5 px for 0.25 s. Capped at 4 px / 0.9 s; Settings screen shake off = none. A still frame cannot show a shake |
 | V-08 | S1 Art / F-6 | Store art: grid (Excavator mid-scoop, fossil flying, Chuck drives, Jeff cheers), hero (Hillville at dusk, Dragon on the peak) | built | store/grid.png; store/hero.png; tests/test_store.gd::test_store_images_are_the_tv_sizes | Rendered from the game by `art/tools/render_store.sh` (`art/store/store_shot.tscn`: a store camera over a staged real game). Grid: Chuck's Excavator scoops the fossil out of the Clay, Jeff cheers. Hero: Hillville at dusk, the Dragon asleep on her perch |
-| V-09 | S1 / F-6 | Final pixel art for everything | partial | assets/sprites/manifest.json | Sandbox art covers everything on dev, including the restored ruins (bcb0571, PR 9). Missing: a gnome crew sheet, final cows (polish-2 draws a placeholder cow in code), the Workshop |
+| V-09 | S1 / F-6 | Final pixel art for everything | partial | assets/sprites/manifest.json | Sandbox art covers everything on dev, including the restored ruins (bcb0571, PR 9) and the Workshop (gap-close-1, `art/tools/make_workshop_art.py`). Missing: a gnome crew sheet, final cows (polish-2 draws a placeholder cow in code) |
 | V-10 | S2 / Q-3 | No real places: generic landmarks only | built | .scratch/shots/shelf/t008.0s.png (generic water tower) | |
 
 ## Audio
@@ -235,7 +235,7 @@ and `assets/audio/music/` (seeded synth SFX from `assets/audio/tools/make_cues.p
 
 | ID | Source | Item | Status | Proof | Notes |
 | --- | --- | --- | --- | --- | --- |
-| A-01 | CLAUDE.md | Sound on every action | built | tests/test_audio.gd::test_every_cue_resolves_to_a_file; tests/test_proto.gd::test_audio_synth_beep_for_missing_cues | On dev since PR 12: every cue in assets/audio/CUES.md has a file (seeded synth from make_cues.py). Still not in CUES.md: `cow_moo` (B-02), `lighthouse_on` (B-07) |
+| A-01 | CLAUDE.md | Sound on every action | built | tests/test_audio.gd::test_every_cue_resolves_to_a_file; tests/test_proto.gd::test_audio_synth_beep_for_missing_cues | On dev since PR 12: every cue in assets/audio/CUES.md has a file (seeded synth from make_cues.py). Still not in CUES.md: `cow_moo` (B-02), `lighthouse_on` (B-07). Gap-close-1 stand-ins (Audio.ALIASES): `workshop_hammer` -> `elevator_clank`, `tool_upgrade` -> `treasure_pickup`; real files wanted |
 | A-02 | S1 Audio | `dig_<block>`: crumble, squelch, crack, crunch, chime | built | assets/audio/sfx/dig_*.ogg; tests/test_audio.gd::test_variants_rotate_without_repeats | Three variants per block, rotated (PR 12) |
 | A-03 | S1 Audio | `scoop`, `tip`: hydraulic whine, rattle | built | assets/audio/sfx/scoop_1-2, bucket_tip, dump_truck_tip; assets/audio/CUES.md | `tip` is an alias of `dump_truck_tip` (PR 12) |
 | A-04 | S1 Audio | `engine_<vehicle>`: looped, pitched by speed, one per vehicle | built | assets/audio/sfx/*_engine.wav; tests/test_audio.gd::test_engine_pitch_follows_speed, ::test_driving_in_the_game_runs_that_vehicles_engine | Looped per vehicle, pitched by speed (PR 12) |
@@ -249,7 +249,7 @@ and `assets/audio/music/` (seeded synth SFX from `assets/audio/tools/make_cues.p
 | A-12 | S1 Audio | `gnome_whistle`: whistle, marching feet | built | assets/audio/sfx/whistle_1-3, crew_march, march_step | `gnome_whistle` is an alias of `whistle` (PR 12) |
 | A-13 | S1 Audio | `dragon_snore` louder by depth | partial | assets/audio/sfx/dragon_snore_1-2.ogg; tests/test_audio.gd::test_snore_gets_louder_with_depth | Plays and gets louder by depth (PR 12). Not synced with the puff and sway (W-17) |
 | A-14 | S1 Audio | Music: sunny up-top theme; the same theme slowed underground with a layer per zone; cavern choir | built | assets/audio/music/music_up.ogg, music_down.ogg, music_down_layer_1-4.wav, music_cavern.ogg; tests/test_audio.gd::test_music_crossfades_up_down_and_cavern, ::test_big_moments_duck_the_music | Up-top theme, slowed underground theme with a layer per zone, cavern track (PR 12) |
-| A-15 | S1 Audio | Barks: Mole "oh dear", Foreman mutters, Dragon rumbles, Jeff names rocks, Chuck narrates | partial | assets/audio/voice/*.ogg; tests/test_audio.gd::test_barks_fall_back_to_placeholders_and_are_rate_capped | All five bark hooks fire and are rate-capped (PR 12); the voices are synth gibberish placeholders until voice packs land |
+| A-15 | S1 Audio | Barks: Mole "oh dear", Foreman mutters, Dragon rumbles, Jeff names rocks, Chuck narrates | partial | assets/audio/voice/*.ogg; tests/test_audio.gd::test_barks_fall_back_to_placeholders_and_are_rate_capped; tests/test_gap_close.gd::test_the_finder_cheers_in_their_own_voice_and_a_voiceless_pick_stays_quiet, ::test_a_workshop_gets_a_cheer_from_each_voiced_player | All five bark hooks fire and are rate-capped (PR 12). Gap-close-1: any picked character with a library voice pack (17 of 21 in v0.5.0) now speaks in play (`VoiceLines`): `win` on finding a treasure, `cheer` on a Workshop and now and then on a build, `join` when a resident arrives. Still placeholders: Jeff, Chuck, the Mole, the Foreman, the Dragon (no library packs) |
 
 ## Kid-design checks (S1, on top of docs/kid-design.md)
 
@@ -290,7 +290,7 @@ and `assets/audio/music/` (seeded synth SFX from `assets/audio/tools/make_cues.p
 | F-0 | S1 | Design sprint: GAME.md, palette, bibles, repo from template | partial | GAME.md; art/direction/palettes.md | Bible approval is open (Q-02) |
 | F-1 | S1 | Risk prototypes: chunked grid + edit saves + falling boulders; two SubViewports split (`v0.0.1-dev.1`) | built | tests/test_proto.gd; tests/test_tileworld.gd; tests/test_split.gd | |
 | F-2 | S1 | Grey-box: capsules, Loader box, dig, elevator, one barn, beeps | built | tests/test_hill_game.gd; tests/test_hill_build.gd | |
-| F-3 | S1 | Parallel build (layers, treasures, hazards, book, vehicles, crew, dragon; art; content; audio; HUD) | partial | rows above | Arcs and audio are on dev (PR 9, PR 12). Biggest gaps now: Workshop, adjacency hearts, slippery ice, real voices |
+| F-3 | S1 | Parallel build (layers, treasures, hazards, book, vehicles, crew, dragon; art; content; audio; HUD) | partial | rows above | Arcs and audio are on dev (PR 9, PR 12). Biggest gaps now: merging the finished lane branches (see "Gap-close 2026-11-10"), Jeff's and Chuck's voice packs |
 | F-4 | S1 | First playable `v0.1.0`: dig to Clay, find the car, Barn + Garage, Excavator, split, saves, sound + visual; **Kaden and his son play it** | partial | tests/test_hill_demo.gd::test_demo_finds_the_car_builds_and_unlocks_the_excavator; .scratch/shots/demo/t018.0s.png | The content passes in the scripted demo. There is no `v0.1.0` tag and no playtest report yet |
 | F-5 | S1 | Extract the engine into `openjar-addons` (addons `v0.2.0`) | missing | S-14 | |
 | F-6 | S1 | Polish: final art, all vehicles, all buildings, Dragon, music, store art, tuning | partial | V-09, A-14, V-08 | |
@@ -302,7 +302,7 @@ Counted from the Status column (by script), 191 rows, gap-close-1 branch on `dev
 
 | built | partial | missing | superseded | dropped | later | total |
 | --- | --- | --- | --- | --- | --- | --- |
-| 148 | 27 | 7 | 1 | 4 | 4 | 191 |
+| 151 | 25 | 6 | 1 | 4 | 4 | 191 |
 
 Before the plan-sync: 112 built, 47 partial, 22 missing, 2 superseded, 4 dropped, 4 later.
 
@@ -332,7 +332,7 @@ These are the missing and partial rows, ranked by how much Kaden and his son wil
 play. Size: S = under a lane-hour, M = one lane session, L = several sessions or a new system.
 
 1. **First playtest: tag `v0.1.0`, Kaden and his son play it** (F-4; check at the TV: S-07 zoom, W-27 darkness, K-06 ride time, S-13 frame rate; time C-27 and write `data/BALANCE.md`): everything below is a guess until they play. **S**
-2. **Workshop** (B-06): a building from Kaden's list is not in the book, with no recorded decision. Build it (bigger shovel, faster vehicles, hammering and sparks) or record it as dropped. **M** (S to drop)
+2. ~~**Workshop** (B-06)~~ done in gap-close-1: a building from Kaden's list is not in the book, with no recorded decision. Build it (bigger shovel, faster vehicles, hammering and sparks) or record it as dropped. **M** (S to drop)
 3. **Adjacency hearts** (C-23, C-26): hearts float between buildings that like each other, on every build. Needs `data/adjacency.tres`. **M**
 4. **Real voices for the barks** (A-15, P-06): Jeff, Chuck and the residents talk in synth gibberish, heard every few minutes. Waits on the voice packs; the hooks are done. **M**
 5. ~~**Slippery ice and sliding into holes** (W-11, W-13, B-11): the Ice layer plays like dirt, so the Dragon Perch's warm-ice payoff can't be felt. **M**~~ done on dev (PR 14, 15, 18)
@@ -344,11 +344,11 @@ play. Size: S = under a lane-hour, M = one lane session, L = several sessions or
 11. ~~**Pick a layer on the way down** (S-04). **M**~~ done on dev (PR 14, 15, 18)
 12. **Dragon snore in sync** (W-17, A-13): play the sound on `dragon_snored`, drop hill_audio's second sway. **S**
 13. **Loose things fall and props break** (W-19, W-20): treasures, bathtub, the Mole, the car, gnome-room walls. **M**
-14. **House: lights checked, Jeff and Chuck sleep there** (B-03). **S**
+14. ~~**House: lights checked, Jeff and Chuck sleep there** (B-03)~~ done in gap-close-1 (sleeping) and town-life-1 (lights).
 15. ~~**Store art and `store/jar.glb`** (V-08, S-16)~~: done in store-art-1 (2026-11-10). Version label bug is template-wide and still open. **M**
 16. **Final art: crew sheet, approved cow, Workshop; Kaden picks style D or E** (V-09, V-03, F-6). **L**
 17. **Underground puzzles: walls a boulder breaks, blocks that need a vehicle** (C-22). **L**
-18. **Proof gaps: a test or frame for the Mole's honk, two players driving, exhaust puffs** (R-11, H-09, H-11). **S**
+18. **Proof gaps: a test or frame for the Mole's honk, two players driving** (R-11, H-09; both done on unmerged branches; H-11 exhaust done in gap-close-1). **S**
 19. **Kaden approves the four resident bibles** (Q-02, F-0). **S** (Kaden's time)
 20. **Engine extraction to `openjar-addons`, `PictoBubble`, spend log** (S-14, F-5, S-15, S-17): not seen in play. **L** / **M** / **S**
 
