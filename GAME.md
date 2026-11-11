@@ -456,3 +456,9 @@ Full notes, quoted: `playtests/2026-11-10.md`. Lanes follow this section where i
   - **The Mole falls when his floor at home is dug out:** he drops (no tile passes through him), bounces once (`fall`, a dust puff), waves at the nearest player (`mole_wave`) and shuffles on from where he landed; a wall turns him round. Going home after a rescue, theft or visit puts him back on his home floor. Never hurt, nothing taken.
   - After a reload, a treasure whose ground was dug away drops (or crumbles) again, so it lands about where it was. A car or Gnome Room that crumbled before the save crumbles again on load and its chunks are back to pick up (a few free blocks, never a loss).
   - **`--demo-beat=drop|crumble|mole_fall`** (`scripts/gameplay/loose_beats.gd`).
+- 2026-11-10 (Hazards lane, lava pockets W-14, hill-lava-1):
+  - **The lava bounce was already on `dev`** (Hazards-3: pools placed from `data/hazards/crystal_lava_pocket.tres`, 4 per world, a ~66 px hop, no damage). This pass adds only the "that's why": a **1 s flame icon** over the bounced player's head with a short **warm orange flash** on their body, a **small camera kick** (`ScreenKick`, 2.5 px for 0.25 s) on the bounced player's view, and a **flickering** glow over each pool. No text anywhere.
+  - **The camera beat is a kick, not a pan to the pool.** The pool is always under the player's feet at that moment, so it is already on screen; a pan would belong to the Camera lane (S-06).
+  - **The bounce's own cue is `lava_boing`** (Audio lane). Until that file exists, `dragon_boing` plays, so the action is never silent.
+  - **No shovel, still a bounce:** lava never looks at the player's tool.
+  - **"Digs into lava"** = digging into a pocket's room and walking or falling onto the pool. Digging out the floor under a pool is still possible (the pool then floats over a hole); left to the Dig lane (`hill-dig-1`), which owns what can be dug.
