@@ -11,3 +11,4 @@ depth_from = 70
 depth_to = 130
 value = 4
 minor_shape = &"vein"
+toughness = 6

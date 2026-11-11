@@ -119,6 +119,10 @@ func test_minor_kinds_lie_in_their_layer_and_leave_the_rest_of_the_world_unchang
 			if now == before:
 				assert_bool(idx.has(now)).override_failure_message("%s at %s without minor kinds" % [now, c]).is_false()
 				continue
+			# PT10-4: Hard Rock is the dig lane's minor kind in Clay and Stone (test_dig_progression).
+			if now == _palette_index(u, &"hardrock"):
+				assert_array(["clay", "stone"]).contains([String((g.layer_rows[g.layer_of_depth(y)] as LayerData).id)])
+				continue
 			# Only a minor kind, only in its layer, only over that layer's main block.
 			assert_bool(idx.has(now)).override_failure_message("cell %s changed %d -> %d" % [c, before, now]).is_true()
 			var id: StringName = idx[now]

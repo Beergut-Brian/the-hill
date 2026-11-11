@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="DepthGate" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/data/depth_gate.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = &"5_bottom"
+opens = &"bottom"
+rows = 3
+shovel_level = 0
+vehicle_tier = 3
+treasure = &"dragon_egg"
+resident = &""
+picture = &"treasure:dragon_egg"
+target_minute = 180

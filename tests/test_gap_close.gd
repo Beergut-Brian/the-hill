@@ -65,6 +65,8 @@ func _make() -> HillGame:
 	_game = HillGame.new()
 	_game.start_players = [P1]
 	get_tree().root.add_child(_game)
+	# PT10-4: these cases check what a bite takes, not how many hits (test_dig_progression).
+	_game.underground.dig_feel.tuning = DigTuning.instant()
 	return _game
 
 

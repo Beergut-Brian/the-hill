@@ -82,6 +82,10 @@ var _full_pop := 0.0
 ## B-06: the Workshop's upgrade pop over the head (1 -> 0) and the bigger shovel's glint.
 var tool_pop := 0.0
 var _glint := 0.0
+## PT10-4/5: the picture of what a bonked dig needs (a vehicle, the gold shovel...), shown over the
+## head while _need_t runs (1 -> 0); the hint panel shows it on A too.
+var need_pic: StringName = &""
+var _need_t := 0.0
 var _dig_cd := 0.0
 var _dig_used := false
 var _b_used := false
@@ -98,6 +102,10 @@ var _a_after_lock := false
 var _in_water := false
 var _prev := {}
 var _t := 0.0
+
+
+## PT10-5: true only for the scripted --demo (HillGame): P2 still scoops scrub by hand there.
+static var hand_clear := false
 
 
 ## One upgrade sound per Workshop placement, however many players see the pop.
@@ -275,6 +283,7 @@ func _physics_process(delta: float) -> void:
 	_full_pop = move_toward(_full_pop, 0.0, delta * 3.0)
 	tool_pop = move_toward(tool_pop, 0.0, delta * 0.6)
 	_glint = move_toward(_glint, 0.0, delta * 5.0)
+	_need_t = move_toward(_need_t, 0.0, delta / DigTuning.get_default().need_secs)
 	queue_redraw()
 	if locked:
 		velocity = Vector2.ZERO
@@ -410,14 +419,43 @@ func dig_targets(at_aim: Vector2i) -> Array[Vector2i]:
 	if world == null:
 		return out
 	var tier := vehicle.dig_tier if vehicle != null else 0
+	var feel := DigFeel.of(world)
 	for c in dig_cells(at_aim):
 		if not world.is_solid(c):
 			continue
 		var def := world.tile_def(world.get_tile(c))
-		if def is BlockData and (def as BlockData).dig_tier > tier and def.breakable:
+		if feel != null:
+			if not feel.can_break(self, c, def as BlockData):
+				continue
+		elif def is BlockData and (def as BlockData).dig_tier > tier and def.breakable:
 			continue
 		out.append(c)
 	return out
+
+
+## PT10-4: the solid cells a dig toward `at_aim` reaches but this player cannot break yet (a
+## closed gate band, Hard Rock on foot, a block too hard for the vehicle).
+func dig_blocked_cells(at_aim: Vector2i) -> Array[Vector2i]:
+	var out: Array[Vector2i] = []
+	var feel := DigFeel.of(world) if world != null else null
+	if feel == null:
+		return out
+	for c in dig_cells(at_aim):
+		if world.is_solid(c) and not feel.can_break(self, c, world.tile_def(world.get_tile(c)) as BlockData):
+			out.append(c)
+	return out
+
+
+## PT10-4/5: pops `pic` over the head (what this dig needs) for DigTuning.need_secs.
+func show_need(pic: StringName) -> void:
+	need_pic = pic
+	_need_t = 1.0
+	_squash = 1.0
+
+
+## The picture a bonk is showing right now, or &"" (the hint panel).
+func need_hint() -> StringName:
+	return need_pic if _need_t > 0.0 else &""
 
 
 ## The first cell the marker shows (tests and the beat log), or (-9999, -9999) when none.
@@ -454,8 +492,12 @@ func _update_marker(delta: float, held: bool) -> void:
 	_mark_shown = Rect2(_mark_shown.position.lerp(r.position, k), _mark_shown.size.lerp(r.size, k))
 
 
-## Seconds between digs underground (quicker with each Workshop level).
+## Seconds between digs underground (quicker with each Workshop level). PT10-4: with a DigFeel
+## (the real underground) these are DigTuning's hits; bare test worlds keep the old constants.
 func dig_every() -> float:
+	var feel := DigFeel.of(world) if world != null else null
+	if feel != null:
+		return feel.every_of(self)
 	return (DIG_EVERY if vehicle == null else VEHICLE_DIG_EVERY) / (1.0 + TOOL_DIG * _tool_level())
 
 
@@ -467,6 +509,10 @@ func drive_scale() -> float:
 ## True on foot once a Workshop stands: each dig takes one more cell in the aimed direction.
 func has_big_shovel() -> bool:
 	return vehicle == null and _tool_level() > 0
+
+
+func tool_level() -> int:
+	return _tool_level()
 
 
 func _tool_level() -> int:
@@ -618,6 +664,11 @@ func step_dig() -> bool:
 			if def == null or not def.breakable or (def is BlockData and (def as BlockData).dig_tier > 0):
 				swung.emit(c)
 				return false
+			var feel := DigFeel.of(world)
+			if feel != null and not feel.can_break(self, c, def as BlockData):
+				feel.bonk(self, c)
+				swung.emit(c)
+				return false
 		var offsets: Array[Vector2i] = []
 		for c in cells:
 			offsets.append(c - cells[0])
@@ -679,11 +730,21 @@ func dig_now(move: Vector2) -> bool:
 	var a := aim_of(move, aim)
 	var targets := dig_cells(a)
 	var cells := dig_targets(a)
+	var feel := DigFeel.of(world)
 	if cells.is_empty():
+		var blocked := dig_blocked_cells(a)
+		if not blocked.is_empty():
+			feel.bonk(self, blocked[0])
 		swung.emit(targets[0] if not targets.is_empty() else Vector2i.ZERO)
 		return false
 	if vehicle != null and vehicle.sounds.has(&"dig"):
 		Audio.play(String(vehicle.sounds[&"dig"]))
+	if feel != null:
+		# PT10-4: a hit cracks; only the cells whose hit points run out go this time.
+		cells = feel.hit(self, cells)
+		_squash = maxf(_squash, 0.55)
+		if cells.is_empty():
+			return true
 	var offsets: Array[Vector2i] = []
 	for c in cells:
 		offsets.append(c - cells[0])
@@ -698,6 +759,15 @@ func _scoop() -> int:
 	var hv: Node = game.get("hillville") if game != null else null
 	var area := vehicle.clear_area if vehicle != null else Vector2i.ONE
 	var n := 0
+	if vehicle == null and not hand_clear and hv != null and hv.has_method("scrub_in_reach"):
+		# PT10-5: no tearing down the land by hand. A bonk, a shake, and a picture of the loader.
+		var c: int = hv.scrub_in_reach(global_position, facing)
+		if c >= 0:
+			hv.bonk_scrub(c)
+			Audio.play("bonk")
+			show_need(&"vehicle:front_loader")
+			swung.emit(Vector2i.ZERO)
+			return 0
 	if hv != null and hv.has_method("scoop"):
 		n = hv.scoop(global_position, facing, area, player)
 	if n >= BIG_SCOOP:
@@ -891,6 +961,8 @@ func _draw_effects() -> void:
 		for k in 3:
 			var rr := 4.0 + (1.0 - _honk) * 14.0 + k * 5.0
 			draw_arc(at, rr, -0.7 if facing > 0 else PI - 0.7, 0.7 if facing > 0 else PI + 0.7, 8, Color(1, 0.95, 0.5, _honk), 2.0)
+	if _need_t > 0.0 and need_pic != &"":
+		_draw_need(h)
 	if _glint > 0.0:
 		# The bigger shovel: a gold glint where it bites.
 		var gp := Vector2(facing * (body_size().x * 0.5 + 10.0), -h * 0.35)
@@ -909,6 +981,21 @@ func _draw_effects() -> void:
 		draw_circle(at, 6.0, DARK)
 		draw_circle(at, 5.0, Color("a47148").lightened(0.25))
 		draw_arc(at + Vector2(0, 0.5), 2.5, 0.3, PI - 0.3, 6, DARK, 1.0)
+
+
+## PT10-4/5: a picture bubble over the head with what that dig needs (pops in, fades out).
+func _draw_need(h: float) -> void:
+	var k := _need_t
+	var pop := minf((1.0 - k) * 6.0, 1.0)
+	var sc := 0.6 + 0.55 * pop - 0.15 * maxf(pop - 0.8, 0.0)
+	var a := minf(k * 4.0, 1.0)
+	var tip := Vector2(0, -h - 6.0 - (1.0 - k) * 4.0)
+	var sz := PictoBubble.size_for(1, sc * 1.4)
+	var r := Rect2(tip + Vector2(-sz.x * 0.5, -sz.y - 7.0 * sc), sz)
+	PictoBubble._round_rect(self, r.grow(1.5), 5.0, Color(PictoBubble.OUTLINE, a))
+	draw_colored_polygon(PackedVector2Array([tip, tip + Vector2(-6, -9) * sc, tip + Vector2(6, -9) * sc]), Color(PictoBubble.OUTLINE, a))
+	PictoBubble._round_rect(self, r, 4.0, Color(PictoBubble.PAPER, a))
+	DigFeel.draw_picture(self, need_pic, r.get_center(), r.size.y - 6.0, a)
 
 
 ## B-06: a big gold shovel rises over the head with a ring of sparks (no words).
