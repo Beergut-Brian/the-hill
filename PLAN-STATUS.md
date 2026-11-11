@@ -304,7 +304,7 @@ Counted from the Status column, 192 rows, on `dev` at `8ee8d2d` (2026-11-10) plu
 
 | built | partial | missing | superseded | dropped | later | total |
 | --- | --- | --- | --- | --- | --- | --- |
-| 156 | 21 | 6 | 1 | 4 | 4 | 192 |
+| 148 | 27 | 8 | 1 | 4 | 4 | 192 |
 
 Before the plan-sync: 112 built, 47 partial, 22 missing, 2 superseded, 4 dropped, 4 later.
 
