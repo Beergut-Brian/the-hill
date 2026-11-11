@@ -149,7 +149,9 @@ func _ready() -> void:
 		var beat := HillBeatRunner.beat_arg(OS.get_cmdline_user_args() + OS.get_cmdline_args())
 		var runner: Node = HillDemoRunner.new()
 		if beat != "":
-			runner = CameraBeats.new() if CameraBeats.CAMERA_BEATS.has(beat) else HazardBeats.new() if HazardBeats.HAZARD_BEATS.has(beat) else VehicleBeats.new() if VehicleBeats.VEHICLE_BEATS.has(beat) else PolishBeats.new() if PolishBeats.POLISH_BEATS.has(beat) else ArcBeats.new() if ArcBeats.ARC_BEATS.has(beat) else HillBeatRunner.new()
+			# TwoDriverBeats is loaded by path: a direct class reference from here makes a parse cycle
+			# (HillGame -> TwoDriverBeats -> VehicleBeats -> HillGame) that breaks every script.
+			runner = load("res://scripts/gameplay/two_driver_beats.gd").new() if beat == "drivers" else CameraBeats.new() if CameraBeats.CAMERA_BEATS.has(beat) else HazardBeats.new() if HazardBeats.HAZARD_BEATS.has(beat) else VehicleBeats.new() if VehicleBeats.VEHICLE_BEATS.has(beat) else PolishBeats.new() if PolishBeats.POLISH_BEATS.has(beat) else ArcBeats.new() if ArcBeats.ARC_BEATS.has(beat) else HillBeatRunner.new()
 		runner.set("game", self)
 		if beat != "":
 			runner.set("beat", beat)
