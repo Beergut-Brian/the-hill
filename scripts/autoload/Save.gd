@@ -84,6 +84,13 @@ func wipe_settings() -> void:
 		DirAccess.remove_absolute(settings_path)
 
 
+## Switch to another profile's save (the test sandbox): flushes the current one, loads the new.
+func use_profile(id: String) -> void:
+	flush()
+	profile = id
+	_load()
+
+
 func wipe() -> void:
 	_data = {}
 	_dirty = true
