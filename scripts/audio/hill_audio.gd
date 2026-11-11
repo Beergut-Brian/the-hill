@@ -243,8 +243,10 @@ func _pick(p: int) -> String:
 
 
 func _on_tile_dug(cell: Vector2i, block: StringName, p: int) -> void:
+	# A fish cell is the fish's moment: the flop plays and Jeff does not name the ice on top of it.
 	if _is_fish(cell):
 		Audio.play("fish_flop")
+		return
 	if p < 0 or _pick(p) != "jeff" or not ROCKS.has(block):
 		return
 	# Every new kind of rock gets a name; after that, now and then.
