@@ -10,3 +10,4 @@ dig_sound = &"dig_stone"
 depth_from = 70
 depth_to = 130
 value = 4
+toughness = 5

@@ -10,3 +10,4 @@ dig_sound = &"dig_dirt"
 depth_from = 0
 depth_to = 30
 value = 1
+toughness = 3

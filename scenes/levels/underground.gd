@@ -12,11 +12,12 @@ signal treasure_dug(id: StringName, player: int)
 ## The Crane hauled boulder `index` (into boulders / generator.boulder_spots) out.
 signal boulder_hauled(index: int, player: int)
 
-const BLOCK_ORDER: Array[StringName] = [&"dirt", &"clay", &"stone", &"ice", &"crystal", &"edgestone", &"strangestone", &"sand", &"pebbles", &"pipe", &"ore", &"geode"]
+const BLOCK_ORDER: Array[StringName] = [&"dirt", &"clay", &"stone", &"ice", &"crystal", &"edgestone", &"strangestone", &"sand", &"pebbles", &"pipe", &"ore", &"geode", &"gaterock", &"hardrock"]
 const BLOCK_DIR := "res://data/blocks/"
 const LAYER_DIR := "res://data/layers/"
 const TREASURE_DIR := "res://data/treasures/"
 const HAZARD_DIR := "res://data/hazards/"
+const GATE_DIR := "res://data/gates/"
 const WIDTH := HillGenerator.WIDTH
 const HEIGHT := HillGenerator.HEIGHT
 const DEFAULT_SEED := 20261110
@@ -77,6 +78,8 @@ var residents: UndergroundResidents
 var life: DepthLife
 ## Which residents have been met (thaw, reveal); HillGame swaps in its saved Story.
 var story := Story.new()
+## PT10-4: hit points, cracks, the unlock bands' signs and bonks (scripts/gameplay/dig_feel.gd).
+var dig_feel: DigFeel
 var _drain_t := 0.0
 
 
@@ -93,6 +96,7 @@ func _ready() -> void:
 	generator.configure(_layers, ids, load_rows(TREASURE_DIR))
 	generator.configure_hazards(load_rows(HAZARD_DIR))
 	generator.configure_block_depths(blocks)
+	generator.configure_gates(load_rows(GATE_DIR), int(ids.get(&"gaterock", 0)), int(ids.get(&"hardrock", -1)))
 	var back := Node2D.new()
 	back.name = "Backdrop"
 	back.z_index = -100
@@ -139,6 +143,9 @@ func _ready() -> void:
 	life = DepthLife.new()
 	world.add_child(life)
 	life.setup(self)
+	dig_feel = DigFeel.new()
+	world.add_child(dig_feel)
+	dig_feel.setup(self)
 	world.tile_dug.connect(_on_tile_dug)
 	world.dig_blocked.connect(_on_dig_blocked)
 	world.body_landed.connect(_on_body_landed)

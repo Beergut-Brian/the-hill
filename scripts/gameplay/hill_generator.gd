@@ -95,6 +95,37 @@ func configure(layers: Array, ids: Dictionary, treasures: Array = []) -> void:
 
 var _treasures: Array = []
 var _hazards: Array = []            # HazardData rows
+## PT10-4: the unlock zones, [{gate: DepthGate, from: int, to: int (exclusive), layer: int}] by
+## depth. Every cell of those rows (inside the edges) is Gate Rock, whatever was carved there.
+var gate_bands: Array = []
+var gate_tile := 0
+## Hard Rock's palette index (configure_gates) and the rows under a band it keeps clear of.
+var hard_tile := -1
+const HARD_CLEAR := 6
+
+
+## DepthGate rows (data/gates) and the Gate Rock palette index. Without them: no bands.
+func configure_gates(gates: Array, tile: int, p_hard_tile := -1) -> void:
+	gate_bands = []
+	gate_tile = tile
+	hard_tile = p_hard_tile
+	if tile <= 0:
+		return
+	for g: DepthGate in gates:
+		var li := _layer_index(g.opens)
+		if li <= 0:
+			continue
+		var from: int = (layer_rows[li] as LayerData).depth_from
+		gate_bands.append({"gate": g, "from": from - g.rows + 1, "to": from + 1, "layer": li})
+	gate_bands.sort_custom(func(a: Dictionary, b: Dictionary) -> bool: return a.from < b.from)
+
+
+## The band holding depth `row`, or {}.
+func gate_band_at(row: int) -> Dictionary:
+	for b: Dictionary in gate_bands:
+		if row >= b.from and row < b.to:
+			return b
+	return {}
 
 
 ## BlockData rows by id (Underground.blocks): mix entries obey each block's depth_from.
@@ -453,6 +484,10 @@ func base_tile(cell: Vector2i) -> int:
 		return border_tile
 	if cell.y >= STRANGE_FROM:
 		return strange_tile
+	if gate_tile > 0:
+		for b: Dictionary in gate_bands:
+			if cell.y >= b.from and cell.y < b.to:
+				return gate_tile
 	for r in _carved:
 		if r.has_point(cell):
 			if r == CAVERN and not _in_cavern(cell):
@@ -498,6 +533,9 @@ func _mix_tile(cell: Vector2i) -> int:
 		pick = main
 	if pick == main and li < _minor.size() and not (_minor[li] as Array).is_empty():
 		var m := _minor_tile(cell, depth, _minor[li])
+		# PT10-4: no Hard Rock in a layer's first rows, so breaking a band never lands on it.
+		if m > 0 and m == hard_tile and depth < (layer_rows[li] as LayerData).depth_from + HARD_CLEAR:
+			return pick
 		if m > 0 and not _in_calm(cell):
 			return m
 	return pick
