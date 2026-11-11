@@ -6,6 +6,8 @@
 ## &"shaken_hill" (a hill with wobble lines), &"heart", &"house", &"star", &"question",
 ## &"face_sheepish", &"face_hopeful", &"face_happy", and &"ruin:<building id>" /
 ## &"home:<building id>": that building's sprite, scaled to fit.
+## Story lane: &"deed" (a rolled scroll with a seal and a little hill), &"shaft" (the head-frame),
+## &"tree", &"rock", &"exclaim", &"zzz", &"sparkle", &"hardhat", &"vehicle:<id>" (its sprite).
 class_name PictoBubble
 extends RefCounted
 
@@ -57,6 +59,9 @@ static func picture(ci: CanvasItem, id: StringName, c: Vector2, s: float, a := 1
 	var sid := String(id)
 	if sid.begins_with("ruin:") or sid.begins_with("home:"):
 		_building(ci, StringName(sid.get_slice(":", 1)), c, s, a)
+		return
+	if sid.begins_with("vehicle:"):
+		_sprite(ci, "vehicles/%s.png" % sid.get_slice(":", 1), c, s, a)
 		return
 	match id:
 		&"shovel":
@@ -117,6 +122,59 @@ static func picture(ci: CanvasItem, id: StringName, c: Vector2, s: float, a := 1
 			ci.draw_circle(c + Vector2(0, 8) * u, 1.8 * u, ol)
 		&"face_sheepish", &"face_hopeful", &"face_happy":
 			_face(ci, id, c, u, a)
+		&"deed":
+			# A cream scroll, rolled at both ends, a little green hill on it and a red seal.
+			var paper := Color("f6e7c1", a)
+			ci.draw_rect(Rect2(c + Vector2(-8, -6) * u, Vector2(16, 12) * u), paper)
+			for ex in [-9.0, 9.0]:
+				ci.draw_circle(c + Vector2(ex, -6) * u, 2.2 * u, Color("e0c98f", a))
+				ci.draw_circle(c + Vector2(ex, 6) * u, 2.2 * u, Color("e0c98f", a))
+				ci.draw_rect(Rect2(c + Vector2(ex - 2.2, -6) * u, Vector2(4.4, 12) * u), Color("e0c98f", a))
+			ci.draw_rect(Rect2(c + Vector2(-11.2, -8.2) * u, Vector2(22.4, 16.4) * u), ol, false, 1.0 * u)
+			ci.draw_colored_polygon(PackedVector2Array([c + Vector2(-6, 3) * u, c + Vector2(-1, -3) * u, c + Vector2(2, -1) * u, c + Vector2(6, 3) * u]), Color("6dbb4a", a))
+			ci.draw_circle(c + Vector2(5, 5) * u, 2.6 * u, Color("c8372d", a))
+		&"shaft":
+			# The mine head-frame: two legs, a cross beam, a wheel on top, a dark hole below.
+			var wood := Color("8a5a2b", a)
+			ci.draw_rect(Rect2(c + Vector2(-7, 6) * u, Vector2(14, 4) * u), Color("2a1d18", a))
+			ci.draw_line(c + Vector2(-7, 7) * u, c + Vector2(-3, -6) * u, wood, 2.2 * u)
+			ci.draw_line(c + Vector2(7, 7) * u, c + Vector2(3, -6) * u, wood, 2.2 * u)
+			ci.draw_line(c + Vector2(-5, 1) * u, c + Vector2(5, 1) * u, wood, 1.8 * u)
+			ci.draw_circle(c + Vector2(0, -7) * u, 3.6 * u, ol)
+			ci.draw_circle(c + Vector2(0, -7) * u, 2.4 * u, Color("b8c4cc", a))
+			ci.draw_line(c + Vector2(0, -7) * u, c + Vector2(0, 7) * u, ol, 0.8 * u)
+		&"tree":
+			ci.draw_rect(Rect2(c + Vector2(-1.5, 2) * u, Vector2(3, 7) * u), Color("8a5a2b", a))
+			ci.draw_circle(c + Vector2(0, -3) * u, 7.0 * u, ol)
+			ci.draw_circle(c + Vector2(0, -3) * u, 6.0 * u, Color("4f9e3a", a))
+			ci.draw_circle(c + Vector2(-2, -5) * u, 2.0 * u, Color("6dbb4a", a))
+		&"rock":
+			var rk := PackedVector2Array([c + Vector2(-8, 7) * u, c + Vector2(-6, -2) * u, c + Vector2(-1, -6) * u, c + Vector2(6, -3) * u, c + Vector2(8, 7) * u])
+			ci.draw_colored_polygon(rk, Color("9aa3a8", a))
+			ci.draw_polyline(_loop(rk), ol, 1.2 * u)
+			ci.draw_line(c + Vector2(-3, -2) * u, c + Vector2(-1, -4) * u, Color(1, 1, 1, a * 0.7), 1.2 * u)
+		&"exclaim":
+			ci.draw_line(c + Vector2(0, -9) * u, c + Vector2(0, 3) * u, Color("e4393c", a), 4.0 * u)
+			ci.draw_circle(c + Vector2(0, 8) * u, 2.2 * u, Color("e4393c", a))
+		&"zzz":
+			for i in 3:
+				var o := c + Vector2(-6 + i * 5, 5 - i * 5) * u
+				var zs := (3.0 + i) * u
+				ci.draw_polyline(PackedVector2Array([o + Vector2(-zs, -zs), o + Vector2(zs, -zs), o + Vector2(-zs, zs), o + Vector2(zs, zs)]), ol, 1.4 * u)
+		&"sparkle":
+			for i in 3:
+				var spots: Array[Vector2] = [Vector2(-4, -3), Vector2(5, -5), Vector2(2, 6)]
+				var sizes: Array[float] = [5.0, 3.5, 3.0]
+				var o: Vector2 = c + spots[i] * u
+				var r: float = sizes[i] * u
+				ci.draw_colored_polygon(PackedVector2Array([o + Vector2(0, -r), o + Vector2(r * 0.3, 0), o + Vector2(0, r), o + Vector2(-r * 0.3, 0)]), Color(GOLD, a))
+				ci.draw_colored_polygon(PackedVector2Array([o + Vector2(-r, 0), o + Vector2(0, r * 0.3), o + Vector2(r, 0), o + Vector2(0, -r * 0.3)]), Color(GOLD, a))
+		&"hardhat":
+			ci.draw_circle(c + Vector2(0, 2) * u, 7.0 * u, Color(GOLD, a))
+			ci.draw_rect(Rect2(c + Vector2(-10, 2) * u, Vector2(20, 3) * u), Color(GOLD, a))
+			ci.draw_rect(Rect2(c + Vector2(-10, 2) * u, Vector2(20, 3) * u), ol, false, 0.9 * u)
+			ci.draw_arc(c + Vector2(0, 2) * u, 7.0 * u, PI, TAU, 12, ol, 1.0 * u)
+			ci.draw_rect(Rect2(c + Vector2(-1, -5) * u, Vector2(2, 7) * u), Color(Color("e0b020"), a))
 		_:
 			ci.draw_circle(c, 6.0 * u, Color(GOLD, a))
 
@@ -154,6 +212,20 @@ static func _building(ci: CanvasItem, id: StringName, c: Vector2, s: float, a: f
 	var tex := SpriteArt.texture(file)
 	if tex == null:
 		picture(ci, &"house", c, s, a)
+		return
+	var fs := SpriteArt.frame_size(file)
+	if fs == Vector2.ZERO:
+		fs = Vector2(tex.get_size())
+	var k := minf(s / fs.x, s / fs.y)
+	var sz := fs * k
+	ci.draw_texture_rect_region(tex, Rect2(c - sz * 0.5, sz), Rect2(Vector2.ZERO, fs), Color(1, 1, 1, a))
+
+
+## First frame of any sheet under assets/sprites/, scaled to fit the box.
+static func _sprite(ci: CanvasItem, file: String, c: Vector2, s: float, a: float) -> void:
+	var tex := SpriteArt.texture(file)
+	if tex == null:
+		picture(ci, &"star", c, s, a)
 		return
 	var fs := SpriteArt.frame_size(file)
 	if fs == Vector2.ZERO:

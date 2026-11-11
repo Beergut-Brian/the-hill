@@ -153,6 +153,9 @@ func test_the_mole_falls_when_his_floor_is_dug_out_bounces_waves_and_walks_on() 
 	var u := _game.underground
 	var res := u.residents
 	assert_object(res.mole).is_not_null()
+	# Story lane (playtest 2026-11-10 item 3): under HillStory he stays out of sight at home until
+	# his arc shows him (hide_home); this gag is for a Mole who is shown at home.
+	res.hide_home = false
 	await _physics(2)
 	var home := res.mole.position
 	var floor_row := int(floor((home.y + 2.0) / 16.0))

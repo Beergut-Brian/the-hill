@@ -636,6 +636,36 @@ func HillGame.restore_ruin(ruin_id) -> bool # Rules.can_restore, Inventory.spend
 The build book's restore cards come from `BuildController.restore_rows(player)`: copies of the
 restored row at the ruin's cost. Restored buildings are not in `Progress.buildings`.
 
+### Story and cutscenes (Story lane, 2026-11-10; GAME.md playtest items 1-3)
+
+`HillGame.story_scenes` (`HillStory`) hosts the reusable `CutscenePlayer` (`docs/cutscenes.md`):
+scenes in `data/cutscenes/*.json`, spoken lines in `data/story/lines.json`, voice files (when Gary
+makes them) at `res://assets/story/voice/<line id>.ogg`. Group `"hill_story"`: the pause menu's
+Story entry calls `replay_intro()` on it.
+
+**Shovel (the controls lane's dig code respects this; coordinate only through it):**
+
+```gdscript
+# HillPlayer
+var has_shovel := true          # false while the Mole has it (between his theft and the return)
+func can_dig() -> bool          # has_shovel or in a vehicle
+signal no_shovel()              # a dig press on foot with no shovel: nothing is dug, the hands swing
+```
+
+A dig press on foot when `can_dig()` is false must dig nothing and emit `no_shovel` (HillStory
+shows the shovel-and-question bubble and plays `dig_blocked`). Today the check sits at the top of
+`HillPlayer._dig`; if the controls lane rewrites the dig path, keep that check. Vehicles always dig.
+The flag is never saved (a reload always has the shovel).
+
+**Cutscene input lock:** a scene sets `HillPlayer.locked` on every player that was not already
+locked and releases only those (never one the elevator is carrying). Scenes do not start while any
+player is locked (elevator ride, crane ride); they wait in `HillStory.queue`.
+
+`resident_arcs` (`Story.extras`) also holds `"intro_seen"` (bool) and `"mole_arc"`
+(`{secs, tiles, hints}` since the last theft). `UndergroundResidents.auto_steal` (false under
+HillStory: the old quick theft no longer fires on digging; `steal()` stays for the "steal" beat) and
+`hide_home` (the Mole is out of sight at home while he still steals).
+
 ### The gnome-crew rule
 
 On load, once the Gnome Village stands: `away = now - Save "gnome_stamp"` (unix seconds).
@@ -658,7 +688,7 @@ never idling. A pile appears at the shaft with the march clip; never a number.
 
 `"world"` (`TileWorld.to_save()`), `"inventory"`, `"treasures"` (found ids), `"buildings"`
 (`[{id, cell:[x,y]}]`), `"vehicles"` (unlocked ids), `"players"` (`[{deepest, scene}]`),
-`"gnome_stamp"` (unix seconds, written on every save), `"residents"` (`{id: ResidentState.to_save()}`), `"resident_arcs"` (`Story.extras`), `"seed"`, and `"hillville"`
+`"gnome_stamp"` (unix seconds, written on every save), `"residents"` (`{id: ResidentState.to_save()}`), `"resident_arcs"` (`Story.extras`, including `intro_seen` and `mole_arc`), `"seed"`, and `"hillville"`
 (`Hillville.to_save()`: which scrub is cleared), `"time_of_day"` (`TimeOfDay.to_save()`). `"treasures"`, `"vehicles"`, `"buildings"`
 and `"players"` are `Progress.to_save()`'s keys. Placed buildings are rebuilt from `"buildings"`.
 

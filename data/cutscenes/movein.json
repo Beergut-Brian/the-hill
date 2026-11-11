@@ -1,0 +1,35 @@
+{
+	"id": "movein",
+	"scene": "hillville",
+	"steps": [
+		{
+			"do": "camera",
+			"to": "home",
+			"dy": -50,
+			"zoom": 2.5,
+			"time": 1.0,
+			"wait": 0.8
+		},
+		{
+			"do": "hop",
+			"who": "resident",
+			"height": 8,
+			"times": 3,
+			"time": 0.9,
+			"sound": "resident_cheer"
+		},
+		{
+			"do": "line",
+			"who": "resident",
+			"line": "movein_{stem}",
+			"pics": "@pics"
+		},
+		{
+			"do": "wait",
+			"time": 0.5
+		},
+		{
+			"do": "camera_back"
+		}
+	]
+}
