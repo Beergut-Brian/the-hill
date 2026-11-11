@@ -1,6 +1,6 @@
 {
 	"source": "openjar-characters",
-	"characters_tag": "v0.5.0",
+	"characters_tag": "v0.5.1",
 	"roster": [
 		"jeff",
 		"chuck",
@@ -22,6 +22,7 @@
 		"scrap",
 		"sir_clank",
 		"snooze",
+		"yoji",
 		"zorp"
 	],
 	"defaults": {
@@ -355,6 +356,24 @@
 				"win"
 			],
 			"catchphrase": "res://assets/characters/snooze/voice/catchphrase.ogg",
+			"default_for": 0
+		},
+		"yoji": {
+			"name": "Yoji",
+			"glb": "res://assets/characters/yoji/yoji.glb",
+			"pixel": "res://assets/characters/yoji/pixel.png",
+			"voice": "res://assets/characters/yoji/voice/",
+			"barks": [
+				"cheer",
+				"join",
+				"lose",
+				"oops",
+				"ready",
+				"swap_in",
+				"wait",
+				"win"
+			],
+			"catchphrase": "res://assets/characters/yoji/voice/catchphrase.ogg",
 			"default_for": 0
 		},
 		"zorp": {
