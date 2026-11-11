@@ -186,6 +186,20 @@ func backpack_capacity() -> int:
 	return int(sizes * BACKPACK_PER_SIZE)
 
 
+## B-06: how many Workshop upgrades are working (sum of `dig_power` effects, at most TOOL_MAX).
+## 1+ = the bigger shovel on foot; each level digs and drives a little faster (HillPlayer).
+const TOOL_MAX := 2
+
+
+func tool_level() -> int:
+	var n := 0.0
+	for b in buildings:
+		var d := building_data(b.id)
+		if d != null and d.effect == &"dig_power":
+			n += d.effect_amount
+	return clampi(int(n), 0, TOOL_MAX)
+
+
 # --- players -----------------------------------------------------------------------------------
 
 ## Raises the player's deepest layer; true when it went up.

@@ -24,6 +24,10 @@ const GRAVITY := 980.0       # up top only; underground asks the world
 const DIG_EVERY := 0.14
 const VEHICLE_DIG_EVERY := 0.22
 const SCOOP_EVERY := 0.35
+## B-06: per Workshop level (Progress.tool_level()), digging this much quicker and vehicles this
+## much faster; level 1+ also gives the bigger shovel (one more cell per dig on foot).
+const TOOL_DIG := 0.35
+const TOOL_DRIVE := 0.15
 const WATER_DAMP := 5.0
 const PUSH := 12.0
 const HOP_REACH := 24.0
@@ -58,6 +62,9 @@ var _honk := 0.0
 const CAB_SPIN := 0.7
 var cab_spin := 0.0
 var _full_pop := 0.0
+## B-06: the Workshop's upgrade pop over the head (1 -> 0) and the bigger shovel's glint.
+var tool_pop := 0.0
+var _glint := 0.0
 var _dig_cd := 0.0
 var _dig_used := false
 var _b_used := false
@@ -65,6 +72,33 @@ var _aim := 0.0
 var _in_water := false
 var _prev := {}
 var _t := 0.0
+
+
+## One upgrade sound per Workshop placement, however many players see the pop.
+static var _tool_sound_frame := -1
+
+
+func _enter_tree() -> void:
+	var ev := get_node_or_null(^"/root/Events")
+	if ev != null and not ev.building_placed.is_connected(_on_building_placed):
+		ev.building_placed.connect(_on_building_placed)
+
+
+func _exit_tree() -> void:
+	var ev := get_node_or_null(^"/root/Events")
+	if ev != null and ev.building_placed.is_connected(_on_building_placed):
+		ev.building_placed.disconnect(_on_building_placed)
+
+
+func _on_building_placed(id: StringName, _cell: Vector2i) -> void:
+	var pr := get_node_or_null(^"/root/Progress")
+	var d: BuildingData = pr.building_data(id) if pr != null else null
+	if d == null or d.effect != &"dig_power":
+		return
+	show_tool_upgrade()
+	if _tool_sound_frame != Engine.get_physics_frames():
+		_tool_sound_frame = Engine.get_physics_frames()
+		Audio.play("tool_upgrade")
 
 
 func _ready() -> void:
@@ -213,6 +247,8 @@ func _physics_process(delta: float) -> void:
 	_honk = move_toward(_honk, 0.0, delta * 2.5)
 	cab_spin = move_toward(cab_spin, 0.0, delta / CAB_SPIN)
 	_full_pop = move_toward(_full_pop, 0.0, delta * 3.0)
+	tool_pop = move_toward(tool_pop, 0.0, delta * 0.6)
+	_glint = move_toward(_glint, 0.0, delta * 5.0)
 	queue_redraw()
 	if locked:
 		velocity = Vector2.ZERO
@@ -259,7 +295,7 @@ func _physics_process(delta: float) -> void:
 		if ability == null or ability.allow_turn(want, delta):
 			facing = want
 	_aim = move.y if absf(move.y) > 0.3 else 0.0
-	var speed := vehicle.speed * (ability.speed_scale() if ability != null else 1.0) if vehicle != null else WALK
+	var speed := vehicle.speed * (ability.speed_scale() if ability != null else 1.0) * drive_scale() if vehicle != null else WALK
 	velocity = side * move.x * speed + up_direction * velocity.dot(up_direction)
 	var lift := Vector2.ZERO
 	if world != null:
@@ -291,8 +327,34 @@ func _physics_process(delta: float) -> void:
 	elif not _dig_used:
 		_dig_cd -= delta
 		if _dig_cd <= 0.0:
-			_dig_cd = SCOOP_EVERY if world == null else (DIG_EVERY if vehicle == null else VEHICLE_DIG_EVERY)
+			_dig_cd = SCOOP_EVERY if world == null else dig_every()
 			_dig(move)
+
+
+## Seconds between digs underground (quicker with each Workshop level).
+func dig_every() -> float:
+	return (DIG_EVERY if vehicle == null else VEHICLE_DIG_EVERY) / (1.0 + TOOL_DIG * _tool_level())
+
+
+## Vehicle speed multiplier from the Workshop.
+func drive_scale() -> float:
+	return 1.0 + TOOL_DRIVE * _tool_level()
+
+
+## True on foot once a Workshop stands: each dig takes one more cell in the aimed direction.
+func has_big_shovel() -> bool:
+	return vehicle == null and _tool_level() > 0
+
+
+func _tool_level() -> int:
+	var pr := get_node_or_null(^"/root/Progress")
+	return int(pr.call("tool_level")) if pr != null and pr.has_method("tool_level") else 0
+
+
+## B-06: a Workshop was just built; show the bigger shovel popping over the head.
+func show_tool_upgrade() -> void:
+	tool_pop = 1.0
+	_squash = 1.0
 
 
 func _fall_only(delta: float) -> void:
@@ -378,6 +440,8 @@ func dig_now(move: Vector2) -> bool:
 		offsets.append(c - cells[0])
 	world.dig(cells[0], offsets, player)
 	_squash = maxf(_squash, 0.4)
+	if has_big_shovel():
+		_glint = 1.0
 	return true
 
 
@@ -445,6 +509,8 @@ func dig_cells(aim: Vector2i) -> Array[Vector2i]:
 	var shape: Array[Vector2i] = [Vector2i.ZERO]
 	if vehicle != null and not vehicle.dig_shape.is_empty():
 		shape = vehicle.dig_shape
+	elif has_big_shovel():
+		shape = [Vector2i.ZERO, Vector2i(1, 0)]
 	for o in shape:
 		_add_unique(out, anchor + rotate_offset(o, aim))
 	return out
@@ -524,9 +590,43 @@ func _draw_effects() -> void:
 		for k in 3:
 			var rr := 4.0 + (1.0 - _honk) * 14.0 + k * 5.0
 			draw_arc(at, rr, -0.7 if facing > 0 else PI - 0.7, 0.7 if facing > 0 else PI + 0.7, 8, Color(1, 0.95, 0.5, _honk), 2.0)
+	if _glint > 0.0:
+		# The bigger shovel: a gold glint where it bites.
+		var gp := Vector2(facing * (body_size().x * 0.5 + 10.0), -h * 0.35)
+		if _aim > 0.3:
+			gp = Vector2(facing * 4.0, 6.0)
+		var gr := 3.0 + (1.0 - _glint) * 6.0
+		var gc := Color(1.0, 0.86, 0.3, _glint)
+		draw_line(gp - Vector2(gr, 0), gp + Vector2(gr, 0), gc, 2.0)
+		draw_line(gp - Vector2(0, gr), gp + Vector2(0, gr), gc, 2.0)
+		draw_circle(gp, 2.0, Color(1, 1, 0.85, _glint))
+	if tool_pop > 0.0:
+		_draw_tool_pop(h)
 	if _full_pop > 0.0:
 		# Backpack full: a round, happy bag pops up over the head.
 		var at := Vector2(0, -h - 12.0 - (1.0 - _full_pop) * 8.0)
 		draw_circle(at, 6.0, DARK)
 		draw_circle(at, 5.0, Color("a47148").lightened(0.25))
 		draw_arc(at + Vector2(0, 0.5), 2.5, 0.3, PI - 0.3, 6, DARK, 1.0)
+
+
+## B-06: a big gold shovel rises over the head with a ring of sparks (no words).
+func _draw_tool_pop(h: float) -> void:
+	var k := tool_pop
+	var at := Vector2(0, -h - 20.0 - (1.0 - k) * 14.0)
+	var a := clampf(k * 3.0, 0.0, 1.0)
+	var grow := 1.0 + 0.4 * sin(clampf((1.0 - k) * 4.0, 0.0, 1.0) * PI)
+	draw_set_transform(Vector2(0, ride_offset) + at, -0.6, Vector2.ONE * grow)
+	draw_line(Vector2(0, 10), Vector2(0, -4), Color(DARK, a), 5.0)
+	draw_line(Vector2(0, 10), Vector2(0, -4), Color(0.66, 0.44, 0.24, a), 3.0)
+	draw_rect(Rect2(-4, 9, 8, 3), Color(DARK, a))
+	var blade := PackedVector2Array([Vector2(-7, -4), Vector2(7, -4), Vector2(6, -14), Vector2(0, -19), Vector2(-6, -14)])
+	draw_colored_polygon(blade, Color(DARK, a))
+	var inner := PackedVector2Array([Vector2(-5, -5), Vector2(5, -5), Vector2(4.5, -13), Vector2(0, -17), Vector2(-4.5, -13)])
+	draw_colored_polygon(inner, Color(1.0, 0.82, 0.25, a))
+	draw_line(Vector2(-2, -7), Vector2(-2, -14), Color(1, 0.96, 0.6, a), 1.5)
+	draw_set_transform(Vector2(0, ride_offset))
+	for i in 8:
+		var ang := TAU * i / 8.0 + (1.0 - k) * 1.5
+		var r := 14.0 + (1.0 - k) * 18.0
+		draw_circle(at + Vector2.from_angle(ang) * r, 2.0, Color(1.0, 0.9, 0.4, a))
