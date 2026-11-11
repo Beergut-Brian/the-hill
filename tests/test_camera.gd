@@ -13,6 +13,7 @@ var _real_settings := ""
 
 
 func before() -> void:
+	SuiteSandbox.enter("camera")   # first: never the real profile, settings or picks file
 	_real_profile = Save.profile
 	# Its own settings file: nothing here may write into the real user://settings.json.
 	_real_settings = Save.settings_path
@@ -29,6 +30,7 @@ func after() -> void:
 	Save.profile = _real_profile
 	Save._load()
 	Game.quit_exits = true
+	SuiteSandbox.leave()   # last: the real profile, settings and picks come back
 
 
 func before_test() -> void:

@@ -12,6 +12,7 @@ var _game := ""
 
 
 func before() -> void:
+	SuiteSandbox.enter("sync_characters")   # first: never the real profile, settings or picks file
 	_base = ProjectSettings.globalize_path(BASE)
 	_lib = _base.path_join("lib")
 	_game = _base.path_join("game")
@@ -19,6 +20,7 @@ func before() -> void:
 
 func after() -> void:
 	_wipe()
+	SuiteSandbox.leave()   # last: the real profile, settings and picks come back
 
 
 func before_test() -> void:
