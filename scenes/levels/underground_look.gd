@@ -230,7 +230,7 @@ func _residents() -> void:
 	if gr.size != Vector2i.ZERO:
 		var cx := (gr.position.x + gr.size.x * 0.5) * 16.0
 		for i in 3:
-			var s := _resident(StringName("crew_%d" % i), "characters/foreman.png", "idle", Vector2(cx + (i - 1) * 18.0, gr.end.y * 16.0), 6, 1 if i < 2 else -1)
+			var s := _resident(StringName("crew_%d" % i), "characters/gnome_crew.png", "idle", Vector2(cx + (i - 1) * 18.0, gr.end.y * 16.0), 6, 1 if i < 2 else -1)
 			s.scale = Vector2.ONE * UndergroundResidents.CREW_SCALE
 			s.modulate = TownResidents.CREW_TINTS[i % TownResidents.CREW_TINTS.size()]
 			s.name = "Crew%d" % i
