@@ -1,6 +1,9 @@
 ## Picture speech bubbles for the residents' arcs: no words, no numbers. A bubble is a rounded
 ## white panel with a tail pointing down at the speaker, holding a row of pictures; the last one is
-## usually a face. Pure draw helpers (call from a CanvasItem's _draw()).
+## usually a face. Pure draw helpers (call from a CanvasItem's _draw()); the scene that shows one
+## in the world, following a speaker, is `scenes/ui/picto_bubble.tscn` (PictoBubbleNode).
+## Costs and prompts: draw_cost() (one square per block, no numbers) and draw_round() (a round
+## "this opens it / you get this" bubble) are what the build book's cards use.
 ##   PictoBubble.draw(self, mouth, [&"shovel", &"face_sheepish"], alpha)
 ## Pictures: &"shovel", &"wall" (a brick wall with hats peeking over), &"ice" (an ice cube),
 ## &"shaken_hill" (a hill with wobble lines), &"heart", &"house", &"star", &"question",
@@ -239,3 +242,60 @@ static func _loop(p: PackedVector2Array) -> PackedVector2Array:
 	var l := p.duplicate()
 	l.append(p[0])
 	return l
+
+
+# --- costs and prompt bubbles (build book cards; reused by any card or prompt) ------------------
+
+## A round picture bubble at c (a prompt: "this opens it", "you get this"); `ask` adds a gold
+## ring (something to find or get first). Draw the picture inside it after.
+static func draw_round(ci: CanvasItem, c: Vector2, rad: float, ask := false, k := 1.0) -> void:
+	ci.draw_circle(c, rad + 3.0 * k, Color(0.07, 0.06, 0.09))
+	ci.draw_circle(c, rad, Color("fff6dc"))
+	if ask:
+		ci.draw_arc(c, rad - 2.0 * k, 0.0, TAU, 32, GOLD, maxf(2.0, 4.0 * k))
+
+
+## A cost as columns of squares: one square per block, columns of `per` from the bottom, one block
+## type after another (`order` first, then any others). Returns [[block id, count in column], ...].
+static func cost_columns(cost: Dictionary, order: Array = [], per := 5) -> Array:
+	var keys: Array = []
+	for b in order:
+		if cost.has(b) or cost.has(String(b)):
+			keys.append(StringName(str(b)))
+	for b in cost:
+		if not keys.has(StringName(str(b))):
+			keys.append(StringName(str(b)))
+	var cols: Array = []
+	for b in keys:
+		var left := int(cost.get(b, cost.get(String(b), 0)))
+		while left > 0:
+			cols.append([b, mini(per, left)])
+			left -= per
+	return cols
+
+
+## Draws a cost (no numbers: one square per block) centred in `area`. `color_of(block id) -> Color`;
+## `dim` greys it (can't afford). Squares shrink to fit the area.
+static func draw_cost(ci: CanvasItem, area: Rect2, cost: Dictionary, color_of: Callable, dim := false,
+		order: Array = [], sq := 20.0, k := 1.0, per := 5) -> void:
+	var cols := cost_columns(cost, order, per)
+	if cols.is_empty():
+		return
+	var s := sq * k
+	var step := s + 4 * k
+	var fit := minf(1.0, minf(area.size.x / maxf(cols.size() * step, 1.0), area.size.y / (per * step)))
+	s *= fit
+	step *= fit
+	var total_w := cols.size() * step - (step - s)
+	var x := area.get_center().x - total_w * 0.5
+	var base := area.get_center().y + per * 0.5 * step
+	for c in cols:
+		for i in c[1]:
+			var sr := Rect2(x, base - (i + 1) * step, s, s)
+			var col: Color = color_of.call(c[0])
+			if dim:
+				var l := col.get_luminance()
+				col = Color(l, l, l).darkened(0.35)
+			ci.draw_rect(sr, col)
+			ci.draw_rect(sr, Color(0.05, 0.04, 0.04), false, maxf(1.5, 2.5 * k))
+		x += step

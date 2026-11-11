@@ -197,7 +197,7 @@ X out of scope, Q open questions, F build phases.
 | S-12 | S1 Tech | Awake `RigidBody2D` cap 60; 9 chunks per player | built | tests/test_tileworld.gd::test_awake_cap_queues_wakes, ::test_chunk_budget_limits_new_chunks_per_call | |
 | S-13 | CLAUDE.md / S1 | 60 fps at 1080p on a GTX 1060 | partial | addons/openjar/tileworld/demo (stress run) | The sim cost has been measured. Frame rate on a real GPU hasn't (the producer box renders in software). Reason: weekend TV check |
 | S-14 | S1 Tech / F-5 | Move tile world + split screen into `openjar-addons`, tagged | missing | ~/openjar/openjar-addons/addons/openjar has no tileworld or split_screen | Both still live in this repo's `addons/openjar/` |
-| S-15 | S1 Tech | `PictoBubble` scene for arcs, costs and prompts, then moved to `openjar-addons/ui/` | partial | scripts/gameplay/picto_bubble.gd (class PictoBubble; used by town_residents, underground_residents, treasure_shelf, strange_bubble) | PictoBubble exists in this repo as draw helpers (resident arcs). Not yet moved to `openjar-addons/ui/` (gap-close-1 sync) Gap-close-3 audit: the build book draws its own cost squares and need bubbles (handoff/frames/audit_s15_book_before.png), not through PictoBubble, and there is no PictoBubble scene, only draw helpers. |
+| S-15 | S1 Tech | `PictoBubble` scene for arcs, costs and prompts, then moved to `openjar-addons/ui/` | partial | scenes/ui/picto_bubble.tscn (PictoBubbleNode); scripts/gameplay/picto_bubble.gd (`draw`, `draw_cost`, `draw_round`, `cost_columns`); tests/test_picto_bubble.gd::test_cost_columns_stack_five_high_in_block_order, ::test_the_scene_follows_its_speaker_pops_in_and_frees_itself, ::test_a_held_prompt_stays_until_hidden_and_goes_with_its_speaker, ::test_the_build_book_draws_its_costs_and_bubbles_through_picto_bubble; tests/test_barks.gd::test_the_bubble_fades_and_frees_itself; frames handoff/frames/s15_book_costs_via_pictobubble.png, s15_bark_bubble_scene.png | Gap-close-3: the scene exists (`PictoBubbleNode.pop(parent, speaker, pics, secs)`: follows its speaker, pops in, fades, `secs = 0` holds a prompt until `hide_bubble()`); the barks use it. Every cost and prompt in the game now draws through PictoBubble: the build book's block-square costs (`draw_cost`) and its "this opens it / you get this" bubbles (`draw_round`), the residents' arcs, the strangestone question, the treasure shelf, the cutscene bubbles; the frame is unchanged from before (audit_s15_book_before.png). The button-hint panel (HillHintLayer, ButtonHints kit) is a controller legend, not a bubble, so it stays. Left: the move to `openjar-addons/ui/` (the addons repo, not this one) |
 | S-16 | S2 | Template features: grown-up menus, solo, `--demo`, `--shots=`, release smoke-boot, `store/jar.glb` | built | tests/test_lobby.gd::test_saved_solo_stays_off_at_boot; tests/test_hill_demo.gd; .scratch/shots/lobby/t003.0s.png; tests/test_store.gd::test_manifest_names_the_jar; tests/test_store.gd::test_zip_carries_the_jar_and_store_art; tests/test_store.gd::test_jar_fits_the_launcher_budget; .github/workflows/release.yml (smoke-boot step); scripts/autoload/Debug.gd (`--shots=`) | Both earlier gaps are closed: `store/jar.glb` (store-art-1, PR 20) and the version label (S-19, PR 27) |
 | S-17 | S2 | Premium slice spend logged in GAME.md by the producer | missing | none (no spend log in GAME.md) | |
 | S-18 | S6 / S7 | `--demo-beat=` showcases (bonk … crystal; garage … lineup) | built | .scratch/shots/{lineup,book,shelf,rescue,reveal,crystal}/ | Polish-2 adds lighthouse, cows, strange, scoop, snore (scripts/gameplay/polish_beats.gd) |
@@ -323,11 +323,11 @@ IDs `PT10-<n>` match the numbered list in GAME.md. Rows added by the lane that b
 
 ## Totals
 
-Counted from the Status column on `dev` at `5f31a57` (2026-11-11, gap-close-3 audit), 203 rows:
+Counted from the Status column on `dev` at `5f31a57` (2026-11-11, gap-close-3, after P-06), 203 rows:
 
 | built | partial | missing | superseded | dropped | later | total |
 | --- | --- | --- | --- | --- | --- | --- |
-| 177 | 13 | 4 | 1 | 4 | 4 | 203 |
+| 178 | 12 | 4 | 1 | 4 | 4 | 203 |
 
 ## Gap-close-3 audit 2026-11-11
 

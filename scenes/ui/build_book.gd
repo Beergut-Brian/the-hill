@@ -213,40 +213,11 @@ func _draw_card(r: Rect2, d: BuildingData, focused: bool, is_locked := false) ->
 	var bsize := fp * unit
 	var brect := Rect2(Vector2(pic.get_center().x - bsize.x * 0.5, grass_y - bsize.y), bsize)
 	Building.paint(self, d.id, brect, 0.0, not can)
-	# The cost: one square per block, columns of 5 from the bottom, one block type after another.
-	var cols: Array = []   # [color, count in this column]
-	var keys: Array = []
-	for b in BLOCK_ORDER:
-		if d.cost.has(b):
-			keys.append(b)
-	for b in d.cost:
-		if not keys.has(StringName(str(b))):
-			keys.append(StringName(str(b)))
-	for b in keys:
-		var left := int(d.cost.get(b, d.cost.get(String(b), 0)))
-		while left > 0:
-			cols.append([Hillville.block_color(b), mini(5, left)])
-			left -= 5
-	var sq := SQUARE * _k
-	var step := sq + 4 * _k
+	# The cost: one square per block, columns of 5 from the bottom, one block type after another
+	# (PictoBubble's cost, shared with every card and prompt that shows one).
 	var area_top := pic.end.y + 12 * _k
-	var area_h := r.end.y - area_top - 12 * _k
-	var fit := minf(1.0, minf((r.size.x - 24 * _k) / maxf(cols.size() * step, 1.0), area_h / (5 * step)))
-	sq *= fit
-	step *= fit
-	var total_w := cols.size() * step - (step - sq)
-	var x := r.get_center().x - total_w * 0.5
-	var base := area_top + area_h * 0.5 + 2.5 * step
-	for c in cols:
-		for k in c[1]:
-			var sr := Rect2(x, base - (k + 1) * step, sq, sq)
-			var col: Color = c[0]
-			if not can:
-				var l := col.get_luminance()
-				col = Color(l, l, l).darkened(0.35)
-			draw_rect(sr, col)
-			draw_rect(sr, Color(0.05, 0.04, 0.04), false, maxf(1.5, 2.5 * _k))
-		x += step
+	var area := Rect2(r.position.x + 12 * _k, area_top, r.size.x - 24 * _k, r.end.y - area_top - 12 * _k)
+	PictoBubble.draw_cost(self, area, d.cost, func(b: StringName) -> Color: return Hillville.block_color(b), not can, BLOCK_ORDER, SQUARE, _k)
 	if not can:
 		draw_style_box(UiStyle.panel(Color(0, 0, 0, 0.3), UiStyle.RADIUS, 0), r)
 	_draw_needs(pic, d, focused, is_locked)
@@ -288,12 +259,9 @@ func _rays(c: Vector2, rad: float, dim: bool) -> void:
 	queue_redraw()
 
 
-## A round picture bubble; `ask`: a gold ring (something to find or get first).
+## A round picture bubble; `ask`: a gold ring (something to find or get first). PictoBubble's.
 func _bubble(c: Vector2, rad: float, ask: bool) -> void:
-	draw_circle(c, rad + 3.0 * _k, Color(0.07, 0.06, 0.09))
-	draw_circle(c, rad, Color("fff6dc"))
-	if ask:
-		draw_arc(c, rad - 2.0 * _k, 0.0, TAU, 32, Color("ffd23f"), maxf(2.0, 4.0 * _k))
+	PictoBubble.draw_round(self, c, rad, ask, _k)
 
 
 ## How far a vehicle's tools reach past its body frame (right, up), for fitting it in a bubble.
