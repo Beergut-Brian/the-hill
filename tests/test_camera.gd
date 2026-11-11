@@ -55,6 +55,8 @@ func _make() -> HillGame:
 	_game = HillGame.new()
 	_game.load_saved = false
 	get_tree().root.add_child(_game)
+	# These suites test the ride itself: the old walk-in cage starts it (PT10-9 A presses: test_controls).
+	_game.elevator.walk_in = true
 	return _game
 
 
@@ -105,6 +107,23 @@ func test_lead_follows_the_move_direction_and_eases_back() -> void:
 	var node := _join(P1, it)
 	_underground(P1)
 	var t := _game.camera.tuning
+	# PT10-6: on foot there is no sideways lead (turning must not swing the view).
+	it.move = Vector2(1, 0)
+	await _physics(2)
+	_ease(2.0)
+	assert_float(absf(_game.camera.lead_of(P1).x)).is_less(1.0)
+	# Digging down leads down.
+	it.move = Vector2(0, 1)
+	it.dig = true
+	await _physics(2)
+	_ease(2.0)
+	assert_float(_game.camera.lead_of(P1).y).is_greater(t.foot_lead_px.y * 0.9)
+	it.dig = false
+	it.move = Vector2.ZERO
+	await _physics(2)
+	_ease(4.0)
+	# In a vehicle the camera leads sideways.
+	node.drive(load("res://data/vehicles/excavator.tres"))
 	it.move = Vector2(1, 0)
 	await _physics(2)
 	_ease(2.0)
@@ -126,13 +145,6 @@ func test_lead_follows_the_move_direction_and_eases_back() -> void:
 	assert_float(mid).is_greater(0.0)
 	_ease(4.0)
 	assert_float(absf(_game.camera.lead_of(P1).x)).is_less(1.0)
-	# Digging down leads down; left leads left.
-	it.move = Vector2(0, 1)
-	it.dig = true
-	await _physics(2)
-	_ease(2.0)
-	assert_float(_game.camera.lead_of(P1).y).is_greater(t.lead_px.y * 0.9)
-	it.dig = false
 	it.move = Vector2(-1, 0)
 	await _physics(2)
 	_ease(2.0)
@@ -162,6 +174,7 @@ func test_shared_camera_has_no_lead() -> void:
 	var b := _join(P2, _idle())
 	_underground(P1)
 	_game.place_player(P2, &"underground", a.global_position + Vector2(40, 0))
+	a.drive(load("res://data/vehicles/excavator.tres"))
 	it.move = Vector2(1, 0)
 	await _physics(2)
 	_ease(2.0)

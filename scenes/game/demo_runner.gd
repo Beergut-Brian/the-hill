@@ -77,6 +77,10 @@ var _dwell_stage := {P1: -1, P2: -1}
 
 func _ready() -> void:
 	name = "DemoRunner"
+	# PT10-9: A rides the elevator now; the demo keeps the walk-in cage (the A glyph blinks over
+	# the rider for the DOOR_WAIT second before it goes).
+	if game != null and game.get("elevator") != null:
+		game.elevator.walk_in = true
 	log_event("start: %s" % step)
 
 

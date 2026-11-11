@@ -1,10 +1,13 @@
-## The elevator, exactly the contract's "Elevator rules": stepping into a cage (up top, or any
-## landing underground) starts the door; it waits DOOR_WAIT so the other player can hop in (A
-## skips the wait); everyone in that cage when it closes rides together; stepping out before it
-## closes leaves the ride. The ride is RIDE_TIME (lock, sink / rise, cage flash, `elevator` cue).
-## Down lands at the deepest layer any rider has visited, at that layer's landing; up empties the
-## riders' backpacks into Inventory (`pile_dump`) and lands at hillville.arrival(). A cage re-arms
-## for a player only once they have stepped out of it. Every ride autosaves.
+## The elevator (contract "Elevator rules", reworked for the 2026-11-10 playtest, PT10-9 / PT10-7b):
+## standing in a cage (up top, or any landing underground) shows a blinking A over your head; **A
+## rides**. Anyone else within ElevatorTuning.pull_radius_tiles of that cage (data/elevator.tres)
+## is pulled along; further away they stay. Nothing starts by walking in. Underground the car
+## hangs on a rope down the shaft (ShaftRope): A at a landing it is not at calls it there first
+## (call_time), then the ride. The ride is RIDE_TIME (lock, sink / rise, cage flash, `elevator`
+## cue). Down lands at the deepest layer any rider has visited, at that layer's landing; up empties
+## the riders' backpacks into Inventory (`pile_dump`) and lands at hillville.arrival(). Every ride
+## autosaves. Scripted runners (the demo, beats) set walk_in: standing DOOR_WAIT in a cage they
+## have not just arrived in counts as pressing A, which is how the old cage behaved.
 ## S-04: on the way down the riders can pick where the cage stops with up / down while it moves
 ## (LayerPick shows the pictures: Hillville on top, then every layer down to the deepest rider's).
 ## Down from the deepest layer goes no further; up past the top layer picks Hillville, and the
@@ -35,15 +38,17 @@ const UNDERGROUND := &"underground"
 
 
 ## The door rules, fed once a physics frame. `inside`: player -> the cage key their feet are in
-## (&"" = none); `skip`: player -> A pressed this frame. Returns the rides that closed this
-## frame: [{cage: StringName, riders: Array[int]}].
+## (&"" = none); `press`: player -> A pressed this frame; `near`: cage key -> players (not in a
+## cage) within the pull radius of it. Returns the rides that closed this frame:
+## [{cage: StringName, riders: Array[int]}]. Riders are everyone in that cage plus `near`.
 class Door:
-	var waiting := {}      # cage -> {t: float, riders: Array}
-	var must_exit := {}    # player -> true until they step out of a cage
-	var busy := {}         # player -> true while riding
+	var waiting := {}      # cage -> {t: float, riders: Array}: who stands in it, ready
+	var must_exit := {}    # player -> true from arriving until they step out (walk_in only)
+	var busy := {}         # player -> true while riding (or the car is on its way)
+	var walk_in := false   # scripted runners: DOOR_WAIT standing in a cage = pressing A
 	var _started: Array = []   # who stepped in on the last step: [[cage, player], ...]
 
-	func step(inside: Dictionary, skip: Dictionary, delta: float) -> Array:
+	func step(inside: Dictionary, press: Dictionary, delta: float, near := {}) -> Array:
 		for p in inside:
 			if inside[p] == &"":
 				must_exit.erase(p)
@@ -55,7 +60,7 @@ class Door:
 		var started: Array = []
 		for p in inside:
 			var key: StringName = inside[p]
-			if key == &"" or must_exit.has(p) or busy.has(p):
+			if key == &"" or busy.has(p):
 				continue
 			if not waiting.has(key):
 				waiting[key] = {"t": -delta, "riders": []}
@@ -67,24 +72,30 @@ class Door:
 		for key in waiting.keys():
 			var w: Dictionary = waiting[key]
 			w.t += delta
-			var go: bool = w.t >= DOOR_WAIT - 0.0001
+			var go := false
 			for p in w.riders:
-				if skip.get(p, false):
+				if press.get(p, false):
 					go = true
-			if go:
-				var riders: Array = w.riders.duplicate()
-				riders.sort()
-				closed.append({"cage": key, "riders": riders})
-				waiting.erase(key)
-				for p in riders:
-					busy[p] = true
+				elif walk_in and not must_exit.has(p) and w.t >= DOOR_WAIT - 0.0001:
+					go = true
+			if not go:
+				continue
+			var riders: Array = w.riders.duplicate()
+			for q in near.get(key, []):
+				if not riders.has(q) and not busy.has(q):
+					riders.append(q)
+			riders.sort()
+			closed.append({"cage": key, "riders": riders})
+			waiting.erase(key)
+			for p in riders:
+				busy[p] = true
 		return closed
 
 	## Who stepped in on the last step: [[cage, player], ...].
 	func just_entered() -> Array:
 		return _started
 
-	## The ride is over: the riders must step out before that cage takes them again.
+	## The ride is over: under walk_in the riders must step out before that cage takes them again.
 	func arrived(riders: Array) -> void:
 		for p in riders:
 			busy.erase(p)
@@ -98,7 +109,11 @@ class Door:
 			if waiting[key].riders.is_empty():
 				waiting.erase(key)
 
-	## 0..1 of the door wait for a cage (0 when nobody waits).
+	## True while someone stands in cage `key`, ready to press A.
+	func is_ready(key: StringName) -> bool:
+		return waiting.has(key)
+
+	## 0..1 of the walk-in wait for a cage (0 when nobody waits); only walk_in uses it.
 	func progress(key: StringName) -> float:
 		if not waiting.has(key):
 			return 0.0
@@ -125,6 +140,49 @@ var door := Door.new()
 var _rides: Array = []   # {riders, from, cage, t, to}
 ## H-05: a ride down with the Crane aboard ends on the Crane's cable (CraneRide), made on first use.
 var crane_ride: CraneRide
+var tuning: ElevatorTuning = ElevatorTuning.load_default()
+## PT10-7b: where the car hangs on the rope: -1 up top, else the landing (layer index).
+var car_at := -1
+## PT10-7b: cars on their way to a caller: {cage, riders, t, dur, from, to} (layers, -1 = top).
+var _calls: Array = []
+## Scripted runners (demo, beats): standing in a cage for DOOR_WAIT rides, as before PT10-9.
+var walk_in: bool:
+	get:
+		return door.walk_in
+	set(v):
+		door.walk_in = v
+var _rope: ShaftRope
+
+
+## PT10-9: what the glyph over player p shows: 0 nothing, 1 ready (blinking A: they stand in a
+## cage), 2 moving (a dim, steady A: the car is coming or they are riding).
+func prompt_of(player: int) -> int:
+	if door.busy.has(player):
+		return 2
+	for key in door.waiting:
+		if door.waiting[key].riders.has(player):
+			return 1
+	return 0
+
+
+## True when A belongs to the elevator for player p (they stand in a cage, or are riding): the
+## player does not dig, scoop or build with it.
+func wants_a(player: int) -> bool:
+	return prompt_of(player) != 0
+
+
+## Where the car is on its rope now (a layer index, fractional while it moves; -1 = up top).
+func car_position() -> float:
+	for c in _calls:
+		var k := clampf(c.t / maxf(c.dur, 0.001), 0.0, 1.0)
+		# Ease out: it rushes along the rope and slows into the landing, so the caller sees it come.
+		return lerpf(float(c.from), float(c.to), 1.0 - pow(1.0 - k, 3.0))
+	for r in _rides:
+		var k := clampf(r.t / maxf(float(r.get("until", RIDE_TIME)), 0.001), 0.0, 1.0)
+		if r.from == UNDERGROUND:
+			return lerpf(float(String(r.cage).trim_prefix("u")), -1.0, k)
+		return lerpf(-1.0, float(r.get("pick", r.to.layer)), k)
+	return float(car_at)
 
 
 func is_riding(player: int) -> bool:
@@ -135,6 +193,8 @@ func forget(player: int) -> void:
 	door.forget(player)
 	for r in _rides:
 		r.riders.erase(player)
+	for c in _calls:
+		c.riders.erase(player)
 
 
 ## The cage key the player's feet are in, or &"".
@@ -154,27 +214,95 @@ func cage_of(player: int) -> StringName:
 	return &""
 
 
+## Players within the pull radius of each occupied cage (not in a cage themselves, same scene):
+## cage key -> [players].
+func _near(inside: Dictionary) -> Dictionary:
+	var out := {}
+	var keys := {}
+	for p in inside:
+		if inside[p] != &"":
+			keys[inside[p]] = p
+	for key: StringName in keys:
+		var scene: StringName = game.director.scene_of(keys[key])
+		var rect := cage_rect_of(key)
+		for q: int in game.players:
+			if inside.get(q, &"") != &"" or door.busy.has(q) or game.director.scene_of(q) != scene:
+				continue
+			var feet: Vector2 = game.players[q].global_position
+			var nearest := Vector2(clampf(feet.x, rect.position.x, rect.end.x), clampf(feet.y, rect.position.y, rect.end.y))
+			if feet.distance_to(nearest) <= tuning.pull_radius_px():
+				if not out.has(key):
+					out[key] = []
+				out[key].append(q)
+	return out
+
+
+## The cage's zone (global px) for a cage key.
+func cage_rect_of(key: StringName) -> Rect2:
+	if key == HILLVILLE:
+		var hv: Node = game.hillville
+		return hv.cage_zone() if hv != null and hv.has_method("cage_zone") else Rect2()
+	return game.underground.cage_rect(int(String(key).trim_prefix("u")))
+
+
 func check(delta: float) -> void:
 	var inside := {}
-	var skip := {}
+	var press := {}
 	for p: int in game.players:
 		if door.busy.has(p):
 			continue
 		inside[p] = cage_of(p)
-		skip[p] = bool(game.players[p].get("a_press_frame"))
-	for r in door.step(inside, skip, delta):
-		_start(r.cage, r.riders)
+		press[p] = bool(game.players[p].get("a_press_frame"))
+	for r in door.step(inside, press, delta, _near(inside)):
+		_call(r.cage, r.riders)
 	for e in door.just_entered():
 		Audio.play("cage_door")
 		door_started.emit(e[0], e[1])
 	_animate_doors()
+	for c in _calls.duplicate():
+		_advance_call(c, delta)
 	for r in _rides.duplicate():
 		_advance(r, delta)
+	_ensure_rope()
+
+
+## PT10-7b: A was pressed in `cage`: if the car is elsewhere it comes down / up the rope first.
+func _call(cage: StringName, riders: Array) -> void:
+	var at := -1 if cage == HILLVILLE else int(String(cage).trim_prefix("u"))
+	var dur := tuning.call_time(car_at, at)
+	for p in riders:
+		var node: Node = game.player_node(p)
+		if node != null:
+			node.locked = true
+	if dur <= 0.0:
+		_start(cage, riders)
+		return
+	Audio.play("elevator_clank")
+	_calls.append({"cage": cage, "riders": riders.duplicate(), "t": 0.0, "dur": dur, "from": car_at, "to": at})
+
+
+func _advance_call(c: Dictionary, delta: float) -> void:
+	c.t += delta
+	if c.t < c.dur:
+		return
+	_calls.erase(c)
+	car_at = c.to
+	Audio.play("elevator_ding")
+	_start(c.cage, c.riders)
+
+
+func _ensure_rope() -> void:
+	var ug: Node = game.underground
+	if ug == null or (_rope != null and is_instance_valid(_rope)):
+		return
+	_rope = ShaftRope.new()
+	_rope.elevator = self
+	ug.add_child(_rope)
 
 
 func _animate_doors() -> void:
 	var hv: Node = game.hillville
-	var hv_wait := door.progress(HILLVILLE)
+	var hv_wait := door.progress(HILLVILLE) if walk_in else (0.5 + 0.5 * sin(Time.get_ticks_msec() * 0.008)) * float(door.is_ready(HILLVILLE))
 	if hv != null and "cage_flash" in hv and not _cage_busy(HILLVILLE):
 		hv.cage_flash = hv_wait * 0.35
 	var ug: Node = game.underground
@@ -182,7 +310,7 @@ func _animate_doors() -> void:
 		var key := cage_key(UNDERGROUND, i)
 		if door.waiting.has(key) and not _cage_busy(key):
 			ug.flash_layer = i
-			ug.cage_flash = door.progress(key) * 0.35
+			ug.cage_flash = (door.progress(key) if walk_in else 0.5 + 0.5 * sin(Time.get_ticks_msec() * 0.008)) * 0.35
 
 
 func _cage_busy(key: StringName) -> bool:
@@ -303,6 +431,7 @@ func _back_up(r: Dictionary) -> void:
 		node.locked = false
 	Audio.play("cage_door")
 	door.arrived(r.riders)
+	car_at = -1
 	var hv: Node = game.hillville
 	if hv != null and "cage_flash" in hv:
 		hv.cage_flash = 1.0
@@ -366,6 +495,7 @@ func _advance(r: Dictionary, delta: float) -> void:
 	if dumped:
 		Audio.play("pile_dump")
 	door.arrived(r.riders)
+	car_at = -1 if to.scene == HILLVILLE else int(to.layer)
 	var dest: Node = game.hillville if to.scene == HILLVILLE else game.underground
 	if to.scene == UNDERGROUND:
 		game.underground.flash_layer = to.layer

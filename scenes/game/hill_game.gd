@@ -28,6 +28,9 @@ var build: BuildController
 var elevator: HillElevator
 var save: HillSave
 var hud: Control
+## PT10-7c: ladders underground (data/ladders.tres; the Gnome crew adds them later).
+var ladders: LadderSet = LadderSet.load_default()
+var hints: Control
 var book_layer: Control
 var players: Dictionary = {}       # int -> HillPlayer
 ## Which residents have been met (saved as "residents"); the residents' behaviour reads it.
@@ -44,6 +47,8 @@ var camera: CameraLead
 var shelf: TreasureShelf
 ## The four ruins and the buildings they become (restore, door lights, Lost & Found, the crew).
 var ruins: RuinSites
+## C-23: hearts and flowers between buildings that like each other (data/adjacency.tres).
+var adjacency: TownAdjacency
 ## Story lane: the intro, the Mole's arc and every NPC moment's cutscene (HillStory).
 var story_scenes: HillStory
 var vehicles: Dictionary = {}      # StringName -> Vehicle (the parked node; out of the tree while driven)
@@ -90,6 +95,11 @@ func _ready() -> void:
 	hud.name = "Hud"
 	hud.game = self
 	director.add_child(hud)
+	# PT10-8: the context button hints, one panel per player (their half of the screen in split).
+	hints = HillHintLayer.new()
+	hints.name = "Hints"
+	hints.game = self
+	director.add_child(hints)
 	kick = ScreenKick.new()
 	kick.game = self
 	add_child(kick)
@@ -140,6 +150,11 @@ func _ready() -> void:
 		hillville.move_child(ruins, hillville.buildings_root().get_index())
 		ruins.setup(self, hillville)
 		ruins.rebuilt.connect(_on_rebuilt)
+		adjacency = TownAdjacency.new()
+		hillville.add_child(adjacency)
+		# In front of the buildings (hearts over the roofs), behind the cows, residents and players.
+		hillville.move_child(adjacency, hillville.buildings_root().get_index() + 1)
+		adjacency.setup(self, hillville)
 		_sync_museum()
 		story.changed.connect(_on_story_changed)
 		if load_saved and save.away_seconds >= 0.0:
@@ -166,8 +181,10 @@ func _ready() -> void:
 			# TwoDriverBeats is loaded by path: a direct class reference from here makes a parse cycle
 			# (HillGame -> TwoDriverBeats -> VehicleBeats -> HillGame) that breaks every script.
 			var gap: Script = load("res://scripts/gameplay/gap_beats.gd")
+			var ctl: Script = load("res://scripts/gameplay/controls_beats.gd")
 			var story_beats: Script = load("res://scripts/gameplay/story_beats.gd")
-			runner = story_beats.new() if story_beats.get("STORY_BEATS").has(beat) else LooseBeats.new() if LooseBeats.LOOSE_BEATS.has(beat) else gap.new() if gap.get("GAP_BEATS").has(beat) else load("res://scripts/gameplay/two_driver_beats.gd").new() if beat == "drivers" else DepthBeats.new() if DepthBeats.DEPTH_BEATS.has(beat) else CameraBeats.new() if CameraBeats.CAMERA_BEATS.has(beat) else HazardBeats.new() if HazardBeats.HAZARD_BEATS.has(beat) else VehicleBeats.new() if VehicleBeats.VEHICLE_BEATS.has(beat) else PolishBeats.new() if PolishBeats.POLISH_BEATS.has(beat) else ArcBeats.new() if ArcBeats.ARC_BEATS.has(beat) else HillBeatRunner.new()
+			var adj_beats: Script = load("res://scripts/gameplay/adjacency_beats.gd")
+			runner = ctl.new() if ctl.get("CONTROLS_BEATS").has(beat) else adj_beats.new() if adj_beats.get("ADJACENCY_BEATS").has(beat) else story_beats.new() if story_beats.get("STORY_BEATS").has(beat) else LooseBeats.new() if LooseBeats.LOOSE_BEATS.has(beat) else gap.new() if gap.get("GAP_BEATS").has(beat) else load("res://scripts/gameplay/two_driver_beats.gd").new() if beat == "drivers" else DepthBeats.new() if DepthBeats.DEPTH_BEATS.has(beat) else CameraBeats.new() if CameraBeats.CAMERA_BEATS.has(beat) else HazardBeats.new() if HazardBeats.HAZARD_BEATS.has(beat) else VehicleBeats.new() if VehicleBeats.VEHICLE_BEATS.has(beat) else PolishBeats.new() if PolishBeats.POLISH_BEATS.has(beat) else ArcBeats.new() if ArcBeats.ARC_BEATS.has(beat) else HillBeatRunner.new()
 		runner.set("game", self)
 		if beat != "":
 			runner.set("beat", beat)
@@ -548,6 +565,20 @@ func _scene_of_node(n: Node) -> StringName:
 
 ## B next to a parked vehicle: hop in. True if it used the press.
 func hop_in(node: HillPlayer) -> bool:
+	var best := vehicle_near(node)
+	if best == null:
+		return false
+	best.get_parent().remove_child(best)
+	drivers[best.data.id] = node.player
+	node.global_position = Vector2(best.position.x, minf(best.position.y, node.global_position.y))
+	node.facing = best.facing
+	node.drive(best.data)
+	Audio.play("hop_in")
+	return true
+
+
+## The parked vehicle B would hop `node` into now, or null (PT10-8: the hints ask too).
+func vehicle_near(node: HillPlayer) -> Vehicle:
 	var scene := director.scene_of(node.player)
 	var best: Vehicle = null
 	var best_d := INF
@@ -560,15 +591,7 @@ func hop_in(node: HillPlayer) -> bool:
 		if dx <= HillPlayer.HOP_REACH and dy <= 24.0 and dx < best_d:
 			best = v
 			best_d = dx
-	if best == null:
-		return false
-	best.get_parent().remove_child(best)
-	drivers[best.data.id] = node.player
-	node.global_position = Vector2(best.position.x, minf(best.position.y, node.global_position.y))
-	node.facing = best.facing
-	node.drive(best.data)
-	Audio.play("hop_in")
-	return true
+	return best
 
 
 ## B while driving: hop out; the vehicle stays parked where you are.

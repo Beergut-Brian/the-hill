@@ -58,6 +58,8 @@ func _make(load_saved := false, start: Array = []) -> HillGame:
 	_game.load_saved = load_saved
 	_game.start_players = start
 	get_tree().root.add_child(_game)
+	# These suites test the ride itself: the old walk-in cage starts it (PT10-9 A presses: test_controls).
+	_game.elevator.walk_in = true
 	return _game
 
 
@@ -85,61 +87,59 @@ func _until(cond: Callable, max_frames: int) -> int:
 
 # --- elevator rules (no scene) -----------------------------------------------------------------
 
-func test_door_waits_then_closes() -> void:
+func test_standing_in_the_cage_never_rides_by_itself() -> void:
+	# PT10-9: A rides; walking in and waiting does nothing.
 	var d := Door.new()
-	assert_array(d.step({P1: &"hillville"}, {}, 0.0)).is_empty()
-	for i in 9:
+	for i in 40:
 		assert_array(d.step({P1: &"hillville"}, {}, 0.1)).is_empty()
-	var rides := d.step({P1: &"hillville"}, {}, 0.1)
+	assert_bool(d.is_ready(&"hillville")).is_true()
+	var rides := d.step({P1: &"hillville"}, {P1: true}, 0.016)
 	assert_int(rides.size()).is_equal(1)
 	assert_array(rides[0].riders).is_equal([P1])
 
 
 func test_everyone_in_the_cage_rides_together() -> void:
 	var d := Door.new()
-	d.step({P1: &"hillville", P2: &""}, {}, 0.0)
-	for i in 5:
-		d.step({P1: &"hillville", P2: &""}, {}, 0.1)
-	var rides := []
-	for i in 6:
-		rides = d.step({P1: &"hillville", P2: &"hillville"}, {}, 0.1)
-		if not rides.is_empty():
-			break
+	d.step({P1: &"hillville", P2: &"hillville"}, {}, 0.0)
+	var rides := d.step({P1: &"hillville", P2: &"hillville"}, {P2: true}, 0.1)
 	assert_int(rides.size()).is_equal(1)
 	assert_array(rides[0].riders).is_equal([P1, P2])
 
 
-func test_stepping_out_leaves_the_ride() -> void:
+func test_a_partner_within_the_radius_is_pulled_along() -> void:
 	var d := Door.new()
-	d.step({P1: &"hillville", P2: &"hillville"}, {}, 0.0)
-	d.step({P1: &"hillville", P2: &"hillville"}, {}, 0.5)
-	var rides := d.step({P1: &"hillville", P2: &""}, {}, 0.6)
-	assert_array(rides[0].riders).is_equal([P1])
-	# Alone: stepping out before it closes cancels the ride.
+	d.step({P1: &"u2", P2: &""}, {}, 0.0)
+	var rides := d.step({P1: &"u2", P2: &""}, {P1: true}, 0.1, {&"u2": [P2]})
+	assert_array(rides[0].riders).is_equal([P1, P2])
+	# Outside the radius (not in `near`): they stay.
 	var e := Door.new()
-	e.step({P1: &"u2"}, {}, 0.0)
-	e.step({P1: &"u2"}, {}, 0.5)
-	assert_array(e.step({P1: &""}, {}, 0.6)).is_empty()
-	assert_float(e.progress(&"u2")).is_equal(0.0)
+	e.step({P1: &"u2", P2: &""}, {}, 0.0)
+	rides = e.step({P1: &"u2", P2: &""}, {P1: true}, 0.1, {})
+	assert_array(rides[0].riders).is_equal([P1])
 
 
-func test_a_skips_the_wait() -> void:
+func test_stepping_out_clears_the_ready_cage() -> void:
 	var d := Door.new()
-	d.step({P1: &"hillville"}, {}, 0.0)
-	var rides := d.step({P1: &"hillville"}, {P1: true}, 0.016)
-	assert_int(rides.size()).is_equal(1)
+	d.step({P1: &"u2"}, {}, 0.0)
+	assert_bool(d.is_ready(&"u2")).is_true()
+	assert_array(d.step({P1: &""}, {P1: true}, 0.1)).is_empty()
+	assert_bool(d.is_ready(&"u2")).is_false()
 
 
-func test_rearms_only_after_stepping_out() -> void:
+func test_walk_in_for_scripted_runners_waits_and_rearms_after_stepping_out() -> void:
 	var d := Door.new()
-	d.step({P1: &"u0"}, {P1: true}, 0.0)
+	d.walk_in = true
+	assert_array(d.step({P1: &"hillville"}, {}, 0.0)).is_empty()
+	for i in 9:
+		assert_array(d.step({P1: &"hillville"}, {}, 0.1)).is_empty()
+	assert_int(d.step({P1: &"hillville"}, {}, 0.1).size()).is_equal(1)
 	d.arrived([P1])
 	for i in 30:
-		assert_array(d.step({P1: &"hillville"}, {}, 0.1)).is_empty()
+		assert_array(d.step({P1: &"u0"}, {}, 0.1)).is_empty()
 	d.step({P1: &""}, {}, 0.1)
-	d.step({P1: &"hillville"}, {}, 0.1)
-	assert_int(d.step({P1: &"hillville"}, {P1: true}, 0.1).size()).is_equal(1)
-
+	for i in 12:
+		d.step({P1: &"u0"}, {}, 0.1)
+	assert_bool(d.busy.has(P1)).is_true()
 
 func test_down_lands_at_the_deepest_rider_layer_up_goes_to_hillville() -> void:
 	var to := HillElevator.destination(&"hillville", [P1, P2], {P1: 1, P2: 3})
@@ -452,3 +452,74 @@ func test_main_boots_the_lobby_with_jeff_and_chuck_then_the_hill() -> void:
 	Game.to_lobby()
 	await await_idle_frame()
 	assert_object(main.game).is_null()
+
+
+# --- K-06: the shaft transition is under one second and a press skips the wait -----------------
+
+## The real transition in a real HillGame at 60 Hz: P1 stands in the Hillville cage, the door
+## starts, A is pressed a few frames in; from that press to P1 standing unlocked at the layer's
+## landing must be under 1.0 s, and well before the door wait alone would have closed. The ride
+## itself (ride_started -> ride_finished) is under 1.0 s, and back up A skips the wait too.
+func test_k06_shaft_transition_under_a_second_and_a_press_skips_the_wait() -> void:
+	assert_int(Engine.physics_ticks_per_second).is_equal(60)
+	_make()
+	var intent := IDLE.duplicate()
+	var p := _join(P1, intent)
+	Progress.visit_layer(P1, 1)
+	var events: Array = []
+	_game.elevator.ride_started.connect(func(_r: Array, _f: StringName) -> void: events.append(Engine.get_physics_frames()))
+	_game.elevator.ride_finished.connect(func(_r: Array, _t: StringName) -> void: events.append(Engine.get_physics_frames()))
+	_game.place_player(P1, &"hillville", _game.hillville.arrival() + Vector2(0, -1))
+	_game.elevator.door.must_exit.erase(P1)
+	# The door is waiting (no press yet): nobody rides.
+	await _physics(6)
+	assert_float(_game.elevator.door.progress(&"hillville")).is_greater(0.0)
+	assert_bool(_game.elevator.is_riding(P1)).is_false()
+	# Press A: from here to "on the next layer, free to move".
+	intent.dig = true
+	var pressed_at := Engine.get_physics_frames()
+	var frames := await _until(func() -> bool:
+		return _game.director.scene_of(P1) == &"underground" and not p.locked, 120)
+	intent.dig = false
+	print("K-06 down: press -> landed %d frames (%.3f s)" % [frames, frames / 60.0])
+	assert_float(frames / 60.0).is_less(1.0)
+	assert_float(p.global_position.distance_to(_game.underground.landing(1))).is_less(20.0)
+	# The press skipped the wait: landed before the door alone would even have closed.
+	assert_int(6 + frames).is_less(int(HillElevator.DOOR_WAIT * 60))
+	# The ride started within two frames of the press and lasted under a second.
+	assert_int(events.size()).is_equal(2)
+	assert_int(events[0] - pressed_at).is_less_equal(2)
+	assert_float((events[1] - events[0]) / 60.0).is_less(1.0)
+	# Back up: step out, step in, press A; the same bound holds.
+	var land := _game.underground.landing(1)
+	_game.place_player(P1, &"underground", land + Vector2(60, 0))
+	await _physics(2)
+	_game.place_player(P1, &"underground", land)
+	await _physics(3)
+	assert_bool(_game.elevator.is_riding(P1)).is_false()
+	intent.dig = true
+	frames = await _until(func() -> bool:
+		return _game.director.scene_of(P1) == &"hillville" and not p.locked, 120)
+	intent.dig = false
+	print("K-06 up: press -> landed %d frames (%.3f s)" % [frames, frames / 60.0])
+	assert_float(frames / 60.0).is_less(1.0)
+	assert_int(3 + frames).is_less(int(HillElevator.DOOR_WAIT * 60))
+
+
+## Without a press the door waits the whole DOOR_WAIT for the other player, then the ride runs:
+## the ride part alone stays under a second (the wait is the co-op hop-in window A skips).
+func test_k06_without_a_press_the_ride_part_is_still_under_a_second() -> void:
+	_make()
+	_join(P1)
+	Progress.visit_layer(P1, 1)
+	var marks := {}
+	_game.elevator.ride_started.connect(func(_r: Array, _f: StringName) -> void: marks.start = Engine.get_physics_frames())
+	_game.elevator.ride_finished.connect(func(_r: Array, _t: StringName) -> void: marks.end = Engine.get_physics_frames())
+	_game.place_player(P1, &"hillville", _game.hillville.arrival() + Vector2(0, -1))
+	_game.elevator.door.must_exit.erase(P1)
+	var entered := Engine.get_physics_frames()
+	await _until(func() -> bool: return marks.has("end"), 200)
+	print("K-06 no press: wait %d frames, ride %d frames" % [marks.start - entered, marks.end - marks.start])
+	assert_bool(marks.has("end")).is_true()
+	assert_float((marks.end - marks.start) / 60.0).is_less(1.0)
+	assert_int(marks.start - entered).is_greater_equal(int(HillElevator.DOOR_WAIT * 60) - 2)
