@@ -31,6 +31,15 @@ const TOOL_DRIVE := 0.15
 const WATER_DAMP := 5.0
 const PUSH := 12.0
 const HOP_REACH := 24.0
+## PT10-6: the stick must be this far sideways (and clearly more sideways than up / down) to turn,
+## so aiming down with a wobbly stick never flips the character back and forth.
+const TURN_X := 0.35
+## PT10-6: the aim keeps its axis until the other axis is clearly stronger (stick wobble).
+const AIM_KEEP := 0.7
+## PT10-7a: climbing onto a carved step takes this long (s).
+const CLIMB_TIME := 0.18
+## PT10-6: how fast the dig marker slides to a new cell (1/s).
+const MARK_EASE := 30.0
 const STEP_UP := 17.0
 const DARK := Color(0.07, 0.06, 0.09)
 const HAT := Color("f2c94c")
@@ -69,6 +78,14 @@ var _dig_cd := 0.0
 var _dig_used := false
 var _b_used := false
 var _aim := 0.0
+## PT10-6: the dig direction this frame (sticky, see aim_of) and the marker (world-local rect of
+## the cells the next dig takes; size 0 = nothing to dig there).
+var aim := Vector2i(1, 0)
+var _mark := Rect2()
+var _mark_shown := Rect2()
+var _mark_hot := false
+## PT10-7a: a climb onto a step in progress: {from, to, t} (global px), or {}.
+var _climb := {}
 var _in_water := false
 var _prev := {}
 var _t := 0.0
@@ -256,6 +273,9 @@ func _physics_process(delta: float) -> void:
 		move_intent = Vector2.ZERO
 		a_press_frame = false
 		return
+	if not _climb.is_empty():
+		_climb_step(delta)
+		return
 	var it := intent()
 	var move: Vector2 = it.get("move", Vector2.ZERO)
 	var a_press := _pressed(it, "dig")
@@ -290,11 +310,12 @@ func _physics_process(delta: float) -> void:
 	var g := gravity()
 	up_direction = -g.normalized() if g != Vector2.ZERO else Vector2.UP
 	var side := Vector2(-up_direction.y, up_direction.x)
-	if absf(move.x) > 0.2:
+	if absf(move.x) > TURN_X and absf(move.x) > absf(move.y) * AIM_KEEP:
 		var want := 1 if move.x > 0.0 else -1
 		if ability == null or ability.allow_turn(want, delta):
 			facing = want
-	_aim = move.y if absf(move.y) > 0.3 else 0.0
+	aim = aim_of(move, aim)
+	_aim = float(aim.y)
 	var speed := vehicle.speed * (ability.speed_scale() if ability != null else 1.0) * drive_scale() if vehicle != null else WALK
 	velocity = side * move.x * speed + up_direction * velocity.dot(up_direction)
 	var lift := Vector2.ZERO
@@ -329,6 +350,70 @@ func _physics_process(delta: float) -> void:
 		if _dig_cd <= 0.0:
 			_dig_cd = SCOOP_EVERY if world == null else dig_every()
 			_dig(move)
+	_update_marker(delta, bool(it.get("dig", false)))
+
+
+## False while the story says this player has no shovel (the Mole took it): no digging on foot.
+## Reads the story lane's `has_shovel` / `can_dig` flags if they exist (null = not there = true).
+func shovel_ok() -> bool:
+	if vehicle != null:
+		return true
+	for flag in ["has_shovel", "can_dig"]:
+		var v: Variant = get(flag)
+		if v != null and not bool(v):
+			return false
+	return true
+
+
+## PT10-6: the cells the next dig takes (solid, diggable at this tier), or [] when it would only
+## swing at air. The marker draws exactly these.
+func dig_targets(at_aim: Vector2i) -> Array[Vector2i]:
+	var out: Array[Vector2i] = []
+	if world == null:
+		return out
+	var tier := vehicle.dig_tier if vehicle != null else 0
+	for c in dig_cells(at_aim):
+		if not world.is_solid(c):
+			continue
+		var def := world.tile_def(world.get_tile(c))
+		if def is BlockData and (def as BlockData).dig_tier > tier and def.breakable:
+			continue
+		out.append(c)
+	return out
+
+
+## The first cell the marker shows (tests and the beat log), or (-9999, -9999) when none.
+func dig_marker_cell() -> Vector2i:
+	if _mark.size == Vector2.ZERO:
+		return Vector2i(-9999, -9999)
+	return world.shape.cell_at(_mark.position + Vector2.ONE)
+
+
+func _update_marker(delta: float, held: bool) -> void:
+	_mark_hot = held
+	if world == null or locked or not shovel_ok():
+		_mark = Rect2()
+		_mark_shown = Rect2()
+		return
+	var cells := step_cells() if is_stepping_aim() else dig_targets(aim)
+	if is_stepping_aim() and cells.is_empty():
+		# All carved: mark the spot on the step where the climb lands.
+		var g := _step_geometry(_step_dir())
+		if world.is_solid(Vector2i(g.front, g.row)):
+			cells = [Vector2i(g.front, g.row - 2), Vector2i(g.front, g.row - 1)]
+	if cells.is_empty():
+		_mark = Rect2()
+		_mark_shown = Rect2()
+		return
+	var cs := float(world.shape.cell_size)
+	var r := Rect2(Vector2(cells[0]) * cs, Vector2(cs, cs))
+	for c in cells:
+		r = r.merge(Rect2(Vector2(c) * cs, Vector2(cs, cs)))
+	if _mark_shown.size == Vector2.ZERO or _mark.size == Vector2.ZERO:
+		_mark_shown = r
+	_mark = r
+	var k := 1.0 - exp(-MARK_EASE * delta)
+	_mark_shown = Rect2(_mark_shown.position.lerp(r.position, k), _mark_shown.size.lerp(r.size, k))
 
 
 ## Seconds between digs underground (quicker with each Workshop level).
@@ -401,10 +486,19 @@ func _push_bodies(move: Vector2) -> void:
 
 # --- digging -----------------------------------------------------------------------------------
 
-func aim_of(move: Vector2) -> Vector2i:
-	if absf(move.y) > absf(move.x) and absf(move.y) > 0.2:
+## The dig direction for a stick. `prev` (the last aim) makes it sticky: an aim keeps its axis
+## while that axis is still pushed and the other is not clearly stronger (PT10-6, no flicker
+## between digging down and sideways on a diagonal).
+func aim_of(move: Vector2, prev := Vector2i.ZERO) -> Vector2i:
+	var ax := absf(move.x)
+	var ay := absf(move.y)
+	if prev.y != 0 and ay > 0.3 and ax < ay / AIM_KEEP:
 		return Vector2i(0, 1 if move.y > 0.0 else -1)
-	if absf(move.x) > 0.2:
+	if prev.x != 0 and ax > 0.3 and ay < ax / AIM_KEEP:
+		return Vector2i(1 if move.x > 0.0 else -1, 0)
+	if ay > ax and ay > 0.2:
+		return Vector2i(0, 1 if move.y > 0.0 else -1)
+	if ax > 0.2:
 		return Vector2i(1 if move.x > 0.0 else -1, 0)
 	return Vector2i(facing, 0)
 
@@ -412,7 +506,99 @@ func aim_of(move: Vector2) -> Vector2i:
 func _dig(move: Vector2) -> void:
 	if ability != null and ability.on_dig(move):
 		return
+	if not shovel_ok():
+		return
+	if is_stepping_aim():
+		step_dig()
+		return
 	dig_now(move)
+
+
+# --- PT10-7a: dig your way up --------------------------------------------------------------------
+
+## True when A now carves a step up instead of digging: on foot, underground, stick up or
+## diagonal-up.
+func is_stepping_aim() -> bool:
+	return vehicle == null and world != null and move_intent.y < -0.3
+
+
+## The step toward `dir`: {cols: body columns, front: column, row: feet row} (cells).
+func _step_geometry(dir: int) -> Dictionary:
+	var s := world.shape
+	var p := world.to_local(global_position)
+	var hw := body_size().x * 0.5
+	var row := s.cell_at(p - Vector2(0, 1)).y
+	var c0 := s.cell_at(Vector2(p.x - hw + 0.5, p.y - 1)).x
+	var c1 := s.cell_at(Vector2(p.x + hw - 0.5, p.y - 1)).x
+	var front := (c1 if dir > 0 else c0) + dir
+	return {"cols": range(c0, c1 + 1), "front": front, "row": row}
+
+
+## The cells still in the way of a step up toward `facing`, in carving order: the rock over the
+## head, then the two cells over the step in front. The step itself (front, row) is kept.
+func step_cells() -> Array[Vector2i]:
+	var out: Array[Vector2i] = []
+	if world == null:
+		return out
+	var g := _step_geometry(_step_dir())
+	var want: Array[Vector2i] = []
+	for c: int in g.cols:
+		want.append(Vector2i(c, g.row - 2))
+	want.append(Vector2i(g.front, g.row - 2))
+	want.append(Vector2i(g.front, g.row - 1))
+	for c in want:
+		if world.is_solid(c):
+			out.append(c)
+	return out
+
+
+func _step_dir() -> int:
+	return (1 if move_intent.x > 0.0 else -1) if absf(move_intent.x) > TURN_X else facing
+
+
+## One A tick of a step up: carve the next cell in the way, or (all clear and a block to stand on
+## in front) climb onto it. True when something happened.
+func step_dig() -> bool:
+	_swing = 1.0
+	var cells := step_cells()
+	var tier := 0
+	for c in cells:
+		var def := world.tile_def(world.get_tile(c))
+		if def is BlockData and (def as BlockData).dig_tier > tier and def.breakable:
+			swung.emit(c)
+			return false
+		world.dig(c, [Vector2i.ZERO] as Array[Vector2i], player)
+		_squash = maxf(_squash, 0.4)
+		return true
+	var g := _step_geometry(_step_dir())
+	if not world.is_solid(Vector2i(g.front, g.row)) or not is_on_floor():
+		swung.emit(Vector2i(g.front, g.row))
+		return false
+	var cs := float(world.shape.cell_size)
+	var to_local := Vector2((g.front + 0.5) * cs, g.row * cs - 1.0)
+	_climb = {"from": global_position, "to": world.to_global(to_local), "t": 0.0}
+	facing = _step_dir()
+	velocity = Vector2.ZERO
+	Audio.play("jump")
+	_squash = 1.0
+	return true
+
+
+func is_climbing() -> bool:
+	return not _climb.is_empty()
+
+
+func _climb_step(delta: float) -> void:
+	_climb.t += delta / CLIMB_TIME
+	var k := clampf(_climb.t, 0.0, 1.0)
+	var from: Vector2 = _climb.from
+	var to: Vector2 = _climb.to
+	# Up first, then over (a little hop onto the step).
+	var up := Vector2(from.x, to.y)
+	global_position = from.lerp(up, minf(k * 2.0, 1.0)) if k < 0.5 else up.lerp(to, (k - 0.5) * 2.0)
+	velocity = Vector2.ZERO
+	if k >= 1.0:
+		_climb = {}
 
 
 ## One dig (or scoop up top) toward `move`; true when it removed something.
@@ -420,16 +606,9 @@ func dig_now(move: Vector2) -> bool:
 	_swing = 1.0
 	if world == null:
 		return _scoop() > 0
-	var targets := dig_cells(aim_of(move))
-	var tier := vehicle.dig_tier if vehicle != null else 0
-	var cells: Array[Vector2i] = []
-	for c in targets:
-		if not world.is_solid(c):
-			continue
-		var def := world.tile_def(world.get_tile(c))
-		if def is BlockData and (def as BlockData).dig_tier > tier and def.breakable:
-			continue
-		cells.append(c)
+	var a := aim_of(move, aim)
+	var targets := dig_cells(a)
+	var cells := dig_targets(a)
 	if cells.is_empty():
 		swung.emit(targets[0] if not targets.is_empty() else Vector2i.ZERO)
 		return false
@@ -464,7 +643,7 @@ func _scoop() -> int:
 ## Cells a dig toward `aim` reaches: the body's cross-section in front (so the body fits the hole;
 ## sideways the first of the next two columns with anything solid, so a body in the way does not
 ## stop the tunnel) plus the vehicle's dig_shape, rotated by the aim, centred on that front.
-func dig_cells(aim: Vector2i) -> Array[Vector2i]:
+func dig_cells(to: Vector2i) -> Array[Vector2i]:
 	var s := world.shape
 	var cs := float(s.cell_size)
 	var p := world.to_local(global_position)
@@ -472,8 +651,8 @@ func dig_cells(aim: Vector2i) -> Array[Vector2i]:
 	var hw := size.x * 0.5
 	var out: Array[Vector2i] = []
 	var anchor: Vector2i
-	if aim.y != 0:
-		var y := p.y + 4.0 if aim.y > 0 else p.y - size.y - 6.0
+	if to.y != 0:
+		var y := p.y + 4.0 if to.y > 0 else p.y - size.y - 6.0
 		# Every column the body rests on, even by a pixel (else a body a hair off the grid
 		# stands on the one column it did not dig and never falls).
 		var x := -hw + 0.5
@@ -485,8 +664,13 @@ func dig_cells(aim: Vector2i) -> Array[Vector2i]:
 	else:
 		var first: Array[Vector2i] = []
 		var chosen_x := 0.0
-		for i in 2:
-			var fx := p.x + aim.x * (hw + 4.0 + cs * i)
+		# PT10-6: on foot, the column right after the ones the body stands in (the marker's cell;
+		# never one further, so the hole is always next to the character). A vehicle reaches the
+		# first of the next two columns with anything solid, so a body in the way does not stop it.
+		for i in (2 if vehicle != null else 1):
+			var fx := p.x + to.x * (hw + 4.0 + cs * i)
+			if vehicle == null:
+				fx = p.x + to.x * (hw - 0.5 + cs)
 			var col: Array[Vector2i] = []
 			var y := p.y - 4.0
 			while y >= p.y - size.y + 4.0 - 0.01:
@@ -512,17 +696,17 @@ func dig_cells(aim: Vector2i) -> Array[Vector2i]:
 	elif has_big_shovel():
 		shape = [Vector2i.ZERO, Vector2i(1, 0)]
 	for o in shape:
-		_add_unique(out, anchor + rotate_offset(o, aim))
+		_add_unique(out, anchor + rotate_offset(o, to))
 	return out
 
 
-## A dig_shape offset (for facing right) turned to `aim`.
-static func rotate_offset(o: Vector2i, aim: Vector2i) -> Vector2i:
-	if aim.x < 0:
+## A dig_shape offset (for facing right) turned to `to`.
+static func rotate_offset(o: Vector2i, to: Vector2i) -> Vector2i:
+	if to.x < 0:
 		return Vector2i(-o.x, o.y)
-	if aim.y > 0:
+	if to.y > 0:
 		return Vector2i(-o.y, o.x)
-	if aim.y < 0:
+	if to.y < 0:
 		return Vector2i(o.y, -o.x)
 	return o
 
@@ -553,6 +737,7 @@ func _draw() -> void:
 			Vehicle.draw_sleeper(self, vehicle, facing, sleeper, 0.0, _t)
 	else:
 		_draw_body(c)
+	_draw_marker(c)
 	_draw_effects()
 	draw_set_transform(Vector2.ZERO)
 
@@ -580,6 +765,32 @@ func _draw_body(c: Color) -> void:
 	draw_rect(bag, Color("a47148").lightened(0.2 if full else 0.0))
 	var pose := _pose()
 	SpriteArt.draw_char(self, SpriteArt.char_file(player), pose[0], _t, Vector2.ZERO, facing < 0, Color.WHITE, pose[1])
+
+
+## PT10-6: the next dig's cells, outlined with corner brackets in the player's colour (brighter
+## while A is held). Drawn by the player, so it moves with them; nothing floats free.
+func _draw_marker(c: Color) -> void:
+	if _mark_shown.size == Vector2.ZERO or world == null:
+		return
+	draw_set_transform(Vector2.ZERO)
+	var a := to_local(world.to_global(_mark_shown.position))
+	var b := to_local(world.to_global(_mark_shown.end))
+	var r := Rect2(a, b - a).abs().grow(-1.0)
+	var pulse := 0.5 + 0.5 * sin(_t * 9.0)
+	var alpha := 0.95 if _mark_hot else 0.55 + 0.25 * pulse
+	var arm := minf(7.0, r.size.x * 0.45)
+	var col := Color(c.lightened(0.35), alpha)
+	for corner in [r.position, Vector2(r.end.x, r.position.y), r.end, Vector2(r.position.x, r.end.y)]:
+		var sx := 1.0 if corner.x <= r.position.x + 0.1 else -1.0
+		var sy := 1.0 if corner.y <= r.position.y + 0.1 else -1.0
+		for pass_i in 2:
+			var w := 5.0 if pass_i == 0 else 3.0
+			var cc := Color(DARK, alpha) if pass_i == 0 else col
+			draw_line(corner, corner + Vector2(arm * sx, 0), cc, w)
+			draw_line(corner, corner + Vector2(0, arm * sy), cc, w)
+	if _mark_hot:
+		draw_rect(r, Color(c, 0.12 + 0.1 * pulse))
+	draw_set_transform(Vector2(0, ride_offset))
 
 
 func _draw_effects() -> void:
