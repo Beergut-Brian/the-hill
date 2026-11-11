@@ -148,7 +148,10 @@ func test_ice_holes_and_lava_pockets_place_from_data_and_move_nothing_else() -> 
 			assert_bool(def is BlockData and (def as BlockData).slippery).is_true()
 		assert_float(hole.size.x * 16.0).is_greater(Vehicle.SIZES[&"drill_rig"].x)
 		# The chute is open all the way down to a nest a layer down, on a solid floor.
+		# PT10-4: except the Crystal band's Gate Rock across it (the Drill Rig opens it).
 		for y in range(hole.position.y, hole.end.y):
+			if not g.gate_band_at(y).is_empty():
+				continue
 			assert_bool(u.world.is_solid(Vector2i(hole.position.x + 1, y))).is_false()
 		assert_int(g.layer_of_depth(nest.position.y)).is_equal(ice + 1)
 		assert_bool(u.world.is_solid(Vector2i(nest.get_center().x, nest.end.y))).is_true()
@@ -188,6 +191,13 @@ func test_a_slide_on_ice_ends_in_a_hole_and_drifts_gently_a_layer_down() -> void
 	var u := _game.underground
 	var ih := _rink()
 	assert_bool(ih.is_empty()).is_false()
+	# PT10-4: the Crystal band's Gate Rock crosses the chute until a Drill Rig breaks it; this case
+	# is the slide and the drift, so the band is broken here (test_dig_progression covers the band).
+	var hole: Rect2i = ih.hole
+	for y in range(hole.position.y, hole.end.y):
+		if not u.generator.gate_band_at(y).is_empty():
+			for x in range(hole.position.x, hole.end.x):
+				u.world.set_tile(Vector2i(x, y), 0)
 	_on_rink(ih)
 	await _physics(10)
 	var before := _stats(p)

@@ -75,6 +75,8 @@ func _make() -> HillGame:
 	_game = HillGame.new()
 	_game.start_players = [P1]
 	get_tree().root.add_child(_game)
+	# PT10-4: these cases count digs, not dig speed (that is test_dig_progression).
+	_game.underground.dig_feel.tuning = DigTuning.instant()
 	Events.tile_dug.connect(_on_dug)
 	return _game
 

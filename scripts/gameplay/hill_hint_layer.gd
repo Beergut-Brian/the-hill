@@ -16,6 +16,14 @@ var _panels := {}   # player -> ButtonHints
 func _ready() -> void:
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
+	# PT10-4/5 (dig lane): "A needs this" pictures after a bonk.
+	for pic in DigFeel.need_pictures():
+		ButtonHints.register_icon(StringName("need:%s" % pic), Callable(DigFeel, "draw_need_icon").bind(pic))
+
+
+func _exit_tree() -> void:
+	for pic in DigFeel.need_pictures():
+		ButtonHints.unregister_icon(StringName("need:%s" % pic))
 
 
 func panel_of(p: int) -> ButtonHints:
@@ -72,12 +80,16 @@ static func for_player(game: Node, n: HillPlayer) -> Array:
 		out.append({"button": "a", "icon": &"ride"})
 	if lift != 1 and up_top and n.vehicle == null and build != null and build.has_ghost(p):
 		out.append({"button": "a", "icon": &"ok"})
+	var need := n.need_hint()
+	if need != &"" and lift != 1:
+		# PT10-4/5: a bonk just now: A shows what that dig needs (a loader, the gold shovel...).
+		out.append({"button": "a", "icon": StringName("need:%s" % need)})
 	if n.vehicle != null:
-		if lift != 1:
+		if lift != 1 and need == &"":
 			out.append({"button": "a", "icon": vehicle_icon(n)})
 		out.append({"button": "b", "icon": &"exit"})
 	else:
-		if lift != 1 and not up_top and n.shovel_ok():
+		if lift != 1 and not up_top and n.shovel_ok() and need == &"":
 			out.append({"button": "a", "icon": &"climb" if n.is_stepping_aim() else &"dig"})
 		var b := &"jump"
 		if up_top and build != null and build.has_ghost(p):

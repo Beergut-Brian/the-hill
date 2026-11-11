@@ -65,6 +65,14 @@ const HOUSE_CHECK := 0.5
 
 
 func _ready() -> void:
+	# PT10-4/5: the scripted --demo and the other lanes' beats were written before the unlock
+	# zones and the hit points (the Loader digs to Clay, P2 scoops by hand, timelines assume the old
+	# speed): they keep the old dig. The dig lane's own beats play the real rules. Set before the
+	# underground is built (its DigFeel picks its tuning in setup).
+	# (Loaded by path: a DigBeats class reference here would make a parse cycle, see below.)
+	var dig_beat := Game.demo and (load("res://scripts/gameplay/dig_beats.gd").get("DIG_BEATS") as Array).has(HillBeatRunner.beat_arg(OS.get_cmdline_user_args() + OS.get_cmdline_args()))
+	DigFeel.demo_open = Game.demo and not dig_beat
+	HillPlayer.hand_clear = DigFeel.demo_open
 	name = "Game"
 	director = ScreenDirector.new()
 	director.name = "Director"
@@ -184,7 +192,8 @@ func _ready() -> void:
 			var ctl: Script = load("res://scripts/gameplay/controls_beats.gd")
 			var story_beats: Script = load("res://scripts/gameplay/story_beats.gd")
 			var adj_beats: Script = load("res://scripts/gameplay/adjacency_beats.gd")
-			runner = ctl.new() if ctl.get("CONTROLS_BEATS").has(beat) else adj_beats.new() if adj_beats.get("ADJACENCY_BEATS").has(beat) else story_beats.new() if story_beats.get("STORY_BEATS").has(beat) else LooseBeats.new() if LooseBeats.LOOSE_BEATS.has(beat) else gap.new() if gap.get("GAP_BEATS").has(beat) else load("res://scripts/gameplay/two_driver_beats.gd").new() if beat == "drivers" else DepthBeats.new() if DepthBeats.DEPTH_BEATS.has(beat) else CameraBeats.new() if CameraBeats.CAMERA_BEATS.has(beat) else HazardBeats.new() if HazardBeats.HAZARD_BEATS.has(beat) else VehicleBeats.new() if VehicleBeats.VEHICLE_BEATS.has(beat) else PolishBeats.new() if PolishBeats.POLISH_BEATS.has(beat) else ArcBeats.new() if ArcBeats.ARC_BEATS.has(beat) else HillBeatRunner.new()
+			var dig_beats: Script = load("res://scripts/gameplay/dig_beats.gd")
+			runner = dig_beats.new() if dig_beats.get("DIG_BEATS").has(beat) else ctl.new() if ctl.get("CONTROLS_BEATS").has(beat) else adj_beats.new() if adj_beats.get("ADJACENCY_BEATS").has(beat) else story_beats.new() if story_beats.get("STORY_BEATS").has(beat) else LooseBeats.new() if LooseBeats.LOOSE_BEATS.has(beat) else gap.new() if gap.get("GAP_BEATS").has(beat) else load("res://scripts/gameplay/two_driver_beats.gd").new() if beat == "drivers" else DepthBeats.new() if DepthBeats.DEPTH_BEATS.has(beat) else CameraBeats.new() if CameraBeats.CAMERA_BEATS.has(beat) else HazardBeats.new() if HazardBeats.HAZARD_BEATS.has(beat) else VehicleBeats.new() if VehicleBeats.VEHICLE_BEATS.has(beat) else PolishBeats.new() if PolishBeats.POLISH_BEATS.has(beat) else ArcBeats.new() if ArcBeats.ARC_BEATS.has(beat) else HillBeatRunner.new()
 		runner.set("game", self)
 		if beat != "":
 			runner.set("beat", beat)
@@ -635,9 +644,20 @@ func _on_tile_dug(cell: Vector2i, block: StringName, p: int) -> void:
 	var node: HillPlayer = players.get(p)
 	if node == null or director.scene_of(p) != UNDERGROUND:
 		return
-	if not node.keep_block(block):
+	# PT10-4: Gate Rock keeps as stone; Hard Rock is a big haul (several stone at once).
+	var data: BlockData = underground.blocks.get(block)
+	var keep := data.keeps_as if data != null and data.keeps_as != &"" else block
+	var n := maxi(data.haul if data != null else 1, 1)
+	var kept := 0
+	for i in n:
+		if node.keep_block(keep):
+			kept += 1
+	if kept == 0:
 		underground.burst(underground.world.shape.center_of(cell), Color(1, 1, 1, 0.8), 6, 60.0)
 		Audio.play("backpack_full")
+	elif n > 1:
+		underground.burst(underground.world.shape.center_of(cell), Color("ffd23f"), 10 + 3 * kept, 120.0)
+		Audio.play("treasure_pickup")
 
 
 func _on_split_changed(on: bool) -> void:

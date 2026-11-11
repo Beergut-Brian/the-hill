@@ -60,6 +60,8 @@ func _make(load_saved := false, start: Array = []) -> HillGame:
 	get_tree().root.add_child(_game)
 	# These suites test the ride itself: the old walk-in cage starts it (PT10-9 A presses: test_controls).
 	_game.elevator.walk_in = true
+	# PT10-4: dig speed is test_dig_progression's; these cases test the loop around it.
+	_game.underground.dig_feel.tuning = DigTuning.instant()
 	return _game
 
 
@@ -413,11 +415,26 @@ func test_up_top_a_scoops_scrub_x_opens_the_book_y_honks() -> void:
 	intent.dig = true
 	await _physics(3)
 	intent.dig = false
+	# PT10-5: on foot A bonks scrub (nothing is cleared) and shows the Front Loader; it scoops.
+	assert_int(hv.scrub_left()).is_equal(before)
+	assert_str(String(p.need_hint())).is_equal("vehicle:front_loader")
+	var loader: Vehicle = _game.vehicles[&"front_loader"]
+	loader.position = Vector2(x - 4.0, loader.position.y)
+	_game.hop_in(p)
+	assert_object(p.vehicle).is_not_null()
+	p.global_position = Vector2(x - 4.0, 0)
+	p.facing = 1
+	await _physics(30)
+	intent.dig = true
+	await _physics(3)
+	intent.dig = false
+	await _physics(3)
 	assert_int(hv.scrub_left()).is_less(before)
 	var pile := 0
 	for b in [&"dirt", &"stone"]:
 		pile += Inventory.count(b)
 	assert_int(pile).is_greater(0)
+	_game.hop_out(p, true)
 	intent.book = true
 	await _physics(2)
 	intent.book = false

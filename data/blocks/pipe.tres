@@ -11,3 +11,4 @@ depth_from = 30
 depth_to = 70
 value = 2
 minor_shape = &"run"
+toughness = 4
