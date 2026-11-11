@@ -67,6 +67,8 @@ Menu cues (`ui_move`, `ui_confirm`, `player_join`, `ui_back`, ...) stay with the
 | treasure_pickup | sfx/treasure_pickup.ogg | it flies to the pile | whoosh + ding | +0 | 0.1, 2 |
 | treasure_hint | sfx/treasure_hint.ogg | a treasure is near | faint sparkle | -4 | 0.1, 2 |
 | shelf_place | sfx/shelf_place.ogg | a treasure goes on the shelf | wood knock + bell | +0 | 0.05, 3 |
+| town_hearts | sfx/town_hearts.ogg | two buildings that like each other stand near (C-23) | rising D-major bells + sparkles | +0 | 0.1, 2 |
+| heart_preview | sfx/heart_preview.ogg | a carried ghost would make a happy pair here | soft two-note bell ping | -5 | 0.1, 2 |
 | polish | sfx/polish.ogg | the Caveman polishes a treasure | squeak squeak gleam | -2 | 0.05, 3 |
 | fall | sfx/fall_1.ogg, sfx/fall_2.ogg, sfx/fall_3.ogg | a loose thing lands (TileWorld.body_landed) | thud | -1 | 0.08, 3 |
 | bonk | sfx/bonk_1.ogg, sfx/bonk_2.ogg | a boulder bonks a player | cartoon bonk with stars | +0 | 0.2, 2 |

@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="AdjacencyData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/data/adjacency_data.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+pairs = Array[PackedStringArray]([PackedStringArray("barn", "house"), PackedStringArray("barn", "gnome_village"), PackedStringArray("garage", "workshop"), PackedStringArray("water_tower", "pond"), PackedStringArray("lighthouse", "pond"), PackedStringArray("workshop", "shaft"), PackedStringArray("house", "lost_and_found"), PackedStringArray("workshop", "museum"), PackedStringArray("lighthouse", "dragon_perch"), PackedStringArray("house", "house")])
+radius_plots = 3
+hearts = 4
+heart_time = 2.4
+flowers_per_plot = 4
+grow_time = 1.4
+sparkles = 16
+preview_alpha = 0.75
