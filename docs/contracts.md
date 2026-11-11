@@ -513,7 +513,13 @@ func is_dropping(p: int) -> bool
 func on_ice(pl: HillPlayer) -> bool          # BlockData.slippery underfoot, unless Story.ice_warm()
 func bounce(pl: HillPlayer) -> void
 func hop_height() -> float
+const HOT_SECS := 1.0      # hill-lava-1: after a bounce the player shows a flame icon and a warm flash this long
+const LAVA_CUE := "lava_boing"   # the bounce's own cue; until the Audio lane adds it, `dragon_boing` plays
+func is_hot(p: int) -> bool                  # since_bounce(p) < HOT_SECS (the "that's why" callback)
 ```
+
+A bounce also kicks the bounced player's camera (`ScreenKick.kick(p, 2.5, 0.25)`), a small beat
+on the cause. A bounce never checks the player's tool (`has_shovel`): no shovel, still a bounce.
 
 The ice glide is applied inside the same `intent_source` wrapper (only `move.x` changes), so it
 works for pads, demos and tests alike, on foot and driving. `Hazards` runs its physics before the
