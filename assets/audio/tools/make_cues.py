@@ -1037,6 +1037,69 @@ def ice_crack(rng):
     return x
 
 
+# ---------------------------------------------------------------- depth life + puzzles (audio-3)
+
+def worm_boop(rng, f0=440.0):
+    """A worm waves out of the dirt: a round rising "boop" and a tiny three-chirp giggle.
+    Sine-ish (two soft partials), D major notes, nothing above 2 kHz but the giggle tips."""
+    x = silence(0.6)
+    mix(x, chirp(f0, f0 * 1.5, 0.12, ((1, 1.0, 0.0), (2, 0.12, 0.0)), attack=0.01), 0.0, 0.7)
+    mix(x, burst(rng, 0.02, 900, 1.2, 0.006), 0.0, 0.15)     # soft dirt puff
+    for k in range(3):
+        f = f0 * 1.9 * (1.0 + 0.09 * k) * rng.uniform(0.98, 1.02)
+        mix(x, chirp(f, f * 1.25, 0.05, ((1, 1.0, 0.0),), attack=0.006), 0.17 + k * 0.075, 0.42)
+    return x
+
+
+def fish_flop(rng, fc=900.0):
+    """The frozen fish is dug out: a wet "flip-flop" (two slaps, a boing of a tail between)."""
+    x = silence(0.55)
+    for k, f in enumerate((fc, fc * 0.8)):
+        slap = burst(rng, 0.06, f, 0.9, 0.018, "low")
+        mix(x, slap, k * 0.18, 0.8)
+        mix(x, chirp(330 + 110 * k, 520 + 110 * k, 0.07, ((1, 1.0, 0.0),)), k * 0.18 + 0.02, 0.35)
+    mix(x, sparkle(rng, 2, 0.36, 0.5, 0.12, D_HI), 0.0, 1.0)
+    return x
+
+
+def fish_free(rng):
+    """A later fish wiggles free and swims off: a light ice crack, a small splash, bubbles away."""
+    x = silence(1.0)
+    for k in range(3):
+        mix(x, burst(rng, 0.04, rng.uniform(1800, 2600), 1.4, 0.008), k * 0.07, 0.5)
+    mix(x, grains(rng, 0.2, 10, 1500, 3500, 0.003, 0.008), 0.05, 0.35)
+    mix(x, burst(rng, 0.35, 1100, 0.8, 0.09, "low"), 0.25, 0.55)
+    for k in range(5):
+        f = 420 * 1.12 ** k
+        mix(x, chirp(f, f * 1.6, 0.05), 0.35 + k * 0.08 + rng.uniform(0, 0.02), 0.35 * (1 - k / 6))
+    return x
+
+
+def dig_sand(rng, fc=2400.0):
+    """Sand: a soft "shff" (bright filtered hiss, fast in, slow out) with fine grains, no thump."""
+    sec = 0.32
+    x = soft(svf(noise(sec, rng), fc, 0.7, "band"), 3800)
+    x = envelope(x, lambda t: min(1.0, t / 0.015) * math.exp(-t / 0.09))
+    mix(x, grains(rng, 0.25, 18, 1800, 4200, 0.003, 0.008, gain=0.5, spread=1.4), 0.0, 0.3)
+    mix(x, thump(150, 90, 0.08, 0.03), 0.0, 0.25)
+    return x
+
+
+def drain_gurgle(rng, sec=2.0):
+    """Looped gurgle while the drain puzzle's water runs down the chute: a low watery bed and
+    random rising bubbles, folded so the 2 s loop is seamless. Quiet, round, no hiss."""
+    n = int(round(sec * SR))
+    out = [0.0] * n
+    bed = soft(noise(sec, rng), 380, circular=True)
+    mix(out, bed, 0.0, 0.5)
+    for _ in range(34):
+        f = rng.uniform(180, 520)
+        mix(out, chirp(f, f * rng.uniform(1.5, 2.1), rng.uniform(0.03, 0.07)),
+            rng.uniform(0, sec), rng.uniform(0.25, 0.45), wrap=True)
+    wob = [0.8 + 0.2 * math.cos(TAU * 1.0 * i / n) for i in range(n)]   # one whole swell per loop
+    return dc_block([v * w for v, w in zip(out, wob)], circular=True)
+
+
 def caveman(rng, kind):
     if kind == "laugh":       # hearty "ho ho ho"
         x = silence(1.0)
@@ -1429,6 +1492,14 @@ add("shovel_back", shovel_back)
 add("ice_drip_1", v(ice_drip, 93), trim=-6.0)
 add("ice_drip_2", v(ice_drip, 90), trim=-6.0)
 add("ice_crack", ice_crack)
+add("worm_boop_1", v(worm_boop, 440.0), trim=-3.0)
+add("worm_boop_2", v(worm_boop, 494.0), trim=-3.0)
+add("fish_flop_1", v(fish_flop, 900.0), trim=-2.0)
+add("fish_flop_2", v(fish_flop, 780.0), trim=-2.0)
+add("fish_free", fish_free, trim=-2.0)
+for i, f in enumerate((1500, 1350, 1700), 1):
+    add("dig_sand_%d" % i, v(dig_sand, f), trim=-4.0)
+add("drain_gurgle", drain_gurgle, "loop", -10.0)
 for k in ("laugh", "hoot", "huh"):
     add("caveman_" + k, v(caveman, k))
 add("dragon_snore_1", v(dragon, "snore"), trim=-2.0)
