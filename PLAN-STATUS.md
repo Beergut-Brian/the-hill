@@ -57,7 +57,7 @@ X out of scope, Q open questions, F build phases.
 | C-19 | S1 Loop | No fail state: nothing underground hurts; town can't be damaged | built | tests/test_hazards_residents.gd::test_a_falling_boulder_bonks_briefly_and_takes_nothing, ::test_a_breached_pocket_floats_the_player_and_takes_nothing | |
 | C-20 | S1 Loop | Session 10–20 min, saves at every trip up | built | scenes/game/elevator.gd (every ride autosaves); tests/test_hill_game.gd::test_save_round_trip | Session length is unmeasured until the first playtest |
 | C-21 | S1 Two depths | Logistics: backpack, Dump Truck and gnome crew are real hauling limits | built | tests/test_hill_game.gd::test_backpack_fills_and_capacity_follows_barns; tests/test_vehicles_treasures.gd::test_dump_truck_carries_five_backpacks_and_tips_the_whole_load_onto_the_pile; tests/test_resident_arcs.gd::test_gnome_village_crew_leaves_a_capped_pile_after_time_away | The crew hauls while the game is closed (C-13, capped by Rules.GNOME_CAP) |
-| C-22 | S1 Two depths | Underground engineering: drain or redirect water, drop a boulder to break a wall, route around blocks that need a vehicle | partial | tests/test_tileworld.gd::test_water_pile_levels_out_then_goes_still; tests/test_proto.gd::test_boulder_sleeps_then_falls_when_undercut | Water and falling boulders work. There are no walls a boulder breaks and no blocks that need a vehicle, so no puzzle is placed yet. Plan-sync 2026-11-11: three puzzles placed from data (drain, boulder wall, heavy block) sit on `feature/hill-puzzles-fix-1`, not merged to dev (checked at 5f31a57) |
+| C-22 | S1 Two depths | Underground engineering: drain or redirect water, drop a boulder to break a wall, route around blocks that need a vehicle | partial | tests/test_tileworld.gd::test_water_pile_levels_out_then_goes_still; tests/test_proto.gd::test_boulder_sleeps_then_falls_when_undercut | Water and falling boulders work. There are no walls a boulder breaks and no blocks that need a vehicle, so no puzzle is placed yet. Plan-sync 2026-11-11: three puzzles placed from data (drain, boulder wall, heavy block) sit on `feature/hill-puzzles-fix-1`, not merged to dev (checked at 5f31a57). Gap-close-3 audit: the wall and vehicle block are also being built on `feature/hill-puzzles-audit-1`; water draining is on dev (`Underground.drain`, Water Towers) |
 | C-23 | S1 Two depths | Town adjacency: hearts float between buildings that like each other (`data/adjacency.tres`) | built | tests/test_adjacency.gd::test_pairs_need_liking_and_nearness, ::test_town_pairs_follow_progress_and_count_restored_homes, ::test_ghost_previews_hearts_only_where_it_would_be_happy, ::test_dropping_a_happy_pair_celebrates_once_with_sparkles_flowers_and_a_chime; handoff/frames/adjacency_preview.png, adjacency_pop.png, adjacency_flowers.png, adjacency_pond_preview.png, adjacency_pond.png, adjacency_row.png | Adjacency lane (`scripts/gameplay/town_adjacency.gd`): hearts float back and forth over the roofs of every happy pair, a flower bed grows between them. A ghost in hand previews soft hearts to each partner (they hop, `heart_preview` pings); a new pair gets a big heart pop, sparkles, both hop, `town_hearts`. Pairs: Barn+House, Barn+Gnome Village, Garage+Workshop, Workshop+shaft, Water Tower+pond, Lighthouse+pond, House+House, House+Lost & Found, Workshop+Museum, Lighthouse+Dragon Perch. The adult-layer bonuses (crew hauls more, faster drain, extra lit layer, Mole finds more) are not built: hearts and flowers only. "Lighthouse on the peak" and "Museum by the shaft" cannot be pairs (the Museum is a fixed ruin site; there is no peak plot) |
 | C-24 | S1 Two depths | Collection: the Museum shows treasures left per layer; the Mole's glow finds them; Strangestone is a curious wall | built | tests/test_vehicles_treasures.gd::test_a_pickup_pops_up_flies_into_the_bag_and_lands_on_the_shelf; tests/test_resident_arcs.gd::test_museum_takes_the_treasure_shelf_and_the_caveman_polishes; tests/test_resident_arcs_underground.gd::test_a_lost_and_found_visit_glows_unfound_treasure_and_gives_blocks | Shelf silhouettes per layer move into the Museum; the Mole's visit glows unfound treasure; Strangestone is W-24 |
 | C-25 | S1 Guardrails | No text, numbers or tooltips for the adult layer | built | scenes/game/hud.gd ("no numbers and no text"); .scratch/shots/book/t008.0s.png | |
@@ -198,7 +198,7 @@ X out of scope, Q open questions, F build phases.
 | S-12 | S1 Tech | Awake `RigidBody2D` cap 60; 9 chunks per player | built | tests/test_tileworld.gd::test_awake_cap_queues_wakes, ::test_chunk_budget_limits_new_chunks_per_call | |
 | S-13 | CLAUDE.md / S1 | 60 fps at 1080p on a GTX 1060 | partial | addons/openjar/tileworld/demo (stress run) | The sim cost has been measured. Frame rate on a real GPU hasn't (the producer box renders in software). Reason: weekend TV check |
 | S-14 | S1 Tech / F-5 | Move tile world + split screen into `openjar-addons`, tagged | missing | ~/openjar/openjar-addons/addons/openjar has no tileworld or split_screen | Both still live in this repo's `addons/openjar/` |
-| S-15 | S1 Tech | `PictoBubble` scene for arcs, costs and prompts, then moved to `openjar-addons/ui/` | partial | scripts/gameplay/picto_bubble.gd (class PictoBubble; used by town_residents, underground_residents, treasure_shelf, strange_bubble) | PictoBubble exists in this repo as draw helpers (resident arcs). Not yet moved to `openjar-addons/ui/` (gap-close-1 sync) |
+| S-15 | S1 Tech | `PictoBubble` scene for arcs, costs and prompts, then moved to `openjar-addons/ui/` | partial | scenes/ui/picto_bubble.tscn (PictoBubbleNode); scripts/gameplay/picto_bubble.gd (`draw`, `draw_cost`, `draw_round`, `cost_columns`); tests/test_picto_bubble.gd::test_cost_columns_stack_five_high_in_block_order, ::test_the_scene_follows_its_speaker_pops_in_and_frees_itself, ::test_a_held_prompt_stays_until_hidden_and_goes_with_its_speaker, ::test_the_build_book_draws_its_costs_and_bubbles_through_picto_bubble; frames handoff/frames/s15_book_costs_via_pictobubble.png | Gap-close-3: the scene exists (`PictoBubbleNode.pop(parent, speaker, pics, secs)`: follows its speaker, pops in, fades, `secs = 0` holds a prompt until `hide_bubble()`). Reconcile 2026-11-11: the barks draw through dev's `BarkBubble` (PR 46, kept on the merge), not this scene; moving them over is a follow-up for the audio lane. Every cost and prompt in the game now draws through PictoBubble: the build book's block-square costs (`draw_cost`) and its "this opens it / you get this" bubbles (`draw_round`), the residents' arcs, the strangestone question, the treasure shelf, the cutscene bubbles; the frame is unchanged from before (audit_s15_book_before.png). The button-hint panel (HillHintLayer, ButtonHints kit) is a controller legend, not a bubble, so it stays. Left: the move to `openjar-addons/ui/` (the addons repo, not this one) |
 | S-16 | S2 | Template features: grown-up menus, solo, `--demo`, `--shots=`, release smoke-boot, `store/jar.glb` | built | tests/test_lobby.gd::test_saved_solo_stays_off_at_boot; tests/test_hill_demo.gd; .scratch/shots/lobby/t003.0s.png; tests/test_store.gd::test_manifest_names_the_jar; tests/test_store.gd::test_zip_carries_the_jar_and_store_art; tests/test_store.gd::test_jar_fits_the_launcher_budget; .github/workflows/release.yml (smoke-boot step); scripts/autoload/Debug.gd (`--shots=`) | Both earlier gaps are closed: `store/jar.glb` (store-art-1, PR 20) and the version label (S-19, PR 27) |
 | S-17 | S2 | Premium slice spend logged in GAME.md by the producer | missing | none (no spend log in GAME.md) | |
 | S-18 | S6 / S7 | `--demo-beat=` showcases (bonk … crystal; garage … lineup) | built | .scratch/shots/{lineup,book,shelf,rescue,reveal,crystal}/ | Polish-2 adds lighthouse, cows, strange, scoop, snore (scripts/gameplay/polish_beats.gd) |
@@ -324,14 +324,35 @@ IDs `PT10-<n>` match the numbered list in GAME.md. Rows added by the lane that b
 
 ## Totals
 
-Counted from the Status column on `dev` at `5f31a57` (2026-11-11, plan-sync lane), 203 rows:
+Counted from the Status column on `feature/hill-gap-close-3` after merging `origin/dev` at `5d00fc5` (2026-11-11, gap-close-3 reconcile), 203 rows:
 
 | built | partial | missing | superseded | dropped | later | total |
 | --- | --- | --- | --- | --- | --- | --- |
 | 179 | 11 | 4 | 1 | 4 | 4 | 203 |
 
-Before this sync the rows counted 175 built, 15 partial, 4 missing, 1 superseded, 4 dropped, 4 later
-(the table here still said 160 / 21 / 6 of 196: lanes moved rows without recounting).
+## Gap-close-3 audit 2026-11-11
+
+Every partial row on `dev` at `5f31a57` was checked in the code and, where it shows, in a real frame
+(`handoff/frames/audit_*.png`). To built: S-16 (grown-up lobby, solo, `--demo`/`--shots`, `store/jar.glb`
+tests; frame `audit_s16_lobby.png`) and F-4 (tag `v0.1.0` at aaefdc3 is on dev, playtests/2026-11-10.md).
+Stay partial: C-22 (being built on `feature/hill-puzzles-audit-1`), C-27 (no depth gates on dev), P-06 and
+S-15 (built next by this lane; P-06 then landed on dev as PR 46, see the reconcile below), A-15 (no voice packs), V-03 (Kaden's pick), V-09 (gnome/cow art running on
+`feature/hill-gnome-cow-art-1`), W-27, S-07, S-13 (TV check), F-0 (Q-02, Kaden), F-3 and F-6 (roll-ups).
+
+## Gap-close-3 reconcile 2026-11-11
+
+`origin/dev` at `5d00fc5` (PR 46, barks-personality-1) merged in. Where both sides built the same barks, dev's
+code was kept: `scripts/audio/hill_barks.gd`, `bark_bubble.gd` (BarkBubble), `bark_tuning.gd`, `data/barks.tres`,
+`tests/test_barks.gd` are byte-for-byte dev. Kept from this branch: the PictoBubble scene
+(`scenes/ui/picto_bubble.tscn`, `scripts/gameplay/picto_bubble_node.gd`), `PictoBubble.draw_cost` /
+`draw_round` / `cost_columns`, the build book drawing its costs and bubbles through them, the audit rows.
+Re-checked: S-16 and F-4 stay built (every cited test, `store/jar.glb`, the smoke-boot step, `--shots=`, tag
+`v0.1.0` at aaefdc3 on dev and playtests/2026-11-10.md are there). P-06 and A-15 stay built, with dev's row text
+(every cited test is in dev's `tests/test_barks.gd` / `test_audio.gd`). S-15 stays partial, and its note was
+corrected: after the merge the barks draw through dev's `BarkBubble`, not `PictoBubbleNode`, so the claim
+"the barks use it" and the `test_barks` proof were taken off the row. The scene is tested on its own
+(`tests/test_picto_bubble.gd`) but nothing in play pops one yet; moving the barks onto it is a follow-up
+for the audio lane. Still left: the move to `openjar-addons/ui/`. No status changed, so the totals hold.
 
 ## Plan-sync 2026-11-11
 
@@ -339,6 +360,9 @@ Every partial and missing row was checked against `origin/dev` at `5f31a57`. To 
 PR 20 and PR 27), F-4 (tag `v0.1.0` and playtests/2026-11-10.md). Notes rewritten: C-22 (puzzles on an unmerged
 branch), C-27 (depth gates not on dev), F-3, P-06 (points at A-15), A-15, V-03, V-09, Q-02, F-0. W-27, S-07,
 S-13 stay partial: weekend TV check. Lane-branch names on merged rows (H-03, H-09, S-04) became PR numbers.
+
+Before this sync the rows counted 175 built, 15 partial, 4 missing, 1 superseded, 4 dropped, 4 later
+(the table here still said 160 / 21 / 6 of 196: lanes moved rows without recounting).
 
 ## Plan-sync 2026-11-10
 
