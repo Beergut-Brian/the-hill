@@ -296,8 +296,12 @@ func test_a_library_voice_pack_says_its_lines_for_game_cues() -> void:
 	assert_str(Audio.bark_stream("pip", "found").resource_path).contains("/voice/win")
 	assert_str(Audio.bark_stream("pip", "narrate").resource_path).contains("/voice/ready")
 	assert_bool(Audio.bark_is_real("pip", "found")).is_true()
-	# No pack (Jeff in the fixture): the placeholder, never a library line.
+	# No pack (Jeff in the fixture, voice ""): the placeholder, never a library line. Jeff's real pack
+	# ships in assets/ since openjar-characters v0.5.3, so point the pack folder at an empty path here.
+	var real_root: String = Audio.pack_root
+	Audio.pack_root = "res://tests/fixtures/no_voice_packs/"
 	assert_bool(Audio.bark_is_real("jeff", "rock_name")).is_false()
+	Audio.pack_root = real_root
 
 
 func test_the_finder_cheers_in_their_own_voice_and_a_voiceless_pick_stays_quiet() -> void:
