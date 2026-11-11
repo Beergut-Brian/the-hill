@@ -71,7 +71,7 @@ func step(delta: float) -> void:
 	var players := _players()
 	_narration(players, delta)
 	_walk_ups(players)
-	_bubbles = _bubbles.filter(func(b: BarkBubble) -> bool: return is_instance_valid(b) and not b.is_queued_for_deletion())
+	_bubbles = _bubbles.filter(func(b) -> bool: return is_instance_valid(b) and not b.is_queued_for_deletion())
 
 
 ## True if "who/cue" is past its cooldown.
@@ -103,13 +103,16 @@ func say(who: String, cue: String, speaker: Node2D, pics: Array, head: Vector2, 
 
 
 func bubbles() -> Array:
-	return _bubbles.filter(func(b: BarkBubble) -> bool: return is_instance_valid(b) and not b.is_queued_for_deletion())
+	return _bubbles.filter(func(b) -> bool: return is_instance_valid(b) and not b.is_queued_for_deletion())
 
 
 # --- Jeff names rocks ----------------------------------------------------------------------------
 
-func _on_tile_dug(_cell: Vector2i, block: StringName, p: int) -> void:
+func _on_tile_dug(cell: Vector2i, block: StringName, p: int) -> void:
 	if p < 0 or _pick(p) != "jeff" or not ROCKS.has(block):
+		return
+	# A fish cell is the fish's moment (HillAudio plays `fish_flop`): Jeff does not name the ice.
+	if HillAudio.is_fish(game, cell):
 		return
 	var pl = _players().get(p)
 	if not pl is Node2D:
