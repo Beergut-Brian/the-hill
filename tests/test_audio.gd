@@ -311,6 +311,33 @@ func test_treasures_get_bigger_with_depth() -> void:
 
 # --- barks -----------------------------------------------------------------------------------
 
+func test_a_resident_pack_line_replaces_the_placeholder_when_it_lands() -> void:
+	# The five Hill speakers have no recorded audio in openjar-characters v0.5.0: all placeholders.
+	for pair in [["jeff", "rock_name"], ["chuck", "narrate"], ["mole", "oh_dear"],
+			["gnome_foreman", "mutter"], ["gnome_foreman", "whistle"], ["dragon", "rumble"]]:
+		assert_bool(Audio.bark_is_real(pair[0], pair[1])).is_false()
+	# A pack laid out the way the library plans it (README bark ids) is found under those ids.
+	var root := "res://tests/fixtures/voice_packs/"
+	Audio.pack_root = root
+	var got := {}
+	for i in 8:
+		var s := Audio.bark_stream("mole", "oh_dear")
+		got[s.resource_path.get_file()] = true
+	assert_array(got.keys()).contains_exactly_in_any_order(["mole_oh_dear.ogg", "mole_oh_dear_dear.ogg"])
+	assert_str(Audio.bark_stream("dragon", "rumble").resource_path).is_equal(root + "dragon/voice/dragon_rumble_low.ogg")
+	assert_str(Audio.bark_stream("gnome_foreman", "mutter").resource_path).is_equal(root + "gnome_foreman/voice/foreman_hm.ogg")
+	assert_bool(Audio.bark_is_real("mole", "oh_dear")).is_true()
+	# A line the pack has not recorded (no whistle, no yawn) keeps the placeholder.
+	assert_bool(Audio.bark_is_real("gnome_foreman", "whistle")).is_false()
+	assert_bool(Audio.bark_is_real("dragon", "yawn")).is_false()
+	# The rate caps are the same for real lines.
+	Audio.advance(30.0)
+	assert_bool(Audio.bark("mole", "oh_dear")).is_true()
+	assert_bool(Audio.bark("dragon", "rumble")).is_false()      # one bark at a time
+	Audio._voice.stop()
+	Audio.pack_root = Audio.CHARACTERS_DIR
+
+
 func test_barks_fall_back_to_placeholders_and_are_rate_capped() -> void:
 	for pair in [["jeff", "rock_name"], ["chuck", "narrate"], ["mole", "oh_dear"],
 			["gnome_foreman", "mutter"], ["gnome_foreman", "whistle"], ["dragon", "rumble"], ["dragon", "yawn"]]:
