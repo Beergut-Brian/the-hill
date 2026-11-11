@@ -18,6 +18,7 @@ the Mole or the Dragon never appear) it copies into `assets/characters/<id>/`:
 | `<id>.glb` | the 3D master (standard Jarling: `idle`, `run`, `kick`, `cheer`, ten gear slots). Godot extracts `<id>_*.png` textures on import; commit them too |
 | `pixel.png` | the pixel form, front view at native size (40x32), drawn by the library's own sprite code (needs `python3` + Pillow) |
 | `voice/*.ogg` | recorded barks (none yet in `v0.3.0`) |
+| `voice/catchphrase.ogg` | the library's `voice/lib/catchphrase_big.ogg` (only that file from `lib/`), said by the chooser; `"catchphrase"` in `data/roster.json`, `""` without one. Not a bark |
 
 and writes `data/roster.json` (roster order, names, defaults, player colours, `res://` paths, the
 tag) and the characters block in `assets/CREDITS.md`. It reads the tag with `git show` (Git LFS
@@ -55,8 +56,8 @@ write the real one.
 ## 4. The chooser
 
 In the lobby, on your podium, before you ready up: left / right (stick, D-pad, keys) swaps your
-character (squash, poof, pop, name bounce, bark or the `char_swap` cue), skipping the other
-player's pick. A readies and locks it, B unlocks. Solo: Select switches which podium the pad
+character (squash, poof, pop, name bounce, the `char_swap` cue), skipping the other
+player's pick; when you stop, the character says its catchphrase once (`docs/ui.md` "Chooser voice"). A readies and locks it, B unlocks. Solo: Select switches which podium the pad
 drives. Details and the per-game notes: `docs/ui.md` "The character chooser", "Per game".
 
 ## 5. Spawning the pick in game

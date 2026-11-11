@@ -6,7 +6,9 @@
 ## screen as Game.finish_lobby() starts round 1 (with the skin's "ROUND 1" card). A ready player
 ## holding A on Play for HOLD_TO_START s starts alone. Back to Open Jar asks "Leave the game?" first.
 ## The character chooser: joined and not ready, left / right (stick or D-pad) cycles your Roster
-## pick on your podium (swap, poof, bark); taken characters are skipped. Ready locks it; B unlocks.
+## pick on your podium (swap sound, poof); taken characters are skipped. Ready locks it; B unlocks.
+## Chooser voice (docs/ui.md): SAY_SETTLE s after the last step (or a join), the character now on
+## the podium says its catchphrase once, on that player's own voice (Roster.catchphrase).
 ## Solo: Select picks which podium the pad drives.
 ## Games customise it with a MenuSkin (UiStyle.use_skin, or res://data/menu_skin.tres), in code.
 ## title_texture / title_text here still work and win over the skin. Keep the node names.
@@ -23,6 +25,9 @@ enum Choice { PLAY, SETTINGS, DOOR }
 const HOLD_TO_START := 1.5
 const COUNT_STEP := 0.7
 const COUNT_DOTS := 3
+## Chooser voice: quiet this long after the last left / right, then the catchphrase. Fast
+## scrolling only says the one you stop on.
+const SAY_SETTLE := 0.3
 const P1 := Players.P1
 const P2 := Players.P2
 
@@ -58,6 +63,8 @@ var _tw: Tween
 var _wipe: ShowtimeWipe
 var _dpad := { P1: 0, P2: 0 }
 var _select_down := false
+## Chooser voice: seconds until this player's catchphrase; < 0 nothing pending.
+var _say_in := { P1: -1.0, P2: -1.0 }
 
 @onready var _spots := { P1: $Spots/P1, P2: $Spots/P2 }
 @onready var _buttons := { Choice.PLAY: $Buttons/Play, Choice.SETTINGS: $Buttons/Settings, Choice.DOOR: $Buttons/Door }
@@ -143,6 +150,7 @@ func in_submenu() -> bool:
 func _process(delta: float) -> void:
 	if not _live():
 		return
+	voice_step(delta)
 	_countdown.queue_redraw()
 	if _confirm.active:
 		_confirm.handle(MenuInput.read())
@@ -231,9 +239,43 @@ func choose(player: int, dir: int) -> bool:
 		if slot and slot.has_method("shake"):
 			slot.shake()
 		return false
-	if not Roster.bark(id):
-		UiSound.play("char_swap", 1.08 if player == P1 else 0.92)
+	UiSound.play("char_swap", 1.08 if player == P1 else 0.92)
+	say_soon(player)
 	return true
+
+
+## Chooser voice: (re)start this player's settle; the catchphrase comes SAY_SETTLE s after the
+## last call, for whoever is on the podium then.
+func say_soon(player: int) -> void:
+	_say_in[player] = SAY_SETTLE
+
+
+func cancel_say(player: int) -> void:
+	_say_in[player] = -1.0
+
+
+## Is a catchphrase waiting for its settle?
+func say_pending(player: int) -> bool:
+	return _say_in[player] >= 0.0
+
+
+## Count the settles down; a finished one says the podium's character once, on the player's own
+## voice (it cuts off only that player's previous line). No catchphrase or bark: nothing more (the
+## step already made its swap sound).
+func voice_step(delta: float) -> void:
+	for p in [P1, P2]:
+		if _say_in[p] < 0.0:
+			continue
+		_say_in[p] -= delta
+		if _say_in[p] > 0.0:
+			continue
+		_say_in[p] = -1.0
+		var id := Roster.pick(p)
+		if not Players.is_active(p) or id == "":
+			continue
+		var ok := Roster.catchphrase(id, p)
+		print("Chooser voice: P%d %s %s (t=%.2f s)" % [p + 1, id,
+				Roster.last_said.get(p, "") if ok else "(no voice)", Time.get_ticks_msec() / 1000.0])
 
 
 func _on_pick_changed(player: int, id: String) -> void:
@@ -370,6 +412,8 @@ func count_step(delta: float) -> void:
 ## so that it covers the screen just as the round starts.
 func _launch() -> void:
 	_launched = true
+	for p in [P1, P2]:
+		cancel_say(p)
 	_update_choosers()
 	launching.emit()
 	UiSound.play("ui_go")
@@ -486,6 +530,7 @@ func _on_player_joined(player: int, device: int) -> void:
 	if not _live():
 		return
 	_set_joined(player, true)
+	say_soon(player)   # the pick shown on joining says its catchphrase
 	# The join press readies too (whatever is focused), unless it was B.
 	# Not behind an open Settings (solo turned on there readies both when it closes).
 	if device >= 0 and Input.is_joy_button_pressed(device, JOY_BUTTON_B) or in_submenu() or _launched:
@@ -495,6 +540,7 @@ func _on_player_joined(player: int, device: int) -> void:
 
 
 func _on_player_left(player: int) -> void:
+	cancel_say(player)
 	set_ready(player, false, true)
 	_set_joined(player, false)
 

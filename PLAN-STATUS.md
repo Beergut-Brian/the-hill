@@ -12,6 +12,7 @@ Sources (newest last):
 - S5 GAME.md decisions, 2026-11-10 Systems lane: character chooser
 - S6 GAME.md decisions, 2026-11-10 Gameplay lane: residents and hazards
 - S7 GAME.md decisions, 2026-11-10 Gameplay lane: vehicles and treasures
+- S8 Kaden 2026-11-10 (via Gary, chooser-catchphrase brief): "when a character is up on the screen, I'd like it to say it's catchphrase once"
 
 There are no "Playtest ... changes" sections yet (`playtests/` holds only the template).
 
@@ -160,9 +161,9 @@ X out of scope, Q open questions, F build phases.
 | H-06 | S1 / S7 | Drill Rig: 5-wide straight down on its own; parks by the shaft; shakes the screen | built | tests/test_vehicles_treasures.gd::test_drill_rig_drills_five_wide_straight_down_on_its_own_until_told_to_stop | Gentle rumble only when Settings allows shake |
 | H-07 | S1 | Vehicles are `.tres` data (dig shape, speed, carry, clear area, sounds, unlock) | built | data/vehicles/*.tres; tests/test_data.gd::test_every_row_loads_with_class_and_id | |
 | H-08 | S1 | Hop in/out with one button; on foot is always an option | built | tests/test_hill_game.gd::test_hop_in_drive_and_hop_out | |
-| H-09 | S1 | Both players can drive different vehicles at once | partial | none found | Nothing in the code stops it, but no test or frame shows it |
+| H-09 | S1 | Both players can drive different vehicles at once | built | tests/test_two_drivers.gd (7 cases: ::test_excavator_and_loader_drive_and_dig_at_the_same_time_on_one_layer, ::test_neither_vehicle_takes_the_other_players_input, ::test_one_player_hopping_out_leaves_the_other_driving, ::test_a_bystander_keeps_their_powers_and_boards_the_free_vehicle_with_b, ::test_two_b_presses_at_one_free_vehicle_give_it_to_one_player, ::test_the_camera_frames_both_drivers_close_and_splits_to_each_driver_far, ::test_each_driven_vehicle_shows_its_drivers_stripe_row); handoff/frames/t003.0s.png, t005.0s.png (`--demo-beat=drivers`) | Two-vehicles lane (2026-11-10, `feature/hill-two-drivers`): P1 in the Excavator and P2 in the Loader on one layer drive, dig and honk in the same frames; the tests passed on the first run, so no game code needed fixing. Boarding is B (GAME.md controls table), not A; there is no boarding prompt to steal a press |
 | H-10 | S1 Art / S2 | Vehicles big, round, friendly; **no eyes or faces** (D45 supersedes "faces in the headlights") | built | tests/test_vehicles_treasures.gd::test_ladder_is_five_vehicles_with_their_own_abilities_and_faceless_art; .scratch/shots/lineup/t008.0s.png | |
-| H-11 | S1 Art | Two-frame idle wobble, exhaust puffs, player's stripe when driven | partial | .scratch/shots/demo/t018.0s.png (green stripe on the Loader) | The frames show the stripe and the bob. Exhaust puffs aren't confirmed |
+| H-11 | S1 Art | Two-frame idle wobble, exhaust puffs, player's stripe when driven | partial | .scratch/shots/demo/t018.0s.png (green stripe on the Loader); handoff/frames/t003.0s.png (`--demo-beat=drivers`: green stripe on P1's Excavator and red on P2's Loader in one frame); tests/test_two_drivers.gd::test_each_driven_vehicle_shows_its_drivers_stripe_row | The frames show both stripes and the bob. Exhaust puffs aren't confirmed |
 | H-12 | S1 | v1.1 vehicle pack: Bulldozer, Cement Mixer, Steamroller, Paver, Tunneler (+ roads) | later | GAME.md Vehicles, "v1.1 vehicle pack" | Garages 5–9 |
 
 ## Players
@@ -195,7 +196,7 @@ X out of scope, Q open questions, F build phases.
 | S-13 | CLAUDE.md / S1 | 60 fps at 1080p on a GTX 1060 | partial | addons/openjar/tileworld/demo (stress run) | The sim cost has been measured. Frame rate on a real GPU hasn't (the producer box renders in software) |
 | S-14 | S1 Tech / F-5 | Move tile world + split screen into `openjar-addons`, tagged | missing | ~/openjar/openjar-addons/addons/openjar has no tileworld or split_screen | Both still live in this repo's `addons/openjar/` |
 | S-15 | S1 Tech | `PictoBubble` scene for arcs, costs and prompts, then moved to `openjar-addons/ui/` | missing | none (no PictoBubble class; bubbles drawn in build_book.gd / town_residents.gd) | |
-| S-16 | S2 | Template features: grown-up menus, solo, `--demo`, `--shots=`, release smoke-boot, `store/jar.glb` | partial | tests/test_lobby.gd::test_saved_solo_stays_off_at_boot; tests/test_hill_demo.gd; .scratch/shots/lobby/t003.0s.png | There is no `store/` folder, so no `jar.glb`. The lobby version label reads v0.0.1, not the tag (template-wide bug) |
+| S-16 | S2 | Template features: grown-up menus, solo, `--demo`, `--shots=`, release smoke-boot, `store/jar.glb` | partial | tests/test_lobby.gd::test_saved_solo_stays_off_at_boot; tests/test_hill_demo.gd; .scratch/shots/lobby/t003.0s.png; tests/test_store.gd::test_manifest_names_the_jar; tests/test_store.gd::test_zip_carries_the_jar_and_store_art; tests/test_store.gd::test_jar_fits_the_launcher_budget | `store/jar.glb` built (store-art-1: a cut-away hill slice, `art/tools/make_jar.sh`; the release manifest always names it and the release fails without it; launcher frame in the lane hand-off). Still open: the lobby version label reads v0.0.1, not the tag (template-wide bug) |
 | S-17 | S2 | Premium slice spend logged in GAME.md by the producer | missing | none (no spend log in GAME.md) | |
 | S-18 | S6 / S7 | `--demo-beat=` showcases (bonk … crystal; garage … lineup) | built | .scratch/shots/{lineup,book,shelf,rescue,reveal,crystal}/ | Polish-2 adds lighthouse, cows, strange, scoop, snore (scripts/gameplay/polish_beats.gd) |
 
@@ -210,6 +211,7 @@ X out of scope, Q open questions, F build phases.
 | M-05 | S4 | Backdrop is a live Hillville with saved scrub and saved time of day | built | scenes/ui/hill_menu_backdrop.gd; .scratch/shots/lobby/t003.0s.png | |
 | M-06 | S4 | Solo is never restored at boot | built | tests/test_lobby.gd::test_saved_solo_stays_off_at_boot | |
 | M-07 | S5 | No character barks; a swap plays the generic `char_swap` | built | tests/test_hill_chooser.gd::test_a_character_without_barks_falls_back_never_to_another_voice | |
+| M-08 | S8 | Chooser says the character's catchphrase once (Kaden 2026-11-10) | built | tests/test_chooser_voice.gd::test_three_fast_steps_say_only_the_last_after_the_settle, ::test_standing_still_never_repeats, ::test_joining_says_the_pick_once, ::test_leaving_cancels_a_pending_line, ::test_two_players_each_on_their_own_voice; tests/test_sync_characters.gd::test_vendors_the_catchphrase; .scratch/cycle-run.log | Ported from the template (docs/ui.md "Chooser voice"). Each step still plays `char_swap` at once (M-07); 0.3 s after the last step (or a join) the podium's character says `voice/catchphrase.ogg` on that player's panned voice, falling back to a bark. 17 of 21 v0.5.0 characters have one; Jeff, Chuck, Bloom and Old Reel stay silent after the swap |
 
 ## Visuals
 
@@ -222,7 +224,7 @@ X out of scope, Q open questions, F build phases.
 | V-05 | S1 Art | Distinct block colours: dirt brown, clay orange, stone grey-blue, ice pale blue, crystal purple | built | .scratch/shots/crystal/t005.0s.png, rescue/t005.0s.png | |
 | V-06 | S1 Art | Treasures sparkle through the dirt from two tiles away | built | .scratch/shots/rescue/t005.0s.png (car and chest sparkle) | |
 | V-07 | S1 Art | Juice: dig particles in block colour, shake on big scoops/falls, dust when a building lands, sparkle burst and ding | built | tests/test_polish.gd::test_a_big_scoop_kicks_and_a_loader_scoop_does_not, ::test_a_boulder_landing_near_kicks_and_far_does_not, ::test_kicks_are_small_short_and_off_with_screen_shake_off; handoff/frames/excavator_big_scoop.png | Polish-2: scripts/gameplay/screen_kick.gd. A scoop of 3+ tiles (Excavator, Crane, Drill) kicks 2-3 px for 0.22 s; a boulder landing within 14 tiles kicks up to 3.5 px for 0.25 s. Capped at 4 px / 0.9 s; Settings screen shake off = none. A still frame cannot show a shake |
-| V-08 | S1 Art / F-6 | Store art: grid (Excavator mid-scoop, fossil flying, Chuck drives, Jeff cheers), hero (Hillville at dusk, Dragon on the peak) | missing | none (no store/ folder) | |
+| V-08 | S1 Art / F-6 | Store art: grid (Excavator mid-scoop, fossil flying, Chuck drives, Jeff cheers), hero (Hillville at dusk, Dragon on the peak) | built | store/grid.png; store/hero.png; tests/test_store.gd::test_store_images_are_the_tv_sizes | Rendered from the game by `art/tools/render_store.sh` (`art/store/store_shot.tscn`: a store camera over a staged real game). Grid: Chuck's Excavator scoops the fossil out of the Clay, Jeff cheers. Hero: Hillville at dusk, the Dragon asleep on her perch |
 | V-09 | S1 / F-6 | Final pixel art for everything | partial | assets/sprites/manifest.json | Sandbox art covers everything on dev, including the restored ruins (bcb0571, PR 9). Missing: a gnome crew sheet, final cows (polish-2 draws a placeholder cow in code), the Workshop |
 | V-10 | S2 / Q-3 | No real places: generic landmarks only | built | .scratch/shots/shelf/t008.0s.png (generic water tower) | |
 
@@ -298,14 +300,11 @@ and `assets/audio/music/` (seeded synth SFX from `assets/audio/tools/make_cues.p
 
 ## Totals
 
-Counted from the Status column, 191 rows, on `dev` at `8ee8d2d` (2026-11-10):
+Counted from the Status column, 192 rows, on `dev` at `8ee8d2d` (2026-11-10) plus M-08 (chooser-catchphrase lane):
 
 | built | partial | missing | superseded | dropped | later | total |
 | --- | --- | --- | --- | --- | --- | --- |
-| 149 | 24 | 9 | 1 | 4 | 4 | 191 |
-
-Recounted by the depth life lane on `feature/hill-depth-life-1` (2026-11-10) after moving W-03, C-17 and W-11 to
-built (later lanes had moved rows without updating this table).
+| 148 | 27 | 8 | 1 | 4 | 4 | 192 |
 
 Before the plan-sync: 112 built, 47 partial, 22 missing, 2 superseded, 4 dropped, 4 later.
 
@@ -336,7 +335,7 @@ play. Size: S = under a lane-hour, M = one lane session, L = several sessions or
 12. **Dragon snore in sync** (W-17, A-13): play the sound on `dragon_snored`, drop hill_audio's second sway. **S**
 13. **Loose things fall and props break** (W-19, W-20): treasures, bathtub, the Mole, the car, gnome-room walls. **M**
 14. **House: lights checked, Jeff and Chuck sleep there** (B-03). **S**
-15. **Store art and `store/jar.glb`** (V-08, S-16): the tile they pick on the TV. Version label bug is template-wide. **M**
+15. ~~**Store art and `store/jar.glb`** (V-08, S-16)~~: done in store-art-1 (2026-11-10). Version label bug is template-wide and still open. **M**
 16. **Final art: crew sheet, approved cow, Workshop; Kaden picks style D or E** (V-09, V-03, F-6). **L**
 17. **Underground puzzles: walls a boulder breaks, blocks that need a vehicle** (C-22). **L**
 18. **Proof gaps: a test or frame for the Mole's honk, two players driving, exhaust puffs** (R-11, H-09, H-11). **S**

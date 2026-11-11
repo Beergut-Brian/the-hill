@@ -101,6 +101,7 @@ slot's pick. Player colours stay with the slot (`Players.COLOR`), never the char
 
 ```gdscript
 signal pick_changed(player: int, id: String)
+signal said(player: int, id: String, path: String)   # a voice line started; player -1: shared voice
 
 var data_path := "res://data/roster.json"   # tests point this at a fixture, then reload()
 var picks_path: String                       # the shared file; tests point this at user://
@@ -111,7 +112,8 @@ func has(id: String) -> bool
 func info(id: String) -> Dictionary          # {} if unknown, else:
 	# id, name ("Jeff"), glb ("res://assets/characters/jeff/jeff.glb" or ""),
 	# pixel ("res://assets/characters/jeff/pixel.png" or ""), voice ("res://.../voice/" or ""),
-	# barks (Array of file stems in voice/), default_for (1, 2 or 0)
+	# barks (Array of file stems in voice/), catchphrase ("res://.../voice/catchphrase.ogg" or ""),
+	# default_for (1, 2 or 0)
 func default_for(player: int) -> String      # data/roster.json defaults.P1 / .P2
 func pick(player: int) -> String             # never "" while the roster has a character
 func set_pick(player: int, id: String) -> bool   # false (no change) if unknown or the other's pick
@@ -119,7 +121,12 @@ func next_free(player: int, dir: int) -> String  # dir +1 / -1 through roster(),
                                                  # other player's pick; pick(player) if none free
 func taken(id: String, by_other_than: int) -> bool
 func reload() -> void                        # re-read roster.json, args, the shared file
-func bark(id: String) -> bool                # plays a random voice bark; false if it has none
+func bark(id: String, player := -1) -> bool  # plays a random voice bark; false if it has none
+func catchphrase(id: String, player := -1) -> bool  # the catchphrase, else bark(); false if neither
+func voice_player(player := -1) -> AudioStreamPlayer  # P1 / P2: that slot's own panned voice
+                                                 # (VoiceP1 / VoiceP2 bus); -1: the shared one.
+                                                 # A new line cuts off only that voice's last one
+var last_said: Dictionary                    # voice (player or -1) -> res:// path of its last line
 ```
 
 **Resolving a slot** at start (`reload()`), first hit that is in `roster()`:
@@ -157,7 +164,8 @@ add_child(body)
 
 **The chooser** (lobby): joined and not ready, left / right (stick or D-pad) calls
 `Roster.set_pick(p, Roster.next_free(p, dir))`; the podium swaps with a squash/pop and a poof, the
-plate shows the new name, the character barks (else the `char_swap` cue). Ready: left / right does
+plate shows the new name, the `char_swap` cue plays, and `SAY_SETTLE` (0.3 s) after the last step
+the character says `Roster.catchphrase(id, p)` once (`docs/ui.md` "Chooser voice"). Ready: left / right does
 nothing; B un-readies. Solo: Select picks which podium the pad drives (A, B and left / right).
 
 ### `Players` (`scripts/autoload/Players.gd`)
