@@ -69,9 +69,13 @@ jobs:
           cat > build/openjar.json <<JSON
           { "slug": "$SLUG", "name": "$NAME", "version": "${GITHUB_REF_NAME}",
             "binary": "game.x86_64", "grid": "store/grid.png", "hero": "store/hero.png",
-            "clip": "store/clip.mp4",$( [[ -s store/jar.glb ]] && echo ' "jar": "store/jar.glb",' ) "dev": $( [[ "$GITHUB_REF_NAME" == *-dev* ]] && echo true || echo false ) }
+            "clip": "store/clip.mp4", "jar": "store/jar.glb", "dev": $( [[ "$GITHUB_REF_NAME" == *-dev* ]] && echo true || echo false ) }
           JSON
-          cp -r store build/ 2>/dev/null || true   # grid, hero and jar.glb (the launcher's jar world) ship next to the binary
+          # grid, hero and jar.glb (the launcher's jar world, art/tools/make_jar.sh) ship next to the
+          # binary; a release without them fails here instead of quietly showing the fallback jar.
+          mkdir -p build/store
+          cp store/jar.glb store/grid.png store/hero.png build/store/
+          test -s build/store/jar.glb && test -s build/store/grid.png && test -s build/store/hero.png
           cat build/openjar.json
       - name: Zip
         run: cd build && zip -r "../${GITHUB_REPOSITORY#*/}-${GITHUB_REF_NAME}-linux.zip" .

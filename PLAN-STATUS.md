@@ -196,7 +196,7 @@ X out of scope, Q open questions, F build phases.
 | S-13 | CLAUDE.md / S1 | 60 fps at 1080p on a GTX 1060 | partial | addons/openjar/tileworld/demo (stress run) | The sim cost has been measured. Frame rate on a real GPU hasn't (the producer box renders in software) |
 | S-14 | S1 Tech / F-5 | Move tile world + split screen into `openjar-addons`, tagged | missing | ~/openjar/openjar-addons/addons/openjar has no tileworld or split_screen | Both still live in this repo's `addons/openjar/` |
 | S-15 | S1 Tech | `PictoBubble` scene for arcs, costs and prompts, then moved to `openjar-addons/ui/` | missing | none (no PictoBubble class; bubbles drawn in build_book.gd / town_residents.gd) | |
-| S-16 | S2 | Template features: grown-up menus, solo, `--demo`, `--shots=`, release smoke-boot, `store/jar.glb` | partial | tests/test_lobby.gd::test_saved_solo_stays_off_at_boot; tests/test_hill_demo.gd; .scratch/shots/lobby/t003.0s.png | There is no `store/` folder, so no `jar.glb`. The lobby version label reads v0.0.1, not the tag (template-wide bug) |
+| S-16 | S2 | Template features: grown-up menus, solo, `--demo`, `--shots=`, release smoke-boot, `store/jar.glb` | partial | tests/test_lobby.gd::test_saved_solo_stays_off_at_boot; tests/test_hill_demo.gd; .scratch/shots/lobby/t003.0s.png; tests/test_store.gd::test_manifest_names_the_jar; tests/test_store.gd::test_zip_carries_the_jar_and_store_art; tests/test_store.gd::test_jar_fits_the_launcher_budget | `store/jar.glb` built (store-art-1: a cut-away hill slice, `art/tools/make_jar.sh`; the release manifest always names it and the release fails without it; launcher frame in the lane hand-off). Still open: the lobby version label reads v0.0.1, not the tag (template-wide bug) |
 | S-17 | S2 | Premium slice spend logged in GAME.md by the producer | missing | none (no spend log in GAME.md) | |
 | S-18 | S6 / S7 | `--demo-beat=` showcases (bonk … crystal; garage … lineup) | built | .scratch/shots/{lineup,book,shelf,rescue,reveal,crystal}/ | Polish-2 adds lighthouse, cows, strange, scoop, snore (scripts/gameplay/polish_beats.gd) |
 
@@ -224,7 +224,7 @@ X out of scope, Q open questions, F build phases.
 | V-05 | S1 Art | Distinct block colours: dirt brown, clay orange, stone grey-blue, ice pale blue, crystal purple | built | .scratch/shots/crystal/t005.0s.png, rescue/t005.0s.png | |
 | V-06 | S1 Art | Treasures sparkle through the dirt from two tiles away | built | .scratch/shots/rescue/t005.0s.png (car and chest sparkle) | |
 | V-07 | S1 Art | Juice: dig particles in block colour, shake on big scoops/falls, dust when a building lands, sparkle burst and ding | built | tests/test_polish.gd::test_a_big_scoop_kicks_and_a_loader_scoop_does_not, ::test_a_boulder_landing_near_kicks_and_far_does_not, ::test_kicks_are_small_short_and_off_with_screen_shake_off; handoff/frames/excavator_big_scoop.png | Polish-2: scripts/gameplay/screen_kick.gd. A scoop of 3+ tiles (Excavator, Crane, Drill) kicks 2-3 px for 0.22 s; a boulder landing within 14 tiles kicks up to 3.5 px for 0.25 s. Capped at 4 px / 0.9 s; Settings screen shake off = none. A still frame cannot show a shake |
-| V-08 | S1 Art / F-6 | Store art: grid (Excavator mid-scoop, fossil flying, Chuck drives, Jeff cheers), hero (Hillville at dusk, Dragon on the peak) | missing | none (no store/ folder) | |
+| V-08 | S1 Art / F-6 | Store art: grid (Excavator mid-scoop, fossil flying, Chuck drives, Jeff cheers), hero (Hillville at dusk, Dragon on the peak) | built | store/grid.png; store/hero.png; tests/test_store.gd::test_store_images_are_the_tv_sizes | Rendered from the game by `art/tools/render_store.sh` (`art/store/store_shot.tscn`: a store camera over a staged real game). Grid: Chuck's Excavator scoops the fossil out of the Clay, Jeff cheers. Hero: Hillville at dusk, the Dragon asleep on her perch |
 | V-09 | S1 / F-6 | Final pixel art for everything | partial | assets/sprites/manifest.json | Sandbox art covers everything on dev, including the restored ruins (bcb0571, PR 9). Missing: a gnome crew sheet, final cows (polish-2 draws a placeholder cow in code), the Workshop |
 | V-10 | S2 / Q-3 | No real places: generic landmarks only | built | .scratch/shots/shelf/t008.0s.png (generic water tower) | |
 
@@ -304,7 +304,7 @@ Counted from the Status column, 192 rows, on `dev` at `8ee8d2d` (2026-11-10) plu
 
 | built | partial | missing | superseded | dropped | later | total |
 | --- | --- | --- | --- | --- | --- | --- |
-| 141 | 31 | 11 | 1 | 4 | 4 | 192 |
+| 148 | 27 | 8 | 1 | 4 | 4 | 192 |
 
 Before the plan-sync: 112 built, 47 partial, 22 missing, 2 superseded, 4 dropped, 4 later.
 
@@ -335,7 +335,7 @@ play. Size: S = under a lane-hour, M = one lane session, L = several sessions or
 12. **Dragon snore in sync** (W-17, A-13): play the sound on `dragon_snored`, drop hill_audio's second sway. **S**
 13. **Loose things fall and props break** (W-19, W-20): treasures, bathtub, the Mole, the car, gnome-room walls. **M**
 14. **House: lights checked, Jeff and Chuck sleep there** (B-03). **S**
-15. **Store art and `store/jar.glb`** (V-08, S-16): the tile they pick on the TV. Version label bug is template-wide. **M**
+15. ~~**Store art and `store/jar.glb`** (V-08, S-16)~~: done in store-art-1 (2026-11-10). Version label bug is template-wide and still open. **M**
 16. **Final art: crew sheet, approved cow, Workshop; Kaden picks style D or E** (V-09, V-03, F-6). **L**
 17. **Underground puzzles: walls a boulder breaks, blocks that need a vehicle** (C-22). **L**
 18. **Proof gaps: a test or frame for the Mole's honk, two players driving, exhaust puffs** (R-11, H-09, H-11). **S**
