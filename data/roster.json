@@ -1,6 +1,6 @@
 {
 	"source": "openjar-characters",
-	"characters_tag": "v0.5.2",
+	"characters_tag": "v0.5.3",
 	"roster": [
 		"jeff",
 		"chuck",
@@ -38,18 +38,36 @@
 			"name": "Jeff",
 			"glb": "res://assets/characters/jeff/jeff.glb",
 			"pixel": "res://assets/characters/jeff/pixel.png",
-			"voice": "",
-			"barks": [],
-			"catchphrase": "",
+			"voice": "res://assets/characters/jeff/voice/",
+			"barks": [
+				"cheer",
+				"join",
+				"lose",
+				"oops",
+				"ready",
+				"swap_in",
+				"wait",
+				"win"
+			],
+			"catchphrase": "res://assets/characters/jeff/voice/catchphrase.ogg",
 			"default_for": 1
 		},
 		"chuck": {
 			"name": "Chuck",
 			"glb": "res://assets/characters/chuck/chuck.glb",
 			"pixel": "res://assets/characters/chuck/pixel.png",
-			"voice": "",
-			"barks": [],
-			"catchphrase": "",
+			"voice": "res://assets/characters/chuck/voice/",
+			"barks": [
+				"cheer",
+				"join",
+				"lose",
+				"oops",
+				"ready",
+				"swap_in",
+				"wait",
+				"win"
+			],
+			"catchphrase": "res://assets/characters/chuck/voice/catchphrase.ogg",
 			"default_for": 2
 		},
 		"astro_ana": {
