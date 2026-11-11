@@ -264,7 +264,8 @@ func test_a_big_scoop_kicks_and_a_loader_scoop_does_not() -> void:
 	_game.place_player(P1, HillGame.HILLVILLE, Vector2(30 * 48, 0))
 	node.facing = -1
 	await _physics(2)
-	assert_int(node._scoop()).is_between(1, HillPlayer.BIG_SCOOP - 1)   # on foot: one tile
+	# PT10-5: on foot nothing is cleared (a bonk and a Front Loader picture), so no kick either.
+	assert_int(node._scoop()).is_equal(0)
 	await _physics(1)
 	assert_bool(_game.kick.active(P1)).is_false()
 	# Fresh scrub further along for the Excavator's 3x2 bucket.
