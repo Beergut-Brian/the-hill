@@ -14,6 +14,7 @@ var _real_picks := ""
 
 
 func before() -> void:
+	SuiteSandbox.enter("hill_menu")   # first: never the real profile, settings or picks file
 	_real_settings = Save.settings_path
 	_real_profile = Save.profile
 	Save.settings_path = "user://test_settings_hill_menu.json"
@@ -36,6 +37,7 @@ func after() -> void:
 	Roster.args_override = PackedStringArray()
 	Roster.reload()
 	Game.quit_exits = true
+	SuiteSandbox.leave()   # last: the real profile, settings and picks come back
 
 
 func before_test() -> void:

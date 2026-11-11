@@ -68,3 +68,11 @@ func test_save_round_trip() -> void:
 	var u := _fresh()
 	u.load_save(d)
 	assert_float(u.time).is_equal_approx(0.66, 0.0001)
+
+
+func before() -> void:
+	SuiteSandbox.enter("time_of_day")   # never the real profile, settings or picks file
+
+
+func after() -> void:
+	SuiteSandbox.leave()

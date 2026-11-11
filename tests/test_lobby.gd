@@ -20,6 +20,7 @@ var _real_picks := ""
 
 
 func before() -> void:
+	SuiteSandbox.enter("lobby")   # first: never the real profile, settings or picks file
 	_real_settings = Save.settings_path
 	_real_profile = Save.profile
 	Save.settings_path = "user://test_settings_lobby.json"
@@ -43,6 +44,7 @@ func after() -> void:
 	DirAccess.remove_absolute(Roster.picks_path)
 	Roster.picks_path = _real_picks
 	Roster.reload()
+	SuiteSandbox.leave()   # last: the real profile, settings and picks come back
 
 
 func before_test() -> void:
