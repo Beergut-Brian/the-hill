@@ -12,6 +12,8 @@ class_name HillPlayer
 extends CharacterBody2D
 
 signal swung(cell: Vector2i)       # a dig that found nothing to remove
+## A dig press with no shovel (the Mole has it): HillStory shows the empty-hands bubble.
+signal no_shovel()
 signal honked()
 
 const WIDTH := 12.0
@@ -52,6 +54,9 @@ var player := 0
 var game: Node
 var world: TileWorld
 var locked := false
+## Story (contract "Shovel"): false while the Mole has the shovel. On foot, A then swings empty
+## hands (no_shovel) and digs nothing; a vehicle still digs. The dig code reads can_dig().
+var has_shovel := true
 ## The stick this physics frame (zero while locked); the camera lead reads it (S-06).
 var move_intent := Vector2.ZERO
 var intent_source := Callable()
@@ -392,16 +397,10 @@ func lift_prompt() -> int:
 	return int(el.prompt_of(player)) if el != null and el.has_method("prompt_of") else 0
 
 
-## False while the story says this player has no shovel (the Mole took it): no digging on foot.
-## Reads the story lane's `has_shovel` / `can_dig` flags if they exist (null = not there = true).
+## PT10-6: false while the story lane says this player has no shovel (can_dig()): no dig, no
+## step, no marker.
 func shovel_ok() -> bool:
-	if vehicle != null:
-		return true
-	for flag in ["has_shovel", "can_dig"]:
-		var v: Variant = get(flag)
-		if v != null and not bool(v):
-			return false
-	return true
+	return can_dig()
 
 
 ## PT10-6: the cells the next dig takes (solid, diggable at this tier), or [] when it would only
@@ -545,7 +544,9 @@ func aim_of(move: Vector2, prev := Vector2i.ZERO) -> Vector2i:
 func _dig(move: Vector2) -> void:
 	if ability != null and ability.on_dig(move):
 		return
-	if not shovel_ok():
+	if not can_dig():
+		_swing = 1.0
+		no_shovel.emit()
 		return
 	if is_stepping_aim():
 		step_dig()
@@ -663,6 +664,11 @@ func _climb_step(delta: float) -> void:
 	velocity = Vector2.ZERO
 	if k >= 1.0:
 		_climb = {}
+
+
+## False on foot while the Mole has the shovel (has_shovel); a vehicle always digs.
+func can_dig() -> bool:
+	return has_shovel or vehicle != null
 
 
 ## One dig (or scoop up top) toward `move`; true when it removed something.

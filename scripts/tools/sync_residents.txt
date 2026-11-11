@@ -1,0 +1,5 @@
+# The Hill's residents whose barks sync_characters.sh vendors (voice/*.ogg only), one id per line.
+# Ids are openjar-characters ids; Audio.PACK_LINES maps each Hill bark to the lines it plays.
+mole
+gnome_foreman
+dragon

@@ -178,10 +178,8 @@ func test_a_wobbly_stick_aiming_down_never_flips_facing() -> void:
 
 
 func test_no_shovel_no_dig() -> void:
-	var scr := GDScript.new()
-	scr.source_code = "extends HillPlayer\nvar has_shovel := false\n"
-	scr.reload()
-	var pl: HillPlayer = scr.new()
+	var pl := HillPlayer.new()
+	pl.has_shovel = false
 	assert_bool(pl.shovel_ok()).is_false()
 	pl.free()
 	var plain := HillPlayer.new()

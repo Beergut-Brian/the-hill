@@ -3,12 +3,20 @@
 ## `shape.below` of its bottom-row cells (footprint cells whose below is outside the footprint).
 ## When the solid share of those drops below `support_needed` (checked when one of them is dug),
 ## it breaks: one awake FallingBody per footprint cell, TileWorld.prop_broke, then it frees itself.
+## With `whole` it drops instead: one upright FallingBody the size of the footprint that carries the
+## prop's own children (its art, lamps) along, and prop_broke gets that one body as its piece.
+## Breaking cuts the first Sprite2D child (unscaled, not centred) into one region per piece, so the
+## chunks show the prop's picture. Both bounce a little when they land (`bounce`).
 class_name BreakableProp
 extends Node2D
 
 @export var footprint := Vector2i(3, 2)
 @export var support_needed: float = 0.5
 @export var color := Color(0.75, 0.32, 0.25)
+## Drop as one body instead of breaking into a piece per cell.
+@export var whole := false
+## PhysicsMaterial bounce of the loose body / pieces: a small cartoon hop on landing.
+@export var bounce := 0.3
 
 var world: TileWorld
 var broken := false
@@ -96,14 +104,63 @@ func break_apart() -> void:
 	var cs := _cell_size()
 	var cells := footprint_cells()
 	var pieces: Array = []
-	for c in cells:
-		var p := FallingBody.new()
-		p.color = color
-		p.size_px = Vector2.ONE * (cs - 2.0)
-		p.position = world.shape.center_of(c)
+	if whole:
+		var size := Vector2(footprint) * cs
+		var p := _piece(size - Vector2(2, 2))
+		p.lock_rotation = true
+		var centre := Vector2.ZERO
+		for c in cells:
+			centre += world.shape.center_of(c)
+		p.position = centre / float(cells.size())
 		world.add_child(p)
+		if _art() != null:
+			p.self_modulate.a = 0.0
+		for c in get_children():
+			if c is Node2D:
+				(c as Node2D).reparent(p, true)
 		pieces.append(p)
+	else:
+		var art := _art()
+		var origin := cells[0]
+		for c in cells:
+			var p := _piece(Vector2.ONE * (cs - 2.0))
+			p.position = world.shape.center_of(c)
+			if art != null:
+				var local := Vector2(c - origin) * cs - art.position
+				var region := Rect2(local, Vector2.ONE * cs).intersection(Rect2(Vector2.ZERO, art.texture.get_size()))
+				if region.has_area():
+					var s := Sprite2D.new()
+					s.name = "Art"
+					s.texture = art.texture
+					s.texture_filter = art.texture_filter
+					s.region_enabled = true
+					s.region_rect = region
+					s.centered = false
+					s.position = region.position - local - Vector2.ONE * cs * 0.5
+					p.add_child(s)
+					p.self_modulate.a = 0.0
+			world.add_child(p)
+			pieces.append(p)
 	for c in cells:
 		world._bodies.wake_resting_on(c)
 	world.prop_broke.emit(self, pieces)
 	queue_free()
+
+
+func _piece(size: Vector2) -> FallingBody:
+	var p := FallingBody.new()
+	p.color = color
+	p.size_px = size
+	var m := PhysicsMaterial.new()
+	m.bounce = bounce
+	p.physics_material_override = m
+	return p
+
+
+## The prop's picture, when it has one a break can cut up.
+func _art() -> Sprite2D:
+	for c in get_children():
+		var s := c as Sprite2D
+		if s != null and s.texture != null and not s.centered and not s.region_enabled and s.scale == Vector2.ONE:
+			return s
+	return null

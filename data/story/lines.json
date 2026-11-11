@@ -1,0 +1,313 @@
+{
+	"note": "Every spoken story line. Gary voices each id to res://assets/story/voice/<id>.ogg. 'any' = whichever character the player picked (no file: their library bark). fallback = bark:<cue> (the speaker's library line) or sfx:<cue> (an Audio cue) until the file exists.",
+	"lines": [
+		{
+			"id": "intro_pip_hello",
+			"character": "mayor_pip",
+			"text": "Ahem! Jeff! Chuck! The Mayor has... arrived. Down here.",
+			"delivery": "squeaky, straining to sound grand, slow and formal",
+			"fallback": "bark:join"
+		},
+		{
+			"id": "intro_pip_deed",
+			"character": "mayor_pip",
+			"text": "I hereby declare this hill... YOURS! To do as you want!",
+			"delivery": "grand build-up, voice cracks up on YOURS",
+			"fallback": "bark:ready"
+		},
+		{
+			"id": "intro_react_jeff",
+			"character": "jeff",
+			"text": "Whoa. A whole hill. Far out.",
+			"delivery": "slow, warm, delighted",
+			"fallback": "bark:cheer"
+		},
+		{
+			"id": "intro_react_chuck",
+			"character": "chuck",
+			"text": "Ours? Watch this. Best hill ever.",
+			"delivery": "fast, gruff, confident",
+			"fallback": "bark:cheer"
+		},
+		{
+			"id": "intro_react_any",
+			"character": "any",
+			"text": "Whoa! Ours!",
+			"delivery": "delighted",
+			"fallback": "bark:cheer"
+		},
+		{
+			"id": "intro_pip_shaft",
+			"character": "mayor_pip",
+			"text": "But! The old mineshaft... [nervous] crazy stuff happens down there.",
+			"delivery": "drops to a hush, speeds up when nervous",
+			"fallback": "bark:wait"
+		},
+		{
+			"id": "intro_pip_careful",
+			"character": "mayor_pip",
+			"text": "Be careful. Very... ceremonially careful.",
+			"delivery": "formal again, a little proud of the word",
+			"fallback": "bark:oops"
+		},
+		{
+			"id": "intro_dot_hello",
+			"character": "foreman_dot",
+			"text": "Dot on site! Hard hats on!",
+			"delivery": "loud, brisk, over machinery",
+			"fallback": "bark:swap_in"
+		},
+		{
+			"id": "intro_dot_loader",
+			"character": "foreman_dot",
+			"text": "This is your Front Loader. Clearing the land is its job.",
+			"delivery": "brisk, proud of the machine",
+			"fallback": "bark:ready"
+		},
+		{
+			"id": "intro_dot_go",
+			"character": "foreman_dot",
+			"text": "Trees, rocks, stumps: scoop 'em up. Chop chop!",
+			"delivery": "bright lift on chop chop",
+			"fallback": "bark:join"
+		},
+		{
+			"id": "intro_pip_open",
+			"character": "mayor_pip",
+			"text": "I hereby declare this hill... OPEN!",
+			"delivery": "big squeaky finish",
+			"fallback": "bark:win"
+		},
+		{
+			"id": "mole_sneak",
+			"character": "mole",
+			"text": "[whispers] Oh dear... oh dear...",
+			"delivery": "whispered, tiptoeing, polite cold",
+			"fallback": "sfx:mole_pop"
+		},
+		{
+			"id": "mole_caught",
+			"character": "mole",
+			"text": "Oh, oh!",
+			"delivery": "startled, caught holding something",
+			"fallback": "sfx:mole_steal"
+		},
+		{
+			"id": "mole_eep",
+			"character": "mole",
+			"text": "Eep.",
+			"delivery": "tiny, guilty",
+			"fallback": "sfx:mole_dig"
+		},
+		{
+			"id": "theft_hey_jeff",
+			"character": "jeff",
+			"text": "Whoa... hey. My shovel?",
+			"delivery": "slow, puzzled, never angry",
+			"fallback": "bark:oops"
+		},
+		{
+			"id": "theft_hey_chuck",
+			"character": "chuck",
+			"text": "Hey! That's MY shovel!",
+			"delivery": "fast, gruff, more surprised than cross",
+			"fallback": "bark:oops"
+		},
+		{
+			"id": "theft_hey_any",
+			"character": "any",
+			"text": "Hey! My shovel!",
+			"delivery": "surprised",
+			"fallback": "bark:oops"
+		},
+		{
+			"id": "wake_jeff",
+			"character": "jeff",
+			"text": "[yawns] Whoa. Nap time's over?",
+			"delivery": "sleepy, warm",
+			"fallback": "bark:wait"
+		},
+		{
+			"id": "wake_chuck",
+			"character": "chuck",
+			"text": "[yawns] I meant to do that.",
+			"delivery": "sleepy, gruff",
+			"fallback": "bark:wait"
+		},
+		{
+			"id": "wake_any",
+			"character": "any",
+			"text": "[yawns] Huh?",
+			"delivery": "sleepy",
+			"fallback": "bark:wait"
+		},
+		{
+			"id": "mole_return",
+			"character": "mole",
+			"text": "Oh dear, here... sorry, sorry.",
+			"delivery": "gentle, sheepish, handing it over",
+			"fallback": "sfx:shovel_back"
+		},
+		{
+			"id": "mole_relieved",
+			"character": "mole",
+			"text": "Ohhh.",
+			"delivery": "long relieved sigh",
+			"fallback": "sfx:mole_sorry"
+		},
+		{
+			"id": "mole_return_last",
+			"character": "mole",
+			"text": "Oh dear... [hopeful] oh?",
+			"delivery": "sheepish, then rising hopeful; he stays this time",
+			"fallback": "sfx:mole_hello"
+		},
+		{
+			"id": "thanks_jeff",
+			"character": "jeff",
+			"text": "Nice one, little guy.",
+			"delivery": "warm, kind",
+			"fallback": "bark:cheer"
+		},
+		{
+			"id": "thanks_chuck",
+			"character": "chuck",
+			"text": "...not bad. Thanks.",
+			"delivery": "grudging, softening",
+			"fallback": "bark:cheer"
+		},
+		{
+			"id": "thanks_any",
+			"character": "any",
+			"text": "Thanks!",
+			"delivery": "kind",
+			"fallback": "bark:cheer"
+		},
+		{
+			"id": "crew_freed",
+			"character": "gnome_foreman",
+			"text": "[two short whistles] Mm! Hm-hm!",
+			"delivery": "whistle is SFX; wordless, dry, pleased",
+			"fallback": "sfx:whistle"
+		},
+		{
+			"id": "caveman_thaw",
+			"character": "caveman",
+			"text": "Brrr... [laughs] Hah! Ooh!",
+			"delivery": "shiver then delighted barrel-chested laugh",
+			"fallback": "sfx:caveman_laugh"
+		},
+		{
+			"id": "dragon_reveal",
+			"character": "dragon",
+			"text": "[huge slow yawn] Mmmm...",
+			"delivery": "huge, slow, warm, never scary",
+			"fallback": "sfx:dragon_yawn"
+		},
+		{
+			"id": "dragon_wake",
+			"character": "dragon",
+			"text": "[sheepish low moan] Mmm... mmm?",
+			"delivery": "low, sheepish, then hopeful",
+			"fallback": "sfx:dragon_hopeful"
+		},
+		{
+			"id": "arrive_mole",
+			"character": "mole",
+			"text": "Oh dear... [hopeful] oh?",
+			"delivery": "sheepish, rising hopeful",
+			"fallback": "sfx:mole_hello"
+		},
+		{
+			"id": "arrive_foreman",
+			"character": "gnome_foreman",
+			"text": "Hm... mm?",
+			"delivery": "wordless, small, hopeful",
+			"fallback": "sfx:resident_hm"
+		},
+		{
+			"id": "arrive_caveman",
+			"character": "caveman",
+			"text": "Hoo! Hah!",
+			"delivery": "delighted wave",
+			"fallback": "sfx:caveman_hoot"
+		},
+		{
+			"id": "arrive_dragon",
+			"character": "dragon",
+			"text": "[rising low hum] Mmm?",
+			"delivery": "warm, hopeful",
+			"fallback": "sfx:dragon_hopeful"
+		},
+		{
+			"id": "movein_mole",
+			"character": "mole",
+			"text": "[happy trill] Oh dear! Oh dear!",
+			"delivery": "rising happy, the happiest oh dear",
+			"fallback": "sfx:payoff_mole"
+		},
+		{
+			"id": "movein_foreman",
+			"character": "gnome_foreman",
+			"text": "[long shift whistle] Mm!",
+			"delivery": "SFX whistle then one proud mm",
+			"fallback": "sfx:payoff_gnomes"
+		},
+		{
+			"id": "movein_caveman",
+			"character": "caveman",
+			"text": "[big hoot] Ooooh!",
+			"delivery": "huge happy hoot",
+			"fallback": "sfx:payoff_caveman"
+		},
+		{
+			"id": "movein_dragon",
+			"character": "dragon",
+			"text": "[happy hoot] Mmmm. [purr]",
+			"delivery": "low happy hoot then deep purr",
+			"fallback": "sfx:payoff_dragon"
+		},
+		{
+			"id": "movein_dot",
+			"character": "foreman_dot",
+			"text": "Now THAT is a building.",
+			"delivery": "proud, loud",
+			"fallback": "bark:win"
+		},
+		{
+			"id": "unlock_dump_truck",
+			"character": "foreman_dot",
+			"text": "Dump Truck! Hauls a whole pile. Chop chop!",
+			"delivery": "brisk, excited",
+			"fallback": "bark:cheer"
+		},
+		{
+			"id": "unlock_crane",
+			"character": "foreman_dot",
+			"text": "Crane's here! Up go the tall ones!",
+			"delivery": "loud, proud",
+			"fallback": "bark:cheer"
+		},
+		{
+			"id": "unlock_drill_rig",
+			"character": "foreman_dot",
+			"text": "Drill Rig! Straight down, team!",
+			"delivery": "loud, bright",
+			"fallback": "bark:cheer"
+		},
+		{
+			"id": "unlock_excavator",
+			"character": "foreman_dot",
+			"text": "Excavator! Big scoops, team!",
+			"delivery": "loud, bright",
+			"fallback": "bark:cheer"
+		},
+		{
+			"id": "unlock_any",
+			"character": "foreman_dot",
+			"text": "New machine on site! Chop chop!",
+			"delivery": "loud, brisk",
+			"fallback": "bark:cheer"
+		}
+	]
+}

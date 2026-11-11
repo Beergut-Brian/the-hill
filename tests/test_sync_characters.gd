@@ -91,3 +91,53 @@ func test_vendors_the_catchphrase() -> void:
 	assert_bool(_has("assets/characters/whistle/voice/catchphrase_calm.ogg")).is_false()
 	var credits := FileAccess.get_file_as_string(_game.path_join("assets/CREDITS.md"))
 	assert_str(credits).contains("characters/whistle/voice/catchphrase.ogg")
+
+
+## Residents listed in scripts/tools/sync_residents.txt get only their voice barks (top-level
+## voice/*.ogg: no glb, no lib/, no source/), a "residents" block and CREDITS rows. A resident with
+## no recorded audio gets no folder (a stale one goes), a playable id in the list is skipped, and a
+## rerun is idempotent and leaves unrelated files alone.
+func test_vendors_resident_voice_packs_only_when_recorded() -> void:
+	if _tools_missing():
+		push_warning("test_sync_characters: no git/python3 here, skipped")
+		return
+	for f in ["burrow_oh.ogg", "burrow_eep.ogg", "lib/cheer.ogg", "source/master.ogg", "README.md"]:
+		_put(_lib.path_join("characters/burrow/voice/" + f), "ogg " + f)
+	_put(_lib.path_join("characters/quiet/voice/README.md"), "to be rendered")
+	_put(_lib.path_join("models/burrow.glb"), "not really a glb")
+	_put(_lib.path_join("characters.json"), JSON.stringify({ "roster": ["sprocket"],
+			"defaults": { "P1": "sprocket" }, "player_colours": {},
+			"characters": [{ "id": "sprocket", "name": "Sprocket", "playable": true,
+				"model_3d": "models/sprocket.glb" },
+				{ "id": "burrow", "name": "The Burrower", "playable": false, "model_3d": "models/burrow.glb",
+					"voice": "characters/burrow/voice/" },
+				{ "id": "quiet", "name": "The Quiet One", "playable": false, "voice": "characters/quiet/voice/" }] }))
+	_sh("cd '%s' && git init -q && git add -A && git -c user.name=t -c user.email=t@t.invalid " % _lib
+			+ "-c commit.gpgsign=false commit -qm residents && git tag v9.2.0")
+	_put(_game.path_join("scripts/tools/sync_residents.txt"), "# residents\nburrow\nquiet  # none yet\nsprocket\n")
+	_put(_game.path_join("assets/characters/quiet/voice/old.ogg"), "stale")
+	_put(_game.path_join("assets/sprites/keep.txt"), "not ours")
+	var r := _sync("v9.2.0")
+	assert_int(r.code).override_failure_message(r.log).is_equal(0)
+	var d = JSON.parse_string(FileAccess.get_file_as_string(_game.path_join("data/roster.json")))
+	assert_array(d.roster).is_equal(["sprocket"])
+	assert_bool(d.characters.has("burrow")).is_false()
+	assert_array(d.residents.keys()).is_equal(["burrow"])
+	assert_str(d.residents.burrow.voice).is_equal("res://assets/characters/burrow/voice/")
+	assert_array(d.residents.burrow.barks).is_equal(["burrow_eep", "burrow_oh"])
+	assert_str(FileAccess.get_file_as_string(_game.path_join("assets/characters/burrow/voice/burrow_oh.ogg"))) \
+			.is_equal("ogg burrow_oh.ogg")
+	for gone in ["assets/characters/burrow/burrow.glb", "assets/characters/burrow/voice/lib",
+			"assets/characters/burrow/voice/master.ogg", "assets/characters/burrow/voice/cheer.ogg",
+			"assets/characters/quiet"]:
+		assert_bool(_has(gone)).override_failure_message(gone).is_false()
+	assert_bool(_has("assets/sprites/keep.txt")).is_true()
+	var credits := FileAccess.get_file_as_string(_game.path_join("assets/CREDITS.md"))
+	assert_str(credits).contains("characters/burrow/voice/*.ogg").contains("The Burrower voice barks")
+	# Rerun: same result, nothing else touched.
+	var before_json := FileAccess.get_file_as_string(_game.path_join("data/roster.json"))
+	r = _sync("v9.2.0")
+	assert_int(r.code).override_failure_message(r.log).is_equal(0)
+	assert_str(FileAccess.get_file_as_string(_game.path_join("data/roster.json"))).is_equal(before_json)
+	assert_str(FileAccess.get_file_as_string(_game.path_join("assets/CREDITS.md"))).is_equal(credits)
+	assert_bool(_has("assets/sprites/keep.txt")).is_true()
