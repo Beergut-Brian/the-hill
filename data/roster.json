@@ -39,6 +39,7 @@
 			"pixel": "res://assets/characters/jeff/pixel.png",
 			"voice": "",
 			"barks": [],
+			"catchphrase": "",
 			"default_for": 1
 		},
 		"chuck": {
@@ -47,6 +48,7 @@
 			"pixel": "res://assets/characters/chuck/pixel.png",
 			"voice": "",
 			"barks": [],
+			"catchphrase": "",
 			"default_for": 2
 		},
 		"astro_ana": {
@@ -64,6 +66,7 @@
 				"wait",
 				"win"
 			],
+			"catchphrase": "res://assets/characters/astro_ana/voice/catchphrase.ogg",
 			"default_for": 0
 		},
 		"big_tiny": {
@@ -81,6 +84,7 @@
 				"wait",
 				"win"
 			],
+			"catchphrase": "res://assets/characters/big_tiny/voice/catchphrase.ogg",
 			"default_for": 0
 		},
 		"bloom": {
@@ -89,6 +93,7 @@
 			"pixel": "res://assets/characters/bloom/pixel.png",
 			"voice": "",
 			"barks": [],
+			"catchphrase": "",
 			"default_for": 0
 		},
 		"boxbot": {
@@ -106,6 +111,7 @@
 				"wait",
 				"win"
 			],
+			"catchphrase": "res://assets/characters/boxbot/voice/catchphrase.ogg",
 			"default_for": 0
 		},
 		"captain_crumbs": {
@@ -123,6 +129,7 @@
 				"wait",
 				"win"
 			],
+			"catchphrase": "res://assets/characters/captain_crumbs/voice/catchphrase.ogg",
 			"default_for": 0
 		},
 		"coach_whistle": {
@@ -140,6 +147,7 @@
 				"wait",
 				"win"
 			],
+			"catchphrase": "res://assets/characters/coach_whistle/voice/catchphrase.ogg",
 			"default_for": 0
 		},
 		"el_burrito": {
@@ -157,6 +165,7 @@
 				"wait",
 				"win"
 			],
+			"catchphrase": "res://assets/characters/el_burrito/voice/catchphrase.ogg",
 			"default_for": 0
 		},
 		"foreman_dot": {
@@ -174,6 +183,7 @@
 				"wait",
 				"win"
 			],
+			"catchphrase": "res://assets/characters/foreman_dot/voice/catchphrase.ogg",
 			"default_for": 0
 		},
 		"granny_gravel": {
@@ -191,6 +201,7 @@
 				"wait",
 				"win"
 			],
+			"catchphrase": "res://assets/characters/granny_gravel/voice/catchphrase.ogg",
 			"default_for": 0
 		},
 		"lampy": {
@@ -208,6 +219,7 @@
 				"wait",
 				"win"
 			],
+			"catchphrase": "res://assets/characters/lampy/voice/catchphrase.ogg",
 			"default_for": 0
 		},
 		"mayor_pip": {
@@ -225,6 +237,7 @@
 				"wait",
 				"win"
 			],
+			"catchphrase": "res://assets/characters/mayor_pip/voice/catchphrase.ogg",
 			"default_for": 0
 		},
 		"old_reel": {
@@ -233,6 +246,7 @@
 			"pixel": "res://assets/characters/old_reel/pixel.png",
 			"voice": "",
 			"barks": [],
+			"catchphrase": "",
 			"default_for": 0
 		},
 		"professor_fizz": {
@@ -250,6 +264,7 @@
 				"wait",
 				"win"
 			],
+			"catchphrase": "res://assets/characters/professor_fizz/voice/catchphrase.ogg",
 			"default_for": 0
 		},
 		"rexy": {
@@ -267,6 +282,7 @@
 				"wait",
 				"win"
 			],
+			"catchphrase": "res://assets/characters/rexy/voice/catchphrase.ogg",
 			"default_for": 0
 		},
 		"ribbit": {
@@ -284,6 +300,7 @@
 				"wait",
 				"win"
 			],
+			"catchphrase": "res://assets/characters/ribbit/voice/catchphrase.ogg",
 			"default_for": 0
 		},
 		"scrap": {
@@ -301,6 +318,7 @@
 				"wait",
 				"win"
 			],
+			"catchphrase": "res://assets/characters/scrap/voice/catchphrase.ogg",
 			"default_for": 0
 		},
 		"sir_clank": {
@@ -318,6 +336,7 @@
 				"wait",
 				"win"
 			],
+			"catchphrase": "res://assets/characters/sir_clank/voice/catchphrase.ogg",
 			"default_for": 0
 		},
 		"snooze": {
@@ -335,6 +354,7 @@
 				"wait",
 				"win"
 			],
+			"catchphrase": "res://assets/characters/snooze/voice/catchphrase.ogg",
 			"default_for": 0
 		},
 		"zorp": {
@@ -352,6 +372,7 @@
 				"wait",
 				"win"
 			],
+			"catchphrase": "res://assets/characters/zorp/voice/catchphrase.ogg",
 			"default_for": 0
 		}
 	}

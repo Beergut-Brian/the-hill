@@ -12,6 +12,7 @@ Sources (newest last):
 - S5 GAME.md decisions, 2026-11-10 Systems lane: character chooser
 - S6 GAME.md decisions, 2026-11-10 Gameplay lane: residents and hazards
 - S7 GAME.md decisions, 2026-11-10 Gameplay lane: vehicles and treasures
+- S8 Kaden 2026-11-10 (via Gary, chooser-catchphrase brief): "when a character is up on the screen, I'd like it to say it's catchphrase once"
 
 There are no "Playtest ... changes" sections yet (`playtests/` holds only the template).
 
@@ -210,6 +211,7 @@ X out of scope, Q open questions, F build phases.
 | M-05 | S4 | Backdrop is a live Hillville with saved scrub and saved time of day | built | scenes/ui/hill_menu_backdrop.gd; .scratch/shots/lobby/t003.0s.png | |
 | M-06 | S4 | Solo is never restored at boot | built | tests/test_lobby.gd::test_saved_solo_stays_off_at_boot | |
 | M-07 | S5 | No character barks; a swap plays the generic `char_swap` | built | tests/test_hill_chooser.gd::test_a_character_without_barks_falls_back_never_to_another_voice | |
+| M-08 | S8 | Chooser says the character's catchphrase once (Kaden 2026-11-10) | built | tests/test_chooser_voice.gd::test_three_fast_steps_say_only_the_last_after_the_settle, ::test_standing_still_never_repeats, ::test_joining_says_the_pick_once, ::test_leaving_cancels_a_pending_line, ::test_two_players_each_on_their_own_voice; tests/test_sync_characters.gd::test_vendors_the_catchphrase; .scratch/cycle-run.log | Ported from the template (docs/ui.md "Chooser voice"). Each step still plays `char_swap` at once (M-07); 0.3 s after the last step (or a join) the podium's character says `voice/catchphrase.ogg` on that player's panned voice, falling back to a bark. 17 of 21 v0.5.0 characters have one; Jeff, Chuck, Bloom and Old Reel stay silent after the swap |
 
 ## Visuals
 
@@ -298,11 +300,11 @@ and `assets/audio/music/` (seeded synth SFX from `assets/audio/tools/make_cues.p
 
 ## Totals
 
-Counted from the Status column, 191 rows, on `dev` at `8ee8d2d` (2026-11-10):
+Counted from the Status column, 192 rows, on `dev` at `8ee8d2d` (2026-11-10) plus M-08 (chooser-catchphrase lane):
 
 | built | partial | missing | superseded | dropped | later | total |
 | --- | --- | --- | --- | --- | --- | --- |
-| 141 | 31 | 10 | 1 | 4 | 4 | 191 |
+| 148 | 27 | 8 | 1 | 4 | 4 | 192 |
 
 Before the plan-sync: 112 built, 47 partial, 22 missing, 2 superseded, 4 dropped, 4 later.
 
