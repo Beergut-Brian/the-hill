@@ -452,3 +452,74 @@ func test_main_boots_the_lobby_with_jeff_and_chuck_then_the_hill() -> void:
 	Game.to_lobby()
 	await await_idle_frame()
 	assert_object(main.game).is_null()
+
+
+# --- K-06: the shaft transition is under one second and a press skips the wait -----------------
+
+## The real transition in a real HillGame at 60 Hz: P1 stands in the Hillville cage, the door
+## starts, A is pressed a few frames in; from that press to P1 standing unlocked at the layer's
+## landing must be under 1.0 s, and well before the door wait alone would have closed. The ride
+## itself (ride_started -> ride_finished) is under 1.0 s, and back up A skips the wait too.
+func test_k06_shaft_transition_under_a_second_and_a_press_skips_the_wait() -> void:
+	assert_int(Engine.physics_ticks_per_second).is_equal(60)
+	_make()
+	var intent := IDLE.duplicate()
+	var p := _join(P1, intent)
+	Progress.visit_layer(P1, 1)
+	var events: Array = []
+	_game.elevator.ride_started.connect(func(_r: Array, _f: StringName) -> void: events.append(Engine.get_physics_frames()))
+	_game.elevator.ride_finished.connect(func(_r: Array, _t: StringName) -> void: events.append(Engine.get_physics_frames()))
+	_game.place_player(P1, &"hillville", _game.hillville.arrival() + Vector2(0, -1))
+	_game.elevator.door.must_exit.erase(P1)
+	# The door is waiting (no press yet): nobody rides.
+	await _physics(6)
+	assert_float(_game.elevator.door.progress(&"hillville")).is_greater(0.0)
+	assert_bool(_game.elevator.is_riding(P1)).is_false()
+	# Press A: from here to "on the next layer, free to move".
+	intent.dig = true
+	var pressed_at := Engine.get_physics_frames()
+	var frames := await _until(func() -> bool:
+		return _game.director.scene_of(P1) == &"underground" and not p.locked, 120)
+	intent.dig = false
+	print("K-06 down: press -> landed %d frames (%.3f s)" % [frames, frames / 60.0])
+	assert_float(frames / 60.0).is_less(1.0)
+	assert_float(p.global_position.distance_to(_game.underground.landing(1))).is_less(20.0)
+	# The press skipped the wait: landed before the door alone would even have closed.
+	assert_int(6 + frames).is_less(int(HillElevator.DOOR_WAIT * 60))
+	# The ride started within two frames of the press and lasted under a second.
+	assert_int(events.size()).is_equal(2)
+	assert_int(events[0] - pressed_at).is_less_equal(2)
+	assert_float((events[1] - events[0]) / 60.0).is_less(1.0)
+	# Back up: step out, step in, press A; the same bound holds.
+	var land := _game.underground.landing(1)
+	_game.place_player(P1, &"underground", land + Vector2(60, 0))
+	await _physics(2)
+	_game.place_player(P1, &"underground", land)
+	await _physics(3)
+	assert_bool(_game.elevator.is_riding(P1)).is_false()
+	intent.dig = true
+	frames = await _until(func() -> bool:
+		return _game.director.scene_of(P1) == &"hillville" and not p.locked, 120)
+	intent.dig = false
+	print("K-06 up: press -> landed %d frames (%.3f s)" % [frames, frames / 60.0])
+	assert_float(frames / 60.0).is_less(1.0)
+	assert_int(3 + frames).is_less(int(HillElevator.DOOR_WAIT * 60))
+
+
+## Without a press the door waits the whole DOOR_WAIT for the other player, then the ride runs:
+## the ride part alone stays under a second (the wait is the co-op hop-in window A skips).
+func test_k06_without_a_press_the_ride_part_is_still_under_a_second() -> void:
+	_make()
+	_join(P1)
+	Progress.visit_layer(P1, 1)
+	var marks := {}
+	_game.elevator.ride_started.connect(func(_r: Array, _f: StringName) -> void: marks.start = Engine.get_physics_frames())
+	_game.elevator.ride_finished.connect(func(_r: Array, _t: StringName) -> void: marks.end = Engine.get_physics_frames())
+	_game.place_player(P1, &"hillville", _game.hillville.arrival() + Vector2(0, -1))
+	_game.elevator.door.must_exit.erase(P1)
+	var entered := Engine.get_physics_frames()
+	await _until(func() -> bool: return marks.has("end"), 200)
+	print("K-06 no press: wait %d frames, ride %d frames" % [marks.start - entered, marks.end - marks.start])
+	assert_bool(marks.has("end")).is_true()
+	assert_float((marks.end - marks.start) / 60.0).is_less(1.0)
+	assert_int(marks.start - entered).is_greater_equal(int(HillElevator.DOOR_WAIT * 60) - 2)
