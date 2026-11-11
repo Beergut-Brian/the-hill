@@ -289,6 +289,15 @@ and `assets/audio/music/` (seeded synth SFX from `assets/audio/tools/make_cues.p
 | Q-02 | S1 | Kaden approves or edits the four resident bibles | missing | none (unticked in GAME.md; no recorded approval) | The art was made before approval was recorded |
 | Q-03 | S1 | Real places: no | built | V-10 | |
 
+## Playtest 2026-11-10 (PT10, GAME.md "Playtest 2026-11-10 changes")
+
+| ID | Source | Item | Status | Proof | Notes |
+| --- | --- | --- | --- | --- | --- |
+| PT10-6 | Kaden 11-10 | Turning and aim: no teleport / jitter, the character and the dig line up, a marker on the next tile | built | `test_controls` (turning, side dig, marker, wobble); `handoff/frames/pt10-6_turn_*_strip.png`; `--demo-beat=turn` logs | Cause: the camera's 64 px sideways lead flipped on every turn (P1 slid 377-565 px across a 960 px half-screen; now 476-484). On foot there is no sideways lead (`data/camera.tres foot_lead_px`); the sideways dig takes the tile next to the body (not one further); facing / aim ignore stick wobble; corner brackets in the player's colour mark the next dig. Feel & controls lane, hill-controls-1. |
+| PT10-7 | Kaden 11-10 | Getting back up: (a) dig a step up and climb it, (b) call the elevator from any landing, rope down the shaft, (c) ladders for the Gnome crew later | built | `test_controls` (step, staircase, ladder, call, back-up bot: 4.5-11 s from 5 deep spots); `handoff/frames/pt10-7a_7c_climb_ladder_strip.png`, `pt10-7b_call_car_strip.png` | (a) stick up / diagonal-up + A carves the step in one swing and climbs (also swimming). (b) The car hangs on a rope (`ShaftRope`); A at a landing calls it there first (`data/elevator.tres`). (c) `data/ladders.tres` + `LadderSet.add()`, placeholder rails until Art draws a ladder. |
+| PT10-8 | Kaden 11-10 | Context control hints: the buttons that matter now, with glyphs | built | `test_controls` (contexts, corners, kit); `handoff/frames/pt10-8_*.png` | `scenes/ui/kit/button_hints.tscn` (reusable, `docs/ui.md` "Button hints"), fed by `HillHintLayer.for_player`. Pictures, no words. |
+| PT10-9 | Kaden 11-10 | The elevator: A to ride, blinking A over you, partner within a radius pulled along | built | `test_controls` (A only, sideways A digs, radius, P2 alone, split), `test_hill_game` Door rules; `handoff/frames/pt10-9_lift_*.png` | Radius 3 tiles (`data/elevator.tres`). The demo and beats keep the old walk-in via `HillElevator.walk_in`. Contract: docs/contracts.md "Elevator rules". |
+
 ## Build phases
 
 | ID | Source | Item | Status | Proof | Notes |

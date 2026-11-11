@@ -457,6 +457,13 @@ Save key `"time_of_day"`.
   they were, `ride_finished(riders, &"hillville")`, no dump, no save). Each press keeps the cage
   going `PICK_LINGER` (0.7 s) longer, never past `PICK_MAX` (4 s). `HillElevator.pick_of(p)`,
   `nudge_pick(p, dir)`. Rides up are unchanged.
+- **Getting back up (PT10-7a, c).** On foot underground, stick up or diagonal-up + A carves a
+  step (the rock over your head and the two cells over the block in front) in one swing and
+  climbs onto it (`HillPlayer.step_dig()`, `is_stepping_aim()`); the dig marker shows what it
+  takes. Ladders: `HillGame.ladders` (`LadderSet`, data/ladders.tres, empty), `add(column, top,
+  bottom)`; up / down climbs, letting go hangs. The Gnome crew lane adds them.
+- The dig respects the story lane's `has_shovel` / `can_dig` flags on the player when they exist
+  (`HillPlayer.shovel_ok()`): no dig, no step, no marker without the shovel.
 - Going up empties the riders' backpacks into the shaft pile.
 - Every ride autosaves (also every 60 s, and on `Game.quit_requested`).
 - A vehicle rides with its driver.
