@@ -52,6 +52,7 @@ func deepest_reached() -> int:
 func _draw() -> void:
 	if elevator == null or get_parent() == null or not get_parent().has_method("cage_rect"):
 		return
+	_draw_ladders()
 	var at: float = elevator.car_position()
 	var car := car_rect(at)
 	var x := car.get_center().x
@@ -86,3 +87,23 @@ func _rope(a: Vector2, b: Vector2, alpha: float) -> void:
 	while y < b.y:
 		draw_line(Vector2(a.x - 1, y), Vector2(a.x + 1, y + 2), Color(ROPE_DARK, alpha * 0.8), 1.0)
 		y += 6.0
+
+
+## PT10-7c: placeholder ladders (two rails, a rung per half tile) until Art draws one.
+func _draw_ladders() -> void:
+	var g: Node = elevator.get("game")
+	var ls: LadderSet = g.get("ladders") if g != null else null
+	if ls == null:
+		return
+	for l in ls.ladders:
+		var x0 := l.x * 16.0 + 3.0
+		var x1 := l.x * 16.0 + 13.0
+		var y0 := l.y * 16.0
+		var y1 := (l.z + 1) * 16.0
+		for x in [x0, x1]:
+			draw_line(Vector2(x, y0), Vector2(x, y1), ROPE_DARK, 3.0)
+			draw_line(Vector2(x, y0), Vector2(x, y1), ROPE, 1.5)
+		var y := y0 + 4.0
+		while y < y1:
+			draw_line(Vector2(x0, y), Vector2(x1, y), ROPE, 2.0)
+			y += 8.0

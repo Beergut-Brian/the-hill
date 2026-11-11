@@ -28,6 +28,8 @@ var build: BuildController
 var elevator: HillElevator
 var save: HillSave
 var hud: Control
+## PT10-7c: ladders underground (data/ladders.tres; the Gnome crew adds them later).
+var ladders: LadderSet = LadderSet.load_default()
 var hints: Control
 var book_layer: Control
 var players: Dictionary = {}       # int -> HillPlayer

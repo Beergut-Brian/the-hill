@@ -343,6 +343,14 @@ func _physics_process(delta: float) -> void:
 	velocity += (g + lift) * delta
 	if wet:
 		velocity *= maxf(0.0, 1.0 - WATER_DAMP * delta)
+	if on_ladder():
+		# PT10-7c: on a ladder up / down climbs and letting go hangs (no gravity).
+		var speed_l: float = game.ladders.climb_speed
+		var vy := move.y * speed_l if absf(move.y) > 0.3 else 0.0
+		if vy != 0.0 or not is_on_floor():
+			velocity = side * velocity.dot(side) + up_direction * -vy
+			if vy != 0.0 and fmod(_t, 0.25) < delta:
+				Audio.play("ui_move")
 	if vehicle == null and it.get("jump", false) and not _b_used and is_on_floor():
 		velocity = side * velocity.dot(side) + up_direction * JUMP
 		_squash = 1.0
@@ -583,26 +591,40 @@ func step_cells() -> Array[Vector2i]:
 	return out
 
 
+## The way a step goes: the stick's side on a diagonal; straight up, the way you face, or the
+## other way when only that side has a block at your feet to step onto.
 func _step_dir() -> int:
-	return (1 if move_intent.x > 0.0 else -1) if absf(move_intent.x) > TURN_X else facing
+	if absf(move_intent.x) > TURN_X:
+		return 1 if move_intent.x > 0.0 else -1
+	if world != null:
+		var g := _step_geometry(facing)
+		if not world.is_solid(Vector2i(g.front, g.row)):
+			var o := _step_geometry(-facing)
+			if world.is_solid(Vector2i(o.front, o.row)):
+				return -facing
+	return facing
 
 
-## One A tick of a step up: carve the next cell in the way, or (all clear and a block to stand on
+## One A tick of a step up: carve the cells in the way, or (all clear and a block to stand on
 ## in front) climb onto it. True when something happened.
 func step_dig() -> bool:
 	_swing = 1.0
 	var cells := step_cells()
-	var tier := 0
-	for c in cells:
-		var def := world.tile_def(world.get_tile(c))
-		if def is BlockData and (def as BlockData).dig_tier > tier and def.breakable:
-			swung.emit(c)
-			return false
-		world.dig(c, [Vector2i.ZERO] as Array[Vector2i], player)
+	if not cells.is_empty():
+		# One swing carves the whole step (the dig lane's speed applies per swing).
+		for c in cells:
+			var def := world.tile_def(world.get_tile(c))
+			if def == null or not def.breakable or (def is BlockData and (def as BlockData).dig_tier > 0):
+				swung.emit(c)
+				return false
+		var offsets: Array[Vector2i] = []
+		for c in cells:
+			offsets.append(c - cells[0])
+		world.dig(cells[0], offsets, player)
 		_squash = maxf(_squash, 0.4)
 		return true
 	var g := _step_geometry(_step_dir())
-	if not world.is_solid(Vector2i(g.front, g.row)) or not is_on_floor():
+	if not world.is_solid(Vector2i(g.front, g.row)) or not (is_on_floor() or _in_water):
 		swung.emit(Vector2i(g.front, g.row))
 		return false
 	var cs := float(world.shape.cell_size)
@@ -613,6 +635,17 @@ func step_dig() -> bool:
 	Audio.play("jump")
 	_squash = 1.0
 	return true
+
+
+## PT10-7c: on foot underground with the body's middle on a ladder cell.
+func on_ladder() -> bool:
+	if vehicle != null or world == null or game == null:
+		return false
+	var ls: Variant = game.get("ladders")
+	if ls == null:
+		return false
+	var mid := world.to_local(global_position) - Vector2(0, body_size().y * 0.5)
+	return (ls as LadderSet).at(world.shape.cell_at(mid))
 
 
 func is_climbing() -> bool:

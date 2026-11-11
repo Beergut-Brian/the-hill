@@ -6,13 +6,16 @@
 ##   lift   P1 stands in the cage up top (the A blinks over the head), P2 two tiles away; A: both
 ##          ride down. Then P1 at the Stone landing presses A: the car comes down its rope, then
 ##          up they go. P2 stays below (too far away).
+##   climb  P1 deep in Topsoil holds up-right and A: the shovel carves a step, P1 climbs it, again
+##          and again (a staircase). Then a ladder (the Gnome crew's hook, placeholder rails) that
+##          P1 climbs with up.
 ##   hints  The hint panels in each context: P1 on foot underground (A dig, B jump), up top
 ##          beside the Front Loader (B get in, X book), driving it (A scoop, B get out), in the
 ##          cage (A ride); P2 up top on foot the whole time (B jump, X book).
 class_name ControlsBeats
 extends CameraBeats
 
-const CONTROLS_BEATS := ["turn", "lift", "hints"]
+const CONTROLS_BEATS := ["turn", "lift", "hints", "climb"]
 
 
 func _physics_process(delta: float) -> void:
@@ -23,6 +26,7 @@ func _physics_process(delta: float) -> void:
 		"turn": _turn()
 		"lift": _lift()
 		"hints": _hints()
+		"climb": _climb()
 
 
 ## Where player p's feet are on their own screen (px from the left of their view).
@@ -147,4 +151,40 @@ func _hints() -> void:
 				_next("P1 in the cage up top")
 		4:
 			if _since() > 2.0:
+				_next("done")
+
+
+func _climb() -> void:
+	var w := _ug().world
+	match _stage:
+		0:
+			for y in range(19, 21):
+				w.set_tile(Vector2i(70, y), 0)
+			_place(P1, Vector2(70.5 * 16.0, 21 * 16.0 - 1.0))
+			game.player_node(P1).facing = 1
+			if game.player_node(P2) != null:
+				_yard(P2, Hillville.SHAFT_X - 300)
+			_next("stage: P1 in a pocket deep in Topsoil")
+		1:
+			if _since() > 1.0:
+				_next("up-right + A")
+		2:
+			_hold(P1, Vector2(0.7, -0.7), true)
+			if _since() > 3.5:
+				_next("climbed to row %d" % int(game.player_node(P1).global_position.y / 16.0))
+		3:
+			if _since() > 1.0:
+				for y in range(12, 22):
+					w.set_tile(Vector2i(60, y), 0)
+					w.set_tile(Vector2i(59, y), 0)
+				game.ladders.add(60, 12, 21)
+				_place(P1, Vector2(60.5 * 16.0, 22 * 16.0 - 1.0))
+				_next("ladder")
+		4:
+			_hold(P1, Vector2(0, -1))
+			if _since() > 1.2:
+				_next("hanging on the ladder")
+		5:
+			if _since() > 1.0:
+				game.ladders.clear()
 				_next("done")

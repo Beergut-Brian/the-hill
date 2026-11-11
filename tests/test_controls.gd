@@ -383,3 +383,147 @@ func test_button_hints_kit_pops_changed_rows_and_takes_custom_icons() -> void:
 	bh.show_hints([])
 	assert_array(bh.hints()).is_empty()
 	bh.free()
+
+
+# --- PT10-7 getting back up -----------------------------------------------------------------------
+
+func test_up_and_a_carves_a_step_and_climbs_onto_it() -> void:
+	_make()
+	var it := _idle()
+	var node := _join(P1, it)
+	_room(P1, Rect2i(60, 14, 1, 2), 60)
+	await _physics(3)
+	node.facing = 1
+	var feet0 := node.global_position
+	var row0 := _world().shape.cell_at(_world().to_local(feet0) - Vector2(0, 1)).y
+	it.move = Vector2(0, -1)
+	await _physics(1)
+	# The marker shows what the step carve takes (over the head and over the step in front).
+	var mark := node.dig_marker_cell()
+	assert_int(mark.y).is_less(row0)
+	it.dig = true
+	var climbed := await _until(func() -> bool: return node.global_position.y < feet0.y - 12.0, 120)
+	assert_int(climbed).is_less(120)
+	await _physics(15)
+	it.dig = false
+	it.move = Vector2.ZERO
+	await _physics(5)
+	# One row up, standing on the step in the next column.
+	assert_float(node.global_position.y).is_equal_approx(feet0.y - 16.0, 2.5)
+	assert_int(_world().shape.cell_at(_world().to_local(node.global_position)).x).is_greater(60)
+	assert_bool(node.is_on_floor()).is_true()
+
+
+func test_diagonal_up_climbs_a_staircase_toward_the_stick() -> void:
+	_make()
+	var it := _idle()
+	var node := _join(P1, it)
+	_room(P1, Rect2i(60, 20, 2, 2), 61)
+	await _physics(3)
+	var y0 := node.global_position.y
+	var x0 := node.global_position.x
+	it.move = Vector2(-0.7, -0.7)
+	it.dig = true
+	await _physics(150)
+	# Several rows up and to the left.
+	assert_float(y0 - node.global_position.y).is_greater(16.0 * 3 - 4.0)
+	assert_float(x0 - node.global_position.x).is_greater(16.0 * 2)
+
+
+func test_a_ladder_from_data_is_climbed_with_up_and_holds_you() -> void:
+	_make()
+	var it := _idle()
+	var node := _join(P1, it)
+	_room(P1, Rect2i(60, 10, 3, 8), 61)
+	_game.ladders.clear()
+	_game.ladders.add(61, 10, 17)
+	await _physics(5)
+	var y0 := node.global_position.y
+	it.move = Vector2(0, -1)
+	await _physics(40)
+	assert_float(y0 - node.global_position.y).is_greater(40.0)
+	# Let go: hangs on the ladder.
+	it.move = Vector2.ZERO
+	var y1 := node.global_position.y
+	await _physics(30)
+	assert_float(absf(node.global_position.y - y1)).is_less(2.0)
+	_game.ladders.clear()
+	assert_bool(LadderSet.load_default().ladders.is_empty()).is_true()
+
+
+var _bot_dir := 0.0
+var _bot_y := 0.0
+
+
+## A simple player bot: dig and climb toward the landing above, then A in the cage.
+func _bot(node: HillPlayer, it: Dictionary, target: Vector2) -> void:
+	var p := node.global_position
+	var dx := target.x - p.x
+	var dy := target.y - p.y
+	it.jump = false
+	if _game.elevator.cage_of(node.player) != &"":
+		it.move = Vector2.ZERO
+		it.dig = not it.dig     # tap A
+		return
+	it.dig = true
+	if dy < -6.0:
+		# Climb one staircase toward the shaft and keep going the same way (turning round would
+		# walk back down the steps) until level with the landing, then walk back in.
+		# After a fall (a hole, a pocket), aim at the shaft again.
+		if p.y > _bot_y + 40.0:
+			_bot_dir = 0.0
+		if _bot_dir == 0.0:
+			_bot_dir = signf(dx) if dx != 0.0 else 1.0
+			_bot_y = p.y
+		_bot_y = minf(_bot_y, p.y)
+		it.move = Vector2(_bot_dir * 0.7, -0.7)
+	elif dy > 10.0 and absf(dx) < 40.0:
+		it.move = Vector2(0, 1)
+	else:
+		it.move = Vector2(signf(dx), 0)
+		if node.is_on_floor() and node.is_on_wall() and Engine.get_physics_frames() % 20 == 0:
+			it.jump = true
+
+
+func test_from_deep_spots_the_shaft_is_under_20_seconds_away() -> void:
+	_make()
+	var it := _idle()
+	var node := _join(P1, it)
+	var ug := _game.underground
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 2026_11_10
+	var times: Array = []
+	for k in 5:
+		var layer := k % 3
+		var land := ug.landing(layer)
+		var cx := HillGenerator.SHAFT_X + (rng.randi_range(12, 40) * (1 if k % 2 == 0 else -1))
+		var cy := int(land.y / 16.0) + rng.randi_range(8, 20)
+		var w := _world()
+		# Each spot starts from the generated rock (an earlier spot's tunnels near the same landing
+		# would make it easier or drop the bot into them).
+		var lr := int(land.y / 16.0)
+		var saved := {}
+		for y in range(lr - 6, lr + 26):
+			for x in range(HillGenerator.SHAFT_X - 48, HillGenerator.SHAFT_X + 50):
+				saved[Vector2i(x, y)] = w.get_tile(Vector2i(x, y))
+		for c in [Vector2i(cx, cy - 1), Vector2i(cx, cy - 2)]:
+			w.set_tile(c, 0)
+		_game.place_player(P1, &"underground", Vector2((cx + 0.5) * 16.0, cy * 16.0 - 1.0))
+		node.velocity = Vector2.ZERO
+		_bot_dir = 0.0
+		await _physics(2)
+		var frames := 0
+		while frames < 1500 and _game.director.scene_of(P1) == &"underground" and not _game.elevator.is_riding(P1):
+			_bot(node, it, land)
+			await get_tree().physics_frame
+			frames += 1
+		it.dig = false
+		it.move = Vector2.ZERO
+		times.append(frames / 60.0)
+		await _until(func() -> bool: return not _game.elevator.is_riding(P1), 200)
+		for c: Vector2i in saved:
+			if w.get_tile(c) != saved[c]:
+				w.set_tile(c, saved[c])
+	print("controls: back to the shaft from deep spots (s): %s" % [times])
+	for t in times:
+		assert_float(t).is_less(20.0)
