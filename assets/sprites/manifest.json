@@ -48,7 +48,8 @@
    "4": "ice",
    "5": "crystal",
    "6": "edgestone",
-   "7": "strangestone"
+   "7": "strangestone",
+   "8": "sand"
   }
  },
  "boot": {
@@ -777,6 +778,17 @@
    }
   }
  },
+ "frozen_fish": {
+  "file": "treasures/frozen_fish.png",
+  "frame": [
+   16,
+   16
+  ],
+  "tiles": [
+   1,
+   1
+  ]
+ },
  "fx": {
   "cone": {
    "file": "fx/cone.png",
@@ -1260,7 +1272,8 @@
    "4": "ice",
    "5": "crystal",
    "6": "edgestone",
-   "7": "strangestone"
+   "7": "strangestone",
+   "8": "sand"
   },
   "row": "open mask: 1 up, 2 right, 4 down, 8 left",
   "variants": 4

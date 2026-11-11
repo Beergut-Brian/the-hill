@@ -1,0 +1,12 @@
+{
+	"source": "test fixture: Jeff and Chuck with no voice pack, and Pip who borrows a library voice pack (gap-close-1)",
+	"characters_tag": "test",
+	"roster": ["jeff", "chuck", "pip"],
+	"defaults": {"P1": "jeff", "P2": "chuck"},
+	"player_colours": {"P1": "#3cc24a", "P2": "#e4393c"},
+	"characters": {
+		"jeff": {"name": "Jeff", "glb": "res://assets/characters/jeff/jeff.glb", "pixel": "res://assets/characters/jeff/pixel.png", "voice": "", "barks": [], "default_for": 1},
+		"chuck": {"name": "Chuck", "glb": "res://assets/characters/chuck/chuck.glb", "pixel": "res://assets/characters/chuck/pixel.png", "voice": "", "barks": [], "default_for": 2},
+		"pip": {"name": "Pip", "glb": "res://assets/characters/jeff/jeff.glb", "pixel": "res://assets/characters/jeff/pixel.png", "voice": "res://assets/characters/boxbot/voice/", "barks": ["cheer", "win", "oops", "ready", "join"], "default_for": 0}
+	}
+}

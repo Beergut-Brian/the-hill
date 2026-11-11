@@ -1,6 +1,6 @@
 # Plan status: The Hill
 
-True on `dev` at `6d3b3cc` (2026-11-10, gap-close-1 lane; rows not named in "Gap-close 2026-11-10" were last checked at `8ee8d2d` by the plan-sync lane). Lanes: update your rows in the same commit as the work
+True on `dev` at `8ee8d2d` (2026-11-10, plan-sync lane). Lanes: update your rows in the same commit as the work
 (format: `~/openjar/lanes/plan-status-format.md`). Gary: add rows when a new brief arrives; never
 delete rows, supersede them.
 
@@ -12,6 +12,7 @@ Sources (newest last):
 - S5 GAME.md decisions, 2026-11-10 Systems lane: character chooser
 - S6 GAME.md decisions, 2026-11-10 Gameplay lane: residents and hazards
 - S7 GAME.md decisions, 2026-11-10 Gameplay lane: vehicles and treasures
+- S8 Kaden 2026-11-10 (via Gary, chooser-catchphrase brief): "when a character is up on the screen, I'd like it to say it's catchphrase once"
 
 There are no "Playtest ... changes" sections yet (`playtests/` holds only the template).
 
@@ -50,7 +51,7 @@ X out of scope, Q open questions, F build phases.
 | C-14 | S1 Loop | Backpack full is never a hard stop; the icon goes round and happy | built | tests/test_hill_game.gd::test_full_backpack_never_stops_digging; scenes/game/hud.gd | |
 | C-15 | S1 Loop | Ride up and the backpack dumps at the shaft pile | built | tests/test_hill_game.gd::test_ride_down_to_deepest_and_up_dumps_backpacks | |
 | C-16 | S1 Loop | Treasures unlock one specific thing each (car → Garage, Gnome Room → Gnome Village) | built | tests/test_vehicles_treasures.gd::test_each_garage_gives_the_next_vehicle_and_the_drill_garage_waits_for_the_tooth; tests/test_resident_arcs_underground.gd::test_opening_the_gnome_room_frees_the_crew | Car → Garage, tooth → Drill Garage, Gnome Room → crew freed → Gnome Village restore (PR 9) |
-| C-17 | S1 Loop | Blocks by depth: dirt, clay, stone, sand, ice, crystal | partial | data/blocks/*.tres | There is **no sand block**. The minor kinds have no tiles of their own: roots, pebbles, pipes, ore, geodes, snow, frozen fish |
+| C-17 | S1 Loop | Blocks by depth: dirt, clay, stone, sand, ice, crystal | built | data/blocks/sand.tres; tests/test_depth_life.gd::test_every_block_resolves_to_a_data_row_and_a_tile, ::test_sand_lies_only_in_the_lower_stone_layer, ::test_digging_sand_behaves_like_dirt; handoff/frames/depth_sand_dig.png | Depth life lane: Sand (id 8, pale gold tile, `dig_dirt` cue, dug like dirt, value 5) sits in the lower Stone layer (depth 100 to 130, `stone.tres` mix 0.78 stone / 0.12 sand / 0.1 clay; the generator only puts a block at or below its `depth_from`). On the pile and the elevator picker. Pebbles, pipes, ore and geodes still have no data rows, so they were not added; roots, snow and the frozen fish are drawn (W-03, W-11). The build book (`scenes/ui/build_book.gd`, UI lane) does not list sand yet |
 | C-18 | S1 Loop | Deeper blocks are worth more; some buildings need a specific kind | built | data/buildings/garage.tres (clay+stone), data/buildings/lighthouse.tres (stone+crystal) | |
 | C-19 | S1 Loop | No fail state: nothing underground hurts; town can't be damaged | built | tests/test_hazards_residents.gd::test_a_falling_boulder_bonks_briefly_and_takes_nothing, ::test_a_breached_pocket_floats_the_player_and_takes_nothing | |
 | C-20 | S1 Loop | Session 10–20 min, saves at every trip up | built | scenes/game/elevator.gd (every ride autosaves); tests/test_hill_game.gd::test_save_round_trip | Session length is unmeasured until the first playtest |
@@ -68,7 +69,7 @@ X out of scope, Q open questions, F build phases.
 | --- | --- | --- | --- | --- | --- |
 | W-01 | S1 Underground | ~200 x 300 tiles at 16 px, every tile diggable | built | tests/test_data.gd::test_layers_tile_0_to_300; tests/test_tileworld.gd::test_save_is_edit_only_and_round_trips | |
 | W-02 | S1 Underground | Six layers with a dominant hue each (Topsoil, Clay, Stone, Ice, Crystal, Bottom) | built | data/layers/*.tres; .scratch/shots/rescue/t005.0s.png, crystal/t005.0s.png, reveal/t005.0s.png | |
-| W-03 | S1 Topsoil | Dirt, roots, worms that wave | partial | data/blocks/dirt.tres | No roots and no waving worms |
+| W-03 | S1 Topsoil | Dirt, roots, worms that wave | built | tests/test_depth_life.gd::test_roots_hang_only_from_topsoil_dirt_ceilings_and_go_when_dug, ::test_a_worm_waves_only_when_the_player_is_close_then_ducks_back, ::test_a_dug_out_worm_cell_takes_its_worm_with_it; handoff/frames/depth_roots_landing.png, depth_worms_wave.png | Depth life lane: roots hang from Topsoil dirt ceilings (seeded per cell, about one ceiling in five, two always in the landing room; they sway; dig the cell and the root goes). Worms live in some dirt cells (and both landing-room walls): stand next to one and it pops out (`pop`), waves, ducks back in when you leave (or after 2.4 s) and rests 5 s. Drawn in `scripts/gameplay/depth_life.gd`, no collision change, no text. `--demo-beat=worms`. No worm sound of its own yet (uses `pop`) |
 | W-04 | S1 Topsoil | Treasures: bottle caps, a boot, a bike | built | data/treasures/{bottle_caps,boot,bike}.tres; tests/test_vehicles_treasures.gd::test_every_layer_but_the_bottom_has_treasures_placed_in_it | |
 | W-05 | S1 Clay | Treasures: buried car, bathtub, fossils | built | data/treasures/{buried_car,bathtub,fossil}.tres; tests/test_hill_game.gd::test_buried_car_in_clay_found_by_digging_next_to_it | |
 | W-06 | S1 Clay | Water pockets flood and float you up | built | tests/test_hazards_residents.gd::test_a_breached_pocket_floats_the_player_and_takes_nothing | |
@@ -76,7 +77,7 @@ X out of scope, Q open questions, F build phases.
 | W-08 | S1 Stone | Gnome Room, giant tooth, dinosaur skeleton | built | data/treasures/{gnome_room,giant_tooth,dino_skeleton}.tres | |
 | W-09 | S1 Stone | Rolling boulders: bonk, stars, fine | built | tests/test_hazards_residents.gd::test_a_falling_boulder_bonks_briefly_and_takes_nothing | |
 | W-10 | S1 Stone | Dark; needs the Lighthouse | built | tests/test_polish.gd::test_a_lighthouse_lights_stone_and_each_more_lights_the_next_layer_down; handoff/frames/lighthouse_before_dark_stone.png, lighthouse_lit_stone.png | Dark until the first Lighthouse (B-07) |
-| W-11 | S1 Ice | Ice (slippery), snow, frozen fish | partial | tests/test_hazards_deep.gd::test_a_slide_on_ice_ends_in_a_hole_and_drifts_gently_a_layer_down, ::test_a_vehicle_skates_into_the_hole_too, ::test_warm_ice_does_not_slide_and_other_ground_never_does; handoff/frames/ice_slide_skate.png, ice_loader_tips_in.png | Hazards-3: slippery is built. On ice (`BlockData.slippery`) the stick steers a glide that keeps going after letting go and turns slowly, on foot and in every vehicle, with speed streaks, a spray at the feet and a whoosh (`dragon_whoosh`). Not once `Story.ice_warm()`. Snow: only the snow piles in the ice-hole nests and the flakes in the chutes. **No frozen fish** |
+| W-11 | S1 Ice | Ice (slippery), snow, frozen fish | built | tests/test_hazards_deep.gd::test_a_slide_on_ice_ends_in_a_hole_and_drifts_gently_a_layer_down, ::test_a_vehicle_skates_into_the_hole_too, ::test_warm_ice_does_not_slide_and_other_ground_never_does; handoff/frames/ice_slide_skate.png, ice_loader_tips_in.png; tests/test_depth_life.gd::test_one_frozen_fish_sits_in_the_ice_floor_of_every_rink, ::test_the_frozen_fish_is_a_treasure_once; handoff/frames/depth_snow_fish.png, depth_fish_reveal.png, depth_fish_free.png | Hazards-3: slippery is built. On ice (`BlockData.slippery`) the stick steers a glide that keeps going after letting go and turns slowly, on foot and in every vehicle, with speed streaks, a spray at the feet and a whoosh (`dragon_whoosh`). Not once `Story.ice_warm()`. Snow: only the snow piles in the ice-hole nests and the flakes in the chutes. Depth life lane: snow drifts on every rink's ice floor (a white cap, piled against the far wall), and one frozen fish (`data/treasures/frozen_fish.tres`, a picture) in one floor block per rink. Dig it out: the first is the treasure (reveal, bag, shelf); later ones wiggle free and swim off (`splash`), never a second treasure. `--demo-beat=fish`. No fish sound of its own yet |
 | W-12 | S1 Ice | A frozen caveman who wakes and waves; a pirate chest | built | tests/test_hazards_residents.gd::test_the_caveman_thaws_once_and_it_saves; data/treasures/pirate_chest.tres | |
 | W-13 | S1 Ice | Hazard: slide into holes | built | tests/test_hazards_deep.gd::test_a_slide_on_ice_ends_in_a_hole_and_drifts_gently_a_layer_down, ::test_ice_holes_and_lava_pockets_place_from_data_and_move_nothing_else; handoff/frames/ice_hole_drift.png, ice_hole_nest.png | Hazards-3: data/hazards/ice_hole.tres (3 rinks, 1 near the Ice landing). Each rink has an ice floor and a 4-wide hole (fits the Drill Rig) at the end away from the shaft; its chute drops to a nest at the top of Crystal. The drift is capped at `Hazards.HOLE_FALL` (210 px/s) with snowflakes; landing on the snow pile pops. Nothing is taken. `--demo-beat=ice_slide`, `ice_drive` |
 | W-14 | S1 Crystal | Crystal is worth the most; lava pockets bounce you, no damage | built | tests/test_hazards_deep.gd::test_lava_bounces_a_bounded_hop_and_never_hurts; data/blocks/crystal.tres; handoff/frames/lava_bounce.png | Hazards-3: data/hazards/crystal_lava_pocket.tres (4 rooms, 1 near the Crystal landing). The pool is drawn (orange, juice dashes, bubbles, a glow), not a tile, so no new tile art. Standing on it launches `Hazards.LAVA_HOP` (hop about 66 px, test bounds 32 to 80) with `dragon_boing` and an orange ring. No damage path. `--demo-beat=lava`. The `BlockData.bouncy` field is still unused |
@@ -160,7 +161,7 @@ X out of scope, Q open questions, F build phases.
 | H-06 | S1 / S7 | Drill Rig: 5-wide straight down on its own; parks by the shaft; shakes the screen | built | tests/test_vehicles_treasures.gd::test_drill_rig_drills_five_wide_straight_down_on_its_own_until_told_to_stop | Gentle rumble only when Settings allows shake |
 | H-07 | S1 | Vehicles are `.tres` data (dig shape, speed, carry, clear area, sounds, unlock) | built | data/vehicles/*.tres; tests/test_data.gd::test_every_row_loads_with_class_and_id | |
 | H-08 | S1 | Hop in/out with one button; on foot is always an option | built | tests/test_hill_game.gd::test_hop_in_drive_and_hop_out | |
-| H-09 | S1 | Both players can drive different vehicles at once | partial | none found | Nothing in the code stops it, but no test or frame shows it |
+| H-09 | S1 | Both players can drive different vehicles at once | built | tests/test_two_drivers.gd (7 cases: ::test_excavator_and_loader_drive_and_dig_at_the_same_time_on_one_layer, ::test_neither_vehicle_takes_the_other_players_input, ::test_one_player_hopping_out_leaves_the_other_driving, ::test_a_bystander_keeps_their_powers_and_boards_the_free_vehicle_with_b, ::test_two_b_presses_at_one_free_vehicle_give_it_to_one_player, ::test_the_camera_frames_both_drivers_close_and_splits_to_each_driver_far, ::test_each_driven_vehicle_shows_its_drivers_stripe_row); handoff/frames/t003.0s.png, t005.0s.png (`--demo-beat=drivers`) | Two-vehicles lane (2026-11-10, `feature/hill-two-drivers`): P1 in the Excavator and P2 in the Loader on one layer drive, dig and honk in the same frames; the tests passed on the first run, so no game code needed fixing. Boarding is B (GAME.md controls table), not A; there is no boarding prompt to steal a press |
 | H-10 | S1 Art / S2 | Vehicles big, round, friendly; **no eyes or faces** (D45 supersedes "faces in the headlights") | built | tests/test_vehicles_treasures.gd::test_ladder_is_five_vehicles_with_their_own_abilities_and_faceless_art; .scratch/shots/lineup/t008.0s.png | |
 | H-11 | S1 Art | Two-frame idle wobble, exhaust puffs, player's stripe when driven | built | tests/test_gap_close.gd::test_exhaust_puffs_quicker_while_rolling_from_each_vehicles_stack; .scratch/shots/demo/t018.0s.png (stripe); handoff/frames/exhaust_loader_idle.png, exhaust_loader_zoom.png (gap-close-1) | Stripe and bob were on dev. Gap-close-1: while someone drives, the stack in each sprite puffs round smoke, slow idling and streaming back while rolling (the Dump Truck gets a small drawn stack; the Crane has none). Beat `--demo-beat=exhaust` |
 | H-12 | S1 | v1.1 vehicle pack: Bulldozer, Cement Mixer, Steamroller, Paver, Tunneler (+ roads) | later | GAME.md Vehicles, "v1.1 vehicle pack" | Garages 5–9 |
@@ -210,6 +211,7 @@ X out of scope, Q open questions, F build phases.
 | M-05 | S4 | Backdrop is a live Hillville with saved scrub and saved time of day | built | scenes/ui/hill_menu_backdrop.gd; .scratch/shots/lobby/t003.0s.png | |
 | M-06 | S4 | Solo is never restored at boot | built | tests/test_lobby.gd::test_saved_solo_stays_off_at_boot | |
 | M-07 | S5 | No character barks; a swap plays the generic `char_swap` | built | tests/test_hill_chooser.gd::test_a_character_without_barks_falls_back_never_to_another_voice | |
+| M-08 | S8 | Chooser says the character's catchphrase once (Kaden 2026-11-10) | built | tests/test_chooser_voice.gd::test_three_fast_steps_say_only_the_last_after_the_settle, ::test_standing_still_never_repeats, ::test_joining_says_the_pick_once, ::test_leaving_cancels_a_pending_line, ::test_two_players_each_on_their_own_voice; tests/test_sync_characters.gd::test_vendors_the_catchphrase; .scratch/cycle-run.log | Ported from the template (docs/ui.md "Chooser voice"). Each step still plays `char_swap` at once (M-07); 0.3 s after the last step (or a join) the podium's character says `voice/catchphrase.ogg` on that player's panned voice, falling back to a bark. 17 of 21 v0.5.0 characters have one; Jeff, Chuck, Bloom and Old Reel stay silent after the swap |
 
 ## Visuals
 
@@ -298,11 +300,11 @@ and `assets/audio/music/` (seeded synth SFX from `assets/audio/tools/make_cues.p
 
 ## Totals
 
-Counted from the Status column (by script), 191 rows, gap-close-1 branch on `dev` at `6d3b3cc` (the old table had drifted from the rows):
+Counted from the Status column, 192 rows, on `dev` at `8ee8d2d` (2026-11-10) plus M-08 (chooser-catchphrase lane):
 
 | built | partial | missing | superseded | dropped | later | total |
 | --- | --- | --- | --- | --- | --- | --- |
-| 151 | 25 | 6 | 1 | 4 | 4 | 191 |
+| 156 | 21 | 6 | 1 | 4 | 4 | 192 |
 
 Before the plan-sync: 112 built, 47 partial, 22 missing, 2 superseded, 4 dropped, 4 later.
 
@@ -314,41 +316,29 @@ B-08, R-02, R-03, R-04, R-05, R-07, R-08, R-09, K-12, K-13 (resident arcs, PR 9)
 (audio pass, PR 12) to built. B-11, R-11, P-06, A-13, A-15 to partial. W-17 stays partial with a new reason.
 Only V-03 is still branch work.
 
-## Gap-close 2026-11-10
-
-Checked against `origin/dev` at `6d3b3cc` (gap-close-1 lane). B-11 to built (ice is slippery since PR 15,
-so warm ice is felt); S-15 missing to partial (PictoBubble exists, not extracted). No stick-only row exists
-(Kaden 2026-11-10 dropped that requirement), so none was dropped. Rows built by this lane are listed in its
-own commits.
-
-Finished lane branches **not on dev** at `6d3b3cc` (rows they claim stay as they are on dev until merged):
-`feature/hill-town-life-1` (C-23, C-26 hearts, B-03 House, R-09 gags), `feature/hill-loose-things-1` (W-19, W-20),
-`feature/hill-puzzles-1` (C-22), `feature/hill-depth-life-1` (C-17, W-03, W-11 fish and snow),
-`feature/hill-two-drivers` (H-09), `feature/hill-audio-2` (W-17, A-13 snore on `dragon_snored`, `lighthouse_on`).
-
 ## Next up
 
 These are the missing and partial rows, ranked by how much Kaden and his son will notice them in
 play. Size: S = under a lane-hour, M = one lane session, L = several sessions or a new system.
 
 1. **First playtest: tag `v0.1.0`, Kaden and his son play it** (F-4; check at the TV: S-07 zoom, W-27 darkness, K-06 ride time, S-13 frame rate; time C-27 and write `data/BALANCE.md`): everything below is a guess until they play. **S**
-2. ~~**Workshop** (B-06)~~ done in gap-close-1: a building from Kaden's list is not in the book, with no recorded decision. Build it (bigger shovel, faster vehicles, hammering and sparks) or record it as dropped. **M** (S to drop)
+2. **Workshop** (B-06): a building from Kaden's list is not in the book, with no recorded decision. Build it (bigger shovel, faster vehicles, hammering and sparks) or record it as dropped. **M** (S to drop)
 3. **Adjacency hearts** (C-23, C-26): hearts float between buildings that like each other, on every build. Needs `data/adjacency.tres`. **M**
 4. **Real voices for the barks** (A-15, P-06): Jeff, Chuck and the residents talk in synth gibberish, heard every few minutes. Waits on the voice packs; the hooks are done. **M**
-5. ~~**Slippery ice and sliding into holes** (W-11, W-13, B-11): the Ice layer plays like dirt, so the Dragon Perch's warm-ice payoff can't be felt. **M**~~ done on dev (PR 14, 15, 18)
-6. ~~**Excavator: cab-only spin and digging ponds** (H-03): his favourite vehicle. Cab spin needs a cab layer from Art. **M**~~ done on dev (PR 14, 15, 18)
-7. ~~**Crane: fast shaft ride, lifting buildings, wrecking ball** (H-05). **L**~~ done on dev (PR 14, 15, 18)
-8. ~~**Camera leads the dig, zooms out in big vehicles** (S-06). **M**~~ done on dev (PR 14, 15, 18)
+5. **Slippery ice and sliding into holes** (W-11, W-13, B-11): the Ice layer plays like dirt, so the Dragon Perch's warm-ice payoff can't be felt. **M**
+6. **Excavator: cab-only spin and digging ponds** (H-03): his favourite vehicle. Cab spin needs a cab layer from Art. **M**
+7. **Crane: fast shaft ride, lifting buildings, wrecking ball** (H-05). **L**
+8. **Camera leads the dig, zooms out in big vehicles** (S-06). **M**
 9. **Topsoil and depth life: roots, waving worms, sand, snow, frozen fish** (W-03, C-17). **M**
-10. ~~**Lava pockets that bounce you** (W-14): Crystal has no hazard. **M**~~ done on dev (PR 14, 15, 18)
-11. ~~**Pick a layer on the way down** (S-04). **M**~~ done on dev (PR 14, 15, 18)
+10. **Lava pockets that bounce you** (W-14): Crystal has no hazard. **M**
+11. **Pick a layer on the way down** (S-04). **M**
 12. **Dragon snore in sync** (W-17, A-13): play the sound on `dragon_snored`, drop hill_audio's second sway. **S**
 13. **Loose things fall and props break** (W-19, W-20): treasures, bathtub, the Mole, the car, gnome-room walls. **M**
-14. ~~**House: lights checked, Jeff and Chuck sleep there** (B-03)~~ done in gap-close-1 (sleeping) and town-life-1 (lights).
+14. **House: lights checked, Jeff and Chuck sleep there** (B-03). **S**
 15. ~~**Store art and `store/jar.glb`** (V-08, S-16)~~: done in store-art-1 (2026-11-10). Version label bug is template-wide and still open. **M**
 16. **Final art: crew sheet, approved cow, Workshop; Kaden picks style D or E** (V-09, V-03, F-6). **L**
 17. **Underground puzzles: walls a boulder breaks, blocks that need a vehicle** (C-22). **L**
-18. **Proof gaps: a test or frame for the Mole's honk, two players driving** (R-11, H-09; both done on unmerged branches; H-11 exhaust done in gap-close-1). **S**
+18. **Proof gaps: a test or frame for the Mole's honk, two players driving, exhaust puffs** (R-11, H-09, H-11). **S**
 19. **Kaden approves the four resident bibles** (Q-02, F-0). **S** (Kaden's time)
 20. **Engine extraction to `openjar-addons`, `PictoBubble`, spend log** (S-14, F-5, S-15, S-17): not seen in play. **L** / **M** / **S**
 

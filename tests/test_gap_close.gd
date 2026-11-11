@@ -1,14 +1,14 @@
 ## Gap-close lane (2026-11-10): the Workshop (B-06: bigger shovel, quicker digging, faster vehicles,
 ## hammering and sparks, the upgrade pop), exhaust puffs (H-11) and the picked characters speaking
 ## with their library voices (P-06, A-15). Own settings, picks and save profile; the fixture roster
-## (tests/fixtures/roster_voice.json), never the real roster's contents.
+## (tests/fixtures/roster_voice_pip.json), never the real roster's contents.
 class_name TestGapClose
 extends GdUnitTestSuite
 
 const P1 := Players.P1
 const P2 := Players.P2
 const IDLE := {"move": Vector2.ZERO, "dig": false, "jump": false, "book": false, "horn": false}
-const FIXTURE := "res://tests/fixtures/roster_voice.json"
+const FIXTURE := "res://tests/fixtures/roster_voice_pip.json"
 const PICKS := "user://test_picks_gap_close.json"
 
 var _game: HillGame

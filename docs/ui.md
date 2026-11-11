@@ -32,7 +32,7 @@ menus. Gameplay keeps the kid rules (`docs/kid-design.md`). Everything lives in 
 | Move | The new bar grows out past its mark and settles (TRANS_BACK), the old one shrinks back. |
 | Press | The bar flashes the accent and squashes (y 0.8, x 1.05), then springs back (TRANS_ELASTIC). |
 | Ready | The player's podium lights, their READY! stamp slams on from big. |
-| Choose | Left / right: the arrow beside the name kicks out, the character squashes down (70 ms), becomes the next one in a cream poof, and pops up past full size (TRANS_BACK, 320 ms); the name bounces in; the character barks (else the `char_swap` cue). Nobody free: a little head-shake and a low tak. |
+| Choose | Left / right: the arrow beside the name kicks out, the character squashes down (70 ms), becomes the next one in a cream poof, and pops up past full size (TRANS_BACK, 320 ms); the name bounces in; the `char_swap` cue. When the scrolling stops, the character says its catchphrase ("Chooser voice"). Nobody free: a little head-shake and a low tak. |
 | Round starts | On the countdown's last beat the stamps flip to GO!, Play flashes and squashes, both characters jump, then three leaning stripes (cream, green, red) chase across pulling the deep colour behind them, a "ROUND 1" card holds for a beat, and the stripes wipe off into the game. |
 | Pause | The game stays visible, softened and tinted; a wedge slides in from the left edged in the pauser's colour. |
 | Settings | Its wider wedge slams in from the right; the title shrinks and the podiums step left. Meters bump when a value changes. |
@@ -118,6 +118,39 @@ to change: B, left / right, A; Select, B, left / right, A for the other one.
 With only Jeff and Chuck in the roster (characters `v0.3.0`) and both players on the stage, there
 is nobody free to switch to: left / right gives the head-shake. New characters land with a
 `sync_characters.sh` rerun, no code change.
+
+### Chooser voice
+
+Kaden, 2026-11-10: "when a character is up on the screen, I'd like it to say its catchphrase
+once. Give a little audio cue of who they are."
+
+- **Each step** (left / right that changes the character) plays the `char_swap` cue and the swap
+  animation at once, as before, so scrolling feels quick. It no longer barks.
+- **`SAY_SETTLE` = 0.3 s** (`lobby.gd`) after the last step, the character now on the podium says
+  its catchphrase, **once**. Scrolling fast through five characters says only the one you stop
+  on; standing on it says nothing more; scrolling away and back says it again (every settle
+  after a step speaks). A step restarts the settle.
+- **Joining** shows your pick and says its catchphrase after the same settle (the join's own
+  ready sound plays at once, as before). The ready-up (A) keeps its sound; a settle already
+  running still finishes. Leaving, and the round starting, cancel a pending line.
+- **Each player has their own voice** (`Roster.voice_player(p)`, on bus `VoiceP1` / `VoiceP2`,
+  made at start, panned -0.3 / +0.3 toward their podium, sending to `SFX` so the Sound setting
+  covers it). A new line cuts off only that player's previous one, so two players choosing at once
+  never cut each other off.
+- **The line**: `Roster.catchphrase(id, p)`: the character's `voice/catchphrase.ogg`; without one,
+  a random bark; neither (Jeff, Chuck, Bloom, Old Reel in `v0.5.0`): nothing more, the step's
+  `char_swap` already sounded.
+- **Where the file comes from**: `sync_characters.sh` copies `voice/lib/catchphrase_big.ogg` from
+  `openjar-characters` (only that file from `lib/`; `catchphrase_calm` and the rest stay in the
+  library) to `assets/characters/<id>/voice/catchphrase.ogg` and writes its path as
+  `"catchphrase"` in `data/roster.json` (`""` without one). It is not a bark: `barks` stays the
+  top-level cues.
+- The log says what played when: `Chooser voice: P1 boxbot res://.../catchphrase.ogg (t=8.98 s)`.
+
+Copying it (a game's own lobby, the launcher's in-line chooser): on a successful step play the
+swap cue and set `_say_in[p] = SAY_SETTLE`; each frame count it down and at zero call
+`Roster.catchphrase(Roster.pick(p), p)` once; cancel on leave / launch. `lobby.gd` `say_soon()`,
+`cancel_say()`, `voice_step()` are the whole of it; `tests/test_chooser_voice.gd` checks it.
 
 ## Screens
 
