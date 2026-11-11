@@ -71,7 +71,7 @@ func step(delta: float) -> void:
 	var players := _players()
 	_narration(players, delta)
 	_walk_ups(players)
-	_bubbles = _bubbles.filter(func(b: BarkBubble) -> bool: return is_instance_valid(b) and not b.is_queued_for_deletion())
+	_bubbles = _bubbles.filter(func(b) -> bool: return is_instance_valid(b) and not b.is_queued_for_deletion())
 
 
 ## True if "who/cue" is past its cooldown.
@@ -103,7 +103,7 @@ func say(who: String, cue: String, speaker: Node2D, pics: Array, head: Vector2, 
 
 
 func bubbles() -> Array:
-	return _bubbles.filter(func(b: BarkBubble) -> bool: return is_instance_valid(b) and not b.is_queued_for_deletion())
+	return _bubbles.filter(func(b) -> bool: return is_instance_valid(b) and not b.is_queued_for_deletion())
 
 
 # --- Jeff names rocks ----------------------------------------------------------------------------
