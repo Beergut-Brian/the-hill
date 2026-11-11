@@ -1,0 +1,16 @@
+[gd_resource type="Resource" script_class="CameraTuning" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/gameplay/camera_tuning.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+zoom = 2.0
+lead_px = Vector2(64, 40)
+lead_in = 2.5
+ease_back = 1.6
+dead_zone = 0.25
+lead_speed = 30.0
+lead_up_top = false
+vehicle_zoom = {&"crane": 0.85, &"dump_truck": 0.85}
+vehicle_zoom_up_top = true
+zoom_ease = 2.0
