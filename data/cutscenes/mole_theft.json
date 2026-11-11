@@ -1,0 +1,156 @@
+{
+	"id": "mole_theft",
+	"scene": "underground",
+	"steps": [
+		{
+			"do": "camera",
+			"to": "victim",
+			"dy": -16,
+			"zoom": 3.0,
+			"time": 0.7,
+			"wait": 0.6
+		},
+		{
+			"do": "spawn",
+			"who": "mole",
+			"sheet": "mole",
+			"at": "victim",
+			"dx": "@back"
+		},
+		{
+			"do": "call",
+			"fn": "dirt",
+			"args": {
+				"who": "mole"
+			},
+			"wait": 0.1
+		},
+		{
+			"do": "sound",
+			"cue": "mole_pop"
+		},
+		{
+			"do": "hop",
+			"who": "mole",
+			"height": 5
+		},
+		{
+			"do": "line",
+			"who": "mole",
+			"line": "mole_sneak",
+			"pics": [
+				"shovel",
+				"heart"
+			]
+		},
+		{
+			"do": "walk",
+			"who": "mole",
+			"to": "victim",
+			"dx": "@near",
+			"time": 1.1
+		},
+		{
+			"do": "face",
+			"who": "victim",
+			"toward": "mole"
+		},
+		{
+			"do": "call",
+			"fn": "bump",
+			"args": {
+				"who": "victim"
+			}
+		},
+		{
+			"do": "line",
+			"who": "victim",
+			"line": "theft_hey_{char}",
+			"pics": [
+				"exclaim",
+				"shovel"
+			]
+		},
+		{
+			"do": "call",
+			"fn": "take_shovel",
+			"always": true
+		},
+		{
+			"do": "item",
+			"pic": "shovel",
+			"from": "victim",
+			"to": "mole",
+			"time": 0.6,
+			"sound": "mole_steal",
+			"wait": 0.65
+		},
+		{
+			"do": "hold",
+			"who": "mole",
+			"pic": "shovel"
+		},
+		{
+			"do": "hop",
+			"who": "mole",
+			"height": 7,
+			"times": 2,
+			"time": 0.6
+		},
+		{
+			"do": "line",
+			"who": "mole",
+			"line": "mole_caught",
+			"pics": [
+				"shovel",
+				"face_sheepish"
+			]
+		},
+		{
+			"do": "line",
+			"who": "mole",
+			"line": "mole_eep",
+			"pics": [
+				"face_sheepish"
+			],
+			"time": 0.9
+		},
+		{
+			"do": "walk",
+			"who": "mole",
+			"dx": "@away",
+			"time": 0.5
+		},
+		{
+			"do": "call",
+			"fn": "dirt",
+			"args": {
+				"who": "mole"
+			}
+		},
+		{
+			"do": "sound",
+			"cue": "mole_dig"
+		},
+		{
+			"do": "drop",
+			"who": "mole"
+		},
+		{
+			"do": "hide",
+			"who": "mole"
+		},
+		{
+			"do": "bubble",
+			"who": "victim",
+			"pics": [
+				"shovel",
+				"question"
+			],
+			"time": 1.5
+		},
+		{
+			"do": "camera_back"
+		}
+	]
+}

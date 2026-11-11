@@ -1,0 +1,31 @@
+{
+	"id": "crew_freed",
+	"scene": "underground",
+	"steps": [
+		{
+			"do": "camera",
+			"to": "@focus",
+			"dy": -20,
+			"zoom": 2.6,
+			"time": 0.8,
+			"wait": 0.6
+		},
+		{
+			"do": "line",
+			"who": "@focus",
+			"line": "crew_freed",
+			"pics": [
+				"wall",
+				"hardhat",
+				"face_happy"
+			]
+		},
+		{
+			"do": "wait",
+			"time": 1.2
+		},
+		{
+			"do": "camera_back"
+		}
+	]
+}

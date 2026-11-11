@@ -1,0 +1,31 @@
+{
+	"id": "caveman_thaw",
+	"scene": "underground",
+	"steps": [
+		{
+			"do": "camera",
+			"to": "@focus",
+			"dy": -20,
+			"zoom": 2.6,
+			"time": 0.8,
+			"wait": 0.6
+		},
+		{
+			"do": "line",
+			"who": "@focus",
+			"line": "caveman_thaw",
+			"pics": [
+				"ice",
+				"heart",
+				"face_happy"
+			]
+		},
+		{
+			"do": "wait",
+			"time": 1.0
+		},
+		{
+			"do": "camera_back"
+		}
+	]
+}

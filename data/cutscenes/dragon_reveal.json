@@ -1,0 +1,30 @@
+{
+	"id": "dragon_reveal",
+	"scene": "underground",
+	"steps": [
+		{
+			"do": "camera",
+			"to": "@focus",
+			"dy": -20,
+			"zoom": 2.2,
+			"time": 0.8,
+			"wait": 0.6
+		},
+		{
+			"do": "line",
+			"who": "@focus",
+			"line": "dragon_reveal",
+			"pics": [
+				"zzz",
+				"heart"
+			]
+		},
+		{
+			"do": "wait",
+			"time": 2.2
+		},
+		{
+			"do": "camera_back"
+		}
+	]
+}
