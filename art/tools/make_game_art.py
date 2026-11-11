@@ -36,11 +36,14 @@ WHITE = (255, 255, 255)
 CLEAR = (0, 0, 0, 0)
 LAMP = hp.hx("#ffec96")                 # pale warm lamp lens
 LIT_WIN = hp.hx("#ffe08a")              # night window glow
+SAND = hp.hx("#ecd08a")                 # C-17 sand: pale gold, between Stone and Ice
+R["sand"] = hp.ramp(SAND, P)
+P["back"]["sand"] = hp.backwall(SAND, P)
 COMB = hp.hx("#D63384")                 # Jeff's comb, approved raspberry (characters repo)
 
 # Underground palette ids 1..7 (underground.gd BLOCK_ORDER) and wall layers 0..5.
-BLOCKS = ["top", "clay", "stone", "ice", "crys", "edge", "strange"]
-BLOCK_NAMES = ["dirt", "clay", "stone", "ice", "crystal", "edgestone", "strangestone"]
+BLOCKS = ["top", "clay", "stone", "ice", "crys", "edge", "strange", "sand"]
+BLOCK_NAMES = ["dirt", "clay", "stone", "ice", "crystal", "edgestone", "strangestone", "sand"]
 WALLS = ["top", "clay", "stone", "ice", "crys", "cav"]
 WALL_NAMES = ["topsoil", "clay", "stone", "ice", "crystal", "bottom"]
 
@@ -175,6 +178,19 @@ def texture(kind, v):
                 for dx in range(-hw, hw + 1):
                     S(cx + dx, cy + i, hi if dx < 0 else (dp if dx > 0 else mid))
             S(cx - 1, cy + 2, WHITE)
+    elif kind == "sand":
+        # soft grains and one wind ripple (same height at the tile edges, so variants tile)
+        specks(9, lo)
+        specks(5, hi)
+        amp = [1.0, 1.4, .8, 1.2][v]
+        base = [6, 9, 5, 10][v]
+        for x in range(T):
+            y = base + round(amp * math.sin(2 * math.pi * x / T))
+            if x % 4 != 3:
+                S(x, y, lo)
+                S(x, y - 1, hi)
+        if v % 2:
+            S(r.randrange(3, 13), r.randrange(2, 5), dp)
     elif kind == "edge":
         # big dressed blocks, joints never on the tile border
         for y in (5, 11):
@@ -2526,12 +2542,31 @@ def dragon_egg():
     return outline(f)
 
 
+def frozen_fish():
+    """W-11: a round, friendly fish (big eye, little smile), frozen in the Ice layer's rinks."""
+    f = Image.new("RGBA", (16, 16), CLEAR)
+    d = ImageDraw.Draw(f)
+    o = R["beak"]                                                        # warm orange body
+    d.polygon([(1, 4), (5, 8), (1, 12)], fill=A(o[1]))                   # tail
+    d.ellipse([3, 4, 14, 12], fill=A(o[2]))
+    d.chord([3, 8, 14, 12], 0, 180, fill=A(o[1]))                        # belly shade
+    d.line([6, 5, 10, 5], fill=A(o[3]))                                  # lit back
+    d.polygon([(7, 4), (9, 1), (11, 4)], fill=A(o[3]))                   # top fin
+    d.point((6, 9), fill=A(o[0]))                                        # side fin
+    d.point((7, 9), fill=A(o[0]))
+    d.ellipse([10, 5, 13, 8], fill=A(WHITE))                             # big eye
+    d.point((12, 7), fill=A(OL))
+    d.point((11, 7), fill=A(OL))
+    d.line([11, 10, 12, 10], fill=A(o[0]))                               # small smile
+    return outline(f)
+
+
 def make_treasures2():
     fs = finds()
     crop = {n: fs.crop((i * 16, 0, i * 16 + 16, 16)) for i, n in enumerate(("cap", "boot", "bike", "fossil"))}
     for tid, im in (("bottle_caps", bottle_caps()), ("boot", crop["boot"]), ("bike", bike2()),
                     ("bathtub", bathtub()), ("fossil", crop["fossil"]), ("dino_skeleton", dino_skeleton()),
-                    ("pirate_chest", pirate_chest()), ("dragon_egg", dragon_egg())):
+                    ("pirate_chest", pirate_chest()), ("dragon_egg", dragon_egg()), ("frozen_fish", frozen_fish())):
         save(im, "treasures/%s.png" % tid)
         MANIFEST[tid] = {"file": "treasures/%s.png" % tid, "frame": list(im.size),
                          "tiles": [im.width // 16, im.height // 16]}
