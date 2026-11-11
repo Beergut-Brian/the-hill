@@ -37,8 +37,8 @@ func after_test() -> void:
 	_barks.free()
 
 
-func _bubble() -> BarkBubble:
-	var b := BarkBubble.new()
+func _bubble() -> PictoBubbleNode:
+	var b := PictoBubbleNode.new()
 	_barks._bubbles.append(b)
 	return b
 
@@ -67,8 +67,8 @@ func test_step_prunes_freed_bubbles_and_keeps_live_ones() -> void:
 
 
 func test_a_typed_lambda_would_have_logged_the_error() -> void:
-	# The counter really sees the old bug (func(b: BarkBubble) on a freed bubble), so the empty
+	# The counter really sees the old bug (func(b: PictoBubbleNode) on a freed bubble), so the empty
 	# error lists above mean something.
 	_bubble().free()
-	_barks._bubbles.filter(func(b: BarkBubble) -> bool: return is_instance_valid(b))
+	_barks._bubbles.filter(func(b: PictoBubbleNode) -> bool: return is_instance_valid(b))
 	assert_bool(_log.errors.is_empty()).is_false()
