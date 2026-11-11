@@ -468,3 +468,4 @@ Full notes, quoted: `playtests/2026-11-10.md`. Lanes follow this section where i
   - **The bounce's own cue is `lava_boing`** (Audio lane). Until that file exists, `dragon_boing` plays, so the action is never silent.
   - **No shovel, still a bounce:** lava never looks at the player's tool.
   - **"Digs into lava"** = digging into a pocket's room and walking or falling onto the pool. Digging out the floor under a pool is still possible (the pool then floats over a hole); left to the Dig lane (`hill-dig-1`), which owns what can be dug.
+- 2026-11-11 (Plan-sync lane): F-4 "Kaden and his son play it" counts as met by tag `v0.1.0` plus playtests/2026-11-10.md (Kaden and family played v0.1.0); the timing half of C-27 stays open until a timed playtest.
