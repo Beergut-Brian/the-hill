@@ -40,6 +40,12 @@ window/stretch/mode="canvas_items"
 window/stretch/aspect="keep"
 window/vsync/vsync_mode=1
 
+[importer_defaults]
+
+scene={
+"gltf/embedded_image_handling": 3
+}
+
 [input]
 
 p1_move_left={
