@@ -92,13 +92,8 @@ func say(who: String, cue: String, speaker: Node2D, pics: Array, head: Vector2, 
 	if _log:
 		print("bark: t=%.1f %s at %s" % [_t, key, speaker.global_position if speaker != null else Vector2.ZERO])
 	if speaker != null and is_instance_valid(speaker) and speaker.get_parent() != null and not pics.is_empty():
-		var b := BarkBubble.new()
-		b.speaker = speaker
-		b.head = head
-		b.pics = pics
-		b.secs = tuning.bubble_secs
-		speaker.get_parent().add_child(b)
-		_bubbles.append(b)
+		# The shared PictoBubble scene (S-15): follows the speaker, pops in, fades, frees itself.
+		_bubbles.append(PictoBubbleNode.pop(speaker.get_parent(), speaker, pics, maxf(tuning.bubble_secs, 0.1), head))
 	return true
 
 
