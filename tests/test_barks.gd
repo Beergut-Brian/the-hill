@@ -247,7 +247,7 @@ func test_the_dragon_yawns_asleep_and_rumbles_awake() -> void:
 
 func test_the_bubble_fades_and_frees_itself() -> void:
 	Events.tile_dug.emit(Vector2i(1, 1), &"ice", P1)
-	var b: BarkBubble = _barks.bubbles()[0]
+	var b: PictoBubbleNode = _barks.bubbles()[0]
 	b._process(2.0)
 	await get_tree().process_frame
 	assert_bool(is_instance_valid(b)).is_false()
