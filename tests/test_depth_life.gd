@@ -118,6 +118,16 @@ func test_every_block_resolves_to_a_data_row_and_a_tile() -> void:
 		var b := load("res://data/blocks/%s.tres" % id) as BlockData
 		assert_object(b).is_not_null()
 		assert_str(String(b.id)).is_equal(String(id))
+		# C-22 puzzle tiles have no column of their own: they draw with the terrain column named
+		# in Underground.LOOKS_LIKE, which must be a real column (not another borrowed one).
+		if Underground.LOOKS_LIKE.has(id):
+			var look: StringName = Underground.LOOKS_LIKE[id]
+			var j := Underground.BLOCK_ORDER.find(look)
+			assert_int(j).override_failure_message("%s looks like unknown %s" % [id, look]).is_greater_equal(0)
+			assert_bool(Underground.LOOKS_LIKE.has(look)).is_false()
+			assert_str(str(terrain.ids.get(str(j + 1), ""))).override_failure_message("%s looks like %s, no column" % [id, look]).is_equal(String(look))
+			assert_int(sheet.get_width()).is_greater_equal((j + 1) * HillTileArt.VARIANTS * 16)
+			continue
 		# Palette index i + 1 is its terrain column block and its icon column.
 		assert_str(str(terrain.ids.get(str(i + 1), ""))).override_failure_message("terrain id %d" % (i + 1)).is_equal(String(id))
 		assert_str(str(icons.ids.get(str(i + 1), ""))).is_equal(String(id))

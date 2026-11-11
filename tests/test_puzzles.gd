@@ -193,6 +193,8 @@ func test_puzzles_place_from_data_and_move_nothing_else() -> void:
 		ids[palette[i].id] = i
 	old.configure(u.layers(), ids, Underground.load_rows(Underground.TREASURE_DIR))
 	old.configure_hazards(Underground.load_rows(Underground.HAZARD_DIR))
+	# Same block depths as Underground (sand's depth_from): only the puzzle rows are left out.
+	old.configure_block_depths(u.blocks)
 	old.setup(RectShape.new(Underground.WIDTH, Underground.HEIGHT), u.world_seed)
 	assert_int(old.puzzles.size()).is_equal(0)
 	assert_array(old.landings).is_equal(g.landings)
