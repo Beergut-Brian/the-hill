@@ -8,6 +8,7 @@ var _real_picks := ""
 
 ## Default picks only: never the real shared picks file.
 func before() -> void:
+	SuiteSandbox.enter("art_sprites")   # first: never the real profile, settings or picks file
 	_real_picks = Roster.picks_path
 	Roster.picks_path = "user://test_art_sprites_players.json"
 	Roster.args_override = PackedStringArray(["--no-picks"])
@@ -18,6 +19,7 @@ func after() -> void:
 	Roster.picks_path = _real_picks
 	Roster.args_override = PackedStringArray()
 	Roster.reload()
+	SuiteSandbox.leave()   # last: the real profile, settings and picks come back
 
 
 func test_sheet_frames_come_from_the_manifest() -> void:

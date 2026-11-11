@@ -395,3 +395,11 @@ func test_rebuild_from_progress() -> void:
 	await get_tree().create_timer(1.2).timeout
 	assert_bool(Progress.has_vehicle(&"excavator")).is_false()
 	assert_int(_rolled.size()).is_equal(0)
+
+
+func before() -> void:
+	SuiteSandbox.enter("hill_build")   # never the real profile, settings or picks file
+
+
+func after() -> void:
+	SuiteSandbox.leave()

@@ -51,7 +51,9 @@ outside every game's `user://`. Keyed by the launcher's save profile (`Save.prof
 
 Written the moment a pick changes: read, change only this profile's two slots, keep every other
 key, write `players.json.tmp`, rename. Tests point `Roster.picks_path` at `user://` so they never
-write the real one.
+write the real one: every suite runs inside `SuiteSandbox.enter/leave` (tests/suite_sandbox.gd), and a
+gdUnit or scripted run (`--shots=`, `--screenshot-after=`, `--ui=`, `--demo`, `--demo-beat=`) boots on
+`user://scratch_players.json` (`Roster.boot_picks_path`), never the shared file.
 
 ## 4. The chooser
 

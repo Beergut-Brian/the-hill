@@ -75,3 +75,11 @@ func test_faces_load_from_the_import_cache() -> void:
 				.override_failure_message("%s texture is a file in res://: %s" % [id, t.resource_path]) \
 				.is_true()
 	assert_int(DirAccess.get_files_at(CHARACTERS + "jeff").size()).is_equal(before)
+
+
+func before() -> void:
+	SuiteSandbox.enter("generated_textures")   # never the real profile, settings or picks file
+
+
+func after() -> void:
+	SuiteSandbox.leave()

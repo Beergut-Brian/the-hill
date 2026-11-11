@@ -79,3 +79,11 @@ func test_clear() -> void:
 	Inventory.clear()
 	assert_int(Inventory.count(&"dirt")).is_equal(0)
 	assert_dict(Inventory.to_save()).is_empty()
+
+
+func before() -> void:
+	SuiteSandbox.enter("inventory")   # never the real profile, settings or picks file
+
+
+func after() -> void:
+	SuiteSandbox.leave()

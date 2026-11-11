@@ -21,8 +21,9 @@ const VOICE_PAN := { P1: -0.3, P2: 0.3 }
 
 ## Tests point this at a fixture, then reload().
 var data_path := "res://data/roster.json"
-## The shared picks file, outside every game's user://. Tests point this at user://.
-var picks_path := shared_path()
+## The shared picks file, outside every game's user://. Tests point this at user:// (SuiteSandbox);
+## a test or scripted run (Save.scripted_run) starts on a scratch file, never the shared one.
+var picks_path := boot_picks_path(OS.get_cmdline_args() + OS.get_cmdline_user_args())
 ## The openjar-characters tag data/roster.json was synced from.
 var characters_tag := ""
 ## Tests set this instead of the real command line ([] = the real one).
@@ -41,6 +42,15 @@ var last_said := {}
 ## <OS data dir>/openjar/players.json (Linux ~/.local/share/openjar/players.json).
 static func shared_path() -> String:
 	return OS.get_data_dir().path_join("openjar").path_join("players.json")
+
+
+const SCRATCH_PICKS := "user://scratch_players.json"
+
+
+## Where this run's picks live: the shared file, or SCRATCH_PICKS for a test or scripted run.
+static func boot_picks_path(args: PackedStringArray) -> String:
+	var save := preload("res://scripts/autoload/Save.gd")
+	return SCRATCH_PICKS if save.scripted_run(args) else shared_path()
 
 
 ## "--p1-char=chuck" -> {P1: "chuck"}; either side of "--".

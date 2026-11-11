@@ -104,7 +104,7 @@ signal pick_changed(player: int, id: String)
 signal said(player: int, id: String, path: String)   # a voice line started; player -1: shared voice
 
 var data_path := "res://data/roster.json"   # tests point this at a fixture, then reload()
-var picks_path: String                       # the shared file; tests point this at user://
+var picks_path: String                       # the shared file; tests/scripted runs: user:// (boot_picks_path)
 var characters_tag: String                   # the openjar-characters tag the roster came from
 
 func roster() -> Array[String]               # playable ids in chooser order
@@ -219,7 +219,7 @@ func flush() -> void                         # writes if dirty; Game.end_round()
 func wipe() -> void
 
 # Per install, not per profile: user://settings.json, written on every set_setting().
-var settings_path: String                    # tests point this elsewhere
+var settings_path: String                    # tests point this elsewhere; scripted runs boot on user://scratch_settings.json
 func get_setting(key: String, default = null)
 func set_setting(key: String, value) -> void
 func reload_settings() -> void

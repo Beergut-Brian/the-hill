@@ -20,6 +20,7 @@ var _real := {}
 
 
 func before() -> void:
+	SuiteSandbox.enter("chooser_voice")   # first: never the real profile, settings or picks file
 	_real = { "settings": Save.settings_path, "picks": Roster.picks_path, "data": Roster.data_path }
 	Save.settings_path = "user://test_settings_chooser_voice.json"
 	Save.reload_settings()
@@ -39,6 +40,7 @@ func after() -> void:
 	Roster.data_path = _real.data
 	Roster.args_override = PackedStringArray()
 	Roster.reload()
+	SuiteSandbox.leave()   # last: the real profile, settings and picks come back
 
 
 func before_test() -> void:

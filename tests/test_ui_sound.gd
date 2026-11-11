@@ -33,3 +33,11 @@ func test_play_twice_reuses_pool_node() -> void:
 	await get_tree().process_frame
 	assert_int(get_tree().root.get_children().filter(func(c): return c.name == "UiSound").size()).is_equal(1)
 	assert_object(get_tree().root.get_node_or_null("UiSound")).is_same(first)
+
+
+func before() -> void:
+	SuiteSandbox.enter("ui_sound")   # never the real profile, settings or picks file
+
+
+func after() -> void:
+	SuiteSandbox.leave()
