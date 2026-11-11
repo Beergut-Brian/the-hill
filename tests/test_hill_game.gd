@@ -58,6 +58,8 @@ func _make(load_saved := false, start: Array = []) -> HillGame:
 	_game.load_saved = load_saved
 	_game.start_players = start
 	get_tree().root.add_child(_game)
+	# These suites test the ride itself: the old walk-in cage starts it (PT10-9 A presses: test_controls).
+	_game.elevator.walk_in = true
 	return _game
 
 
@@ -85,61 +87,59 @@ func _until(cond: Callable, max_frames: int) -> int:
 
 # --- elevator rules (no scene) -----------------------------------------------------------------
 
-func test_door_waits_then_closes() -> void:
+func test_standing_in_the_cage_never_rides_by_itself() -> void:
+	# PT10-9: A rides; walking in and waiting does nothing.
 	var d := Door.new()
-	assert_array(d.step({P1: &"hillville"}, {}, 0.0)).is_empty()
-	for i in 9:
+	for i in 40:
 		assert_array(d.step({P1: &"hillville"}, {}, 0.1)).is_empty()
-	var rides := d.step({P1: &"hillville"}, {}, 0.1)
+	assert_bool(d.is_ready(&"hillville")).is_true()
+	var rides := d.step({P1: &"hillville"}, {P1: true}, 0.016)
 	assert_int(rides.size()).is_equal(1)
 	assert_array(rides[0].riders).is_equal([P1])
 
 
 func test_everyone_in_the_cage_rides_together() -> void:
 	var d := Door.new()
-	d.step({P1: &"hillville", P2: &""}, {}, 0.0)
-	for i in 5:
-		d.step({P1: &"hillville", P2: &""}, {}, 0.1)
-	var rides := []
-	for i in 6:
-		rides = d.step({P1: &"hillville", P2: &"hillville"}, {}, 0.1)
-		if not rides.is_empty():
-			break
+	d.step({P1: &"hillville", P2: &"hillville"}, {}, 0.0)
+	var rides := d.step({P1: &"hillville", P2: &"hillville"}, {P2: true}, 0.1)
 	assert_int(rides.size()).is_equal(1)
 	assert_array(rides[0].riders).is_equal([P1, P2])
 
 
-func test_stepping_out_leaves_the_ride() -> void:
+func test_a_partner_within_the_radius_is_pulled_along() -> void:
 	var d := Door.new()
-	d.step({P1: &"hillville", P2: &"hillville"}, {}, 0.0)
-	d.step({P1: &"hillville", P2: &"hillville"}, {}, 0.5)
-	var rides := d.step({P1: &"hillville", P2: &""}, {}, 0.6)
-	assert_array(rides[0].riders).is_equal([P1])
-	# Alone: stepping out before it closes cancels the ride.
+	d.step({P1: &"u2", P2: &""}, {}, 0.0)
+	var rides := d.step({P1: &"u2", P2: &""}, {P1: true}, 0.1, {&"u2": [P2]})
+	assert_array(rides[0].riders).is_equal([P1, P2])
+	# Outside the radius (not in `near`): they stay.
 	var e := Door.new()
-	e.step({P1: &"u2"}, {}, 0.0)
-	e.step({P1: &"u2"}, {}, 0.5)
-	assert_array(e.step({P1: &""}, {}, 0.6)).is_empty()
-	assert_float(e.progress(&"u2")).is_equal(0.0)
+	e.step({P1: &"u2", P2: &""}, {}, 0.0)
+	rides = e.step({P1: &"u2", P2: &""}, {P1: true}, 0.1, {})
+	assert_array(rides[0].riders).is_equal([P1])
 
 
-func test_a_skips_the_wait() -> void:
+func test_stepping_out_clears_the_ready_cage() -> void:
 	var d := Door.new()
-	d.step({P1: &"hillville"}, {}, 0.0)
-	var rides := d.step({P1: &"hillville"}, {P1: true}, 0.016)
-	assert_int(rides.size()).is_equal(1)
+	d.step({P1: &"u2"}, {}, 0.0)
+	assert_bool(d.is_ready(&"u2")).is_true()
+	assert_array(d.step({P1: &""}, {P1: true}, 0.1)).is_empty()
+	assert_bool(d.is_ready(&"u2")).is_false()
 
 
-func test_rearms_only_after_stepping_out() -> void:
+func test_walk_in_for_scripted_runners_waits_and_rearms_after_stepping_out() -> void:
 	var d := Door.new()
-	d.step({P1: &"u0"}, {P1: true}, 0.0)
+	d.walk_in = true
+	assert_array(d.step({P1: &"hillville"}, {}, 0.0)).is_empty()
+	for i in 9:
+		assert_array(d.step({P1: &"hillville"}, {}, 0.1)).is_empty()
+	assert_int(d.step({P1: &"hillville"}, {}, 0.1).size()).is_equal(1)
 	d.arrived([P1])
 	for i in 30:
-		assert_array(d.step({P1: &"hillville"}, {}, 0.1)).is_empty()
+		assert_array(d.step({P1: &"u0"}, {}, 0.1)).is_empty()
 	d.step({P1: &""}, {}, 0.1)
-	d.step({P1: &"hillville"}, {}, 0.1)
-	assert_int(d.step({P1: &"hillville"}, {P1: true}, 0.1).size()).is_equal(1)
-
+	for i in 12:
+		d.step({P1: &"u0"}, {}, 0.1)
+	assert_bool(d.busy.has(P1)).is_true()
 
 func test_down_lands_at_the_deepest_rider_layer_up_goes_to_hillville() -> void:
 	var to := HillElevator.destination(&"hillville", [P1, P2], {P1: 1, P2: 3})

@@ -439,8 +439,8 @@ Save key `"time_of_day"`.
   in counts as A, the old door.
 - **The car on its rope (PT10-7b).** Underground the car hangs on a rope down the shaft
   (`ShaftRope`), with a faint guide rope down to the deepest landing anyone has reached. A at a
-  landing the car is not at calls it there first (`ElevatorTuning.call_time`: 0.3 s + 0.12 s
-  per layer, at most 0.9 s; `elevator_clank`, then `elevator_ding`), then the ride goes.
+  landing the car is not at calls it there first (`ElevatorTuning.call_time`: 0.5 s + 0.15 s
+  per layer, at most 1.2 s; `elevator_clank`, then `elevator_ding`), then the ride goes.
   `HillElevator.car_at` (-1 = up top), `car_position()`.
 - Going down lands at the deepest layer any rider has visited (`Progress.deepest`), at that
   layer's landing beside the shaft. The ride itself is under one second.

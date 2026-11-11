@@ -55,6 +55,8 @@ func _make() -> HillGame:
 	_game = HillGame.new()
 	_game.load_saved = false
 	get_tree().root.add_child(_game)
+	# These suites test the ride itself: the old walk-in cage starts it (PT10-9 A presses: test_controls).
+	_game.elevator.walk_in = true
 	return _game
 
 

@@ -40,6 +40,9 @@ const AIM_KEEP := 0.7
 const CLIMB_TIME := 0.18
 ## PT10-6: how fast the dig marker slides to a new cell (1/s).
 const MARK_EASE := 30.0
+## PT10-9: in the elevator's cage A rides unless the stick pushes this far sideways (then A digs
+## your way out of the landing as usual).
+const LIFT_SIDE := 0.5
 const STEP_UP := 17.0
 const DARK := Color(0.07, 0.06, 0.09)
 const HAT := Color("f2c94c")
@@ -86,6 +89,7 @@ var _mark_shown := Rect2()
 var _mark_hot := false
 ## PT10-7a: a climb onto a step in progress: {from, to, t} (global px), or {}.
 var _climb := {}
+var _a_after_lock := false
 var _in_water := false
 var _prev := {}
 var _t := 0.0
@@ -269,6 +273,7 @@ func _physics_process(delta: float) -> void:
 	queue_redraw()
 	if locked:
 		velocity = Vector2.ZERO
+		_a_after_lock = true
 		_prev = {}
 		move_intent = Vector2.ZERO
 		a_press_frame = false
@@ -279,7 +284,10 @@ func _physics_process(delta: float) -> void:
 	var it := intent()
 	var move: Vector2 = it.get("move", Vector2.ZERO)
 	var a_press := _pressed(it, "dig")
-	a_press_frame = a_press
+	# PT10-9: A still held from before a ride (or any lock) is not a new press for the elevator.
+	if not it.get("dig", false):
+		_a_after_lock = false
+	a_press_frame = a_press and not _a_after_lock and absf(move.x) < LIFT_SIDE
 	var b_press := _pressed(it, "jump")
 	var x_press := _pressed(it, "book")
 	var y_press := _pressed(it, "horn")
@@ -292,6 +300,11 @@ func _physics_process(delta: float) -> void:
 	if ability != null:
 		ability.step(delta, it, a_press)
 	var build := _build()
+	# PT10-9: in the elevator's cage, A rides (the elevator reads a_press_frame): no dig, no build.
+	if _lift_wants_a():
+		if a_press:
+			_dig_used = true
+		a_press = false
 	if build != null and build.captures(player):
 		if x_press:
 			build.book_pressed(player)
@@ -351,6 +364,24 @@ func _physics_process(delta: float) -> void:
 			_dig_cd = SCOOP_EVERY if world == null else dig_every()
 			_dig(move)
 	_update_marker(delta, bool(it.get("dig", false)))
+
+
+func _lift_wants_a() -> bool:
+	if absf(move_intent.x) >= LIFT_SIDE:
+		return false
+	var el: Object = game.get("elevator") if game != null else null
+	return el != null and el.has_method("wants_a") and bool(el.wants_a(player))
+
+
+## True when A rides the elevator right now (in a cage, stick not pushed sideways, not riding).
+func lift_ready() -> bool:
+	return lift_prompt() == 1 and absf(move_intent.x) < LIFT_SIDE
+
+
+## PT10-9: the elevator's prompt over this player: 0 none, 1 ready (blink), 2 moving (dim).
+func lift_prompt() -> int:
+	var el: Object = game.get("elevator") if game != null else null
+	return int(el.prompt_of(player)) if el != null and el.has_method("prompt_of") else 0
 
 
 ## False while the story says this player has no shovel (the Mole took it): no digging on foot.
@@ -767,6 +798,23 @@ func _draw_body(c: Color) -> void:
 	SpriteArt.draw_char(self, SpriteArt.char_file(player), pose[0], _t, Vector2.ZERO, facing < 0, Color.WHITE, pose[1])
 
 
+## PT10-9: the A glyph over the head while standing in the elevator: blinking when it is ready to
+## go, dim and steady while the car comes or the ride is on.
+func _draw_lift_glyph(h: float, state: int) -> void:
+	var hz := 2.5
+	var el: Object = game.get("elevator") if game != null else null
+	if el != null and el.get("tuning") != null:
+		hz = float(el.tuning.blink_hz)
+	var on := fmod(_t * hz, 1.0) < 0.6
+	var alpha := (1.0 if on else 0.35) if state == 1 else 0.45
+	var bob := sin(_t * TAU * hz * 0.5) * 1.5 if state == 1 else 0.0
+	var at := Vector2(0, -h - 14.0 + bob)
+	# Drawn at 2x and scaled down, so the letter is crisp at the game's zoom.
+	draw_set_transform(Vector2(0, ride_offset) + at, 0.0, Vector2(0.5, 0.5))
+	ButtonHints.draw_button(self, Vector2.ZERO, 30.0, "a", alpha, 1.0 if on and state == 1 else 0.0)
+	draw_set_transform(Vector2(0, ride_offset))
+
+
 ## PT10-6: the next dig's cells, outlined with corner brackets in the player's colour (brighter
 ## while A is held). Drawn by the player, so it moves with them; nothing floats free.
 func _draw_marker(c: Color) -> void:
@@ -795,6 +843,9 @@ func _draw_marker(c: Color) -> void:
 
 func _draw_effects() -> void:
 	var h := body_size().y
+	var lift := lift_prompt()
+	if lift > 0:
+		_draw_lift_glyph(h, 2 if lift == 1 and not lift_ready() else lift)
 	if _honk > 0.0:
 		# The horn: rings popping out of the front.
 		var at := Vector2(facing * (body_size().x * 0.5 + 4.0), -h * 0.6)

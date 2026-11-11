@@ -1,0 +1,11 @@
+[gd_resource type="Resource" script_class="ElevatorTuning" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/gameplay/elevator_tuning.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+pull_radius_tiles = 3.0
+blink_hz = 2.5
+call_base = 0.5
+call_per_layer = 0.15
+call_max = 1.2

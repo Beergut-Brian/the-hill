@@ -3,10 +3,16 @@
 ##          every 0.6 s.
 ##          Every physics frame logs "turn:" with P1's feet, where P1 is on their screen, the
 ##          camera, and the cell the next dig takes (the marker) so the jitter can be measured.
+##   lift   P1 stands in the cage up top (the A blinks over the head), P2 two tiles away; A: both
+##          ride down. Then P1 at the Stone landing presses A: the car comes down its rope, then
+##          up they go. P2 stays below (too far away).
+##   hints  The hint panels in each context: P1 on foot underground (A dig, B jump), up top
+##          beside the Front Loader (B get in, X book), driving it (A scoop, B get out), in the
+##          cage (A ride); P2 up top on foot the whole time (B jump, X book).
 class_name ControlsBeats
 extends CameraBeats
 
-const CONTROLS_BEATS := ["turn"]
+const CONTROLS_BEATS := ["turn", "lift", "hints"]
 
 
 func _physics_process(delta: float) -> void:
@@ -15,6 +21,8 @@ func _physics_process(delta: float) -> void:
 		return
 	match beat:
 		"turn": _turn()
+		"lift": _lift()
+		"hints": _hints()
 
 
 ## Where player p's feet are on their own screen (px from the left of their view).
@@ -63,4 +71,80 @@ func _turn() -> void:
 		3:
 			_log_turn()
 			if _since() > 1.0:
+				_next("done")
+
+
+func _a(p: int) -> void:
+	_intent[p] = {"move": Vector2.ZERO, "dig": true, "jump": false, "book": false, "horn": false}
+
+
+func _lift() -> void:
+	var el: HillElevator = game.elevator
+	match _stage:
+		0:
+			el.walk_in = false
+			Progress.visit_layer(P1, 0)
+			Progress.visit_layer(P1, 1)
+			game.place_player(P1, HillGame.HILLVILLE, game.hillville.arrival() + Vector2(0, -1))
+			if game.player_node(P2) != null:
+				game.place_player(P2, HillGame.HILLVILLE, game.hillville.arrival() + Vector2(40, -1))
+			_next("stage: P1 in the cage up top, P2 two tiles away")
+		1:
+			if _since() > 1.5:
+				_a(P1)
+				_next("A: ride down")
+		2:
+			if game.director.scene_of(P1) == HillGame.UNDERGROUND and not game.player_node(P1).locked:
+				_next("landed: P2 %s" % game.director.scene_of(P2))
+		3:
+			if _since() > 1.0:
+				for i in 4:
+					Progress.visit_layer(P1, i)
+				_place(P1, _ug().landing(3))
+				if game.player_node(P2) != null:
+					_place(P2, _ug().landing(0) + Vector2(-90, 0))
+				_next("stage: P1 at the Stone landing (car at %d)" % el.car_at)
+		4:
+			if _since() > 1.0:
+				_a(P1)
+				_next("A: call the car")
+		5:
+			if _since() > 0.15 and _since() < 0.2:
+				log_event("car at %.2f" % el.car_position())
+			if game.director.scene_of(P1) == HillGame.HILLVILLE and not game.player_node(P1).locked:
+				_next("up top: P2 %s" % game.director.scene_of(P2))
+		6:
+			if _since() > 1.0:
+				_next("done")
+
+
+func _hints() -> void:
+	match _stage:
+		0:
+			var w := _ug().world
+			for y in range(14, 18):
+				for x in range(66, 74):
+					w.set_tile(Vector2i(x, y), 0)
+			_place(P1, Vector2(70 * 16.0, 18 * 16.0 - 1.0))
+			if game.player_node(P2) != null:
+				_yard(P2, Hillville.SHAFT_X - 300)
+			_next("stage: P1 on foot underground")
+		1:
+			if _since() > 2.0:
+				var lx: float = game.loader_position().pos.x
+				game.place_player(P1, HillGame.HILLVILLE, Vector2(lx - 30.0, 0))
+				game.player_node(P1).facing = 1
+				_next("P1 beside the Front Loader up top")
+		2:
+			if _since() > 2.0:
+				game.hop_in(game.player_node(P1))
+				_next("P1 in the Front Loader")
+		3:
+			if _since() > 2.0:
+				game.hop_out(game.player_node(P1), true)
+				game.elevator.walk_in = false
+				game.place_player(P1, HillGame.HILLVILLE, game.hillville.arrival() + Vector2(0, -1))
+				_next("P1 in the cage up top")
+		4:
+			if _since() > 2.0:
 				_next("done")

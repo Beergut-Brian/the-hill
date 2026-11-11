@@ -28,6 +28,7 @@ var build: BuildController
 var elevator: HillElevator
 var save: HillSave
 var hud: Control
+var hints: Control
 var book_layer: Control
 var players: Dictionary = {}       # int -> HillPlayer
 ## Which residents have been met (saved as "residents"); the residents' behaviour reads it.
@@ -88,6 +89,11 @@ func _ready() -> void:
 	hud.name = "Hud"
 	hud.game = self
 	director.add_child(hud)
+	# PT10-8: the context button hints, one panel per player (their half of the screen in split).
+	hints = HillHintLayer.new()
+	hints.name = "Hints"
+	hints.game = self
+	director.add_child(hints)
 	kick = ScreenKick.new()
 	kick.game = self
 	add_child(kick)
@@ -542,6 +548,20 @@ func _scene_of_node(n: Node) -> StringName:
 
 ## B next to a parked vehicle: hop in. True if it used the press.
 func hop_in(node: HillPlayer) -> bool:
+	var best := vehicle_near(node)
+	if best == null:
+		return false
+	best.get_parent().remove_child(best)
+	drivers[best.data.id] = node.player
+	node.global_position = Vector2(best.position.x, minf(best.position.y, node.global_position.y))
+	node.facing = best.facing
+	node.drive(best.data)
+	Audio.play("hop_in")
+	return true
+
+
+## The parked vehicle B would hop `node` into now, or null (PT10-8: the hints ask too).
+func vehicle_near(node: HillPlayer) -> Vehicle:
 	var scene := director.scene_of(node.player)
 	var best: Vehicle = null
 	var best_d := INF
@@ -554,15 +574,7 @@ func hop_in(node: HillPlayer) -> bool:
 		if dx <= HillPlayer.HOP_REACH and dy <= 24.0 and dx < best_d:
 			best = v
 			best_d = dx
-	if best == null:
-		return false
-	best.get_parent().remove_child(best)
-	drivers[best.data.id] = node.player
-	node.global_position = Vector2(best.position.x, minf(best.position.y, node.global_position.y))
-	node.facing = best.facing
-	node.drive(best.data)
-	Audio.play("hop_in")
-	return true
+	return best
 
 
 ## B while driving: hop out; the vehicle stays parked where you are.
