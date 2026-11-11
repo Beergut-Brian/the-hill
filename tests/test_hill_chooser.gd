@@ -16,6 +16,7 @@ var _main: Node
 
 
 func before() -> void:
+	SuiteSandbox.enter("hill_chooser")   # first: never the real profile, settings or picks file
 	_real = {"settings": Save.settings_path, "profile": Save.profile, "picks": Roster.picks_path,
 			"data": Roster.data_path}
 	Save.settings_path = "user://test_settings_hill_chooser.json"
@@ -39,6 +40,7 @@ func after() -> void:
 	CharacterSheet.clear()
 	UiStyle.use_skin(load(UiStyle.SKIN_PATH))
 	Game.quit_exits = true
+	SuiteSandbox.leave()   # last: the real profile, settings and picks come back
 
 
 func before_test() -> void:

@@ -50,6 +50,11 @@ jobs:
         run: |
           mkdir -p ~/.local/share/godot/export_templates
           mv /root/.local/share/godot/export_templates/* ~/.local/share/godot/export_templates/ 2>/dev/null || true
+      - name: Stamp the version
+        shell: bash   # the lobby's version label reads data/build.json (BuildInfo); no file = "dev"
+        run: |
+          printf '{ "version": "%s", "commit": "%s" }\n' "$GITHUB_REF_NAME" "$GITHUB_SHA" > data/build.json
+          cat data/build.json
       - name: Export Linux
         run: |
           mkdir -p build

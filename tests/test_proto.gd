@@ -244,3 +244,11 @@ func test_audio_synth_beep_for_missing_cues() -> void:
 	Audio.synth_missing = false
 	assert_object(Audio.stream_for(cue)).is_null()
 	Audio.play(cue)
+
+
+func before() -> void:
+	SuiteSandbox.enter("proto")   # never the real profile, settings or picks file
+
+
+func after() -> void:
+	SuiteSandbox.leave()

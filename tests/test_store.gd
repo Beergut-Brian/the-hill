@@ -196,3 +196,11 @@ static func _xf(n: Node) -> Transform3D:
 			xf = (n as Node3D).transform * xf
 		n = n.get_parent()
 	return xf
+
+
+func before() -> void:
+	SuiteSandbox.enter("store")   # never the real profile, settings or picks file
+
+
+func after() -> void:
+	SuiteSandbox.leave()

@@ -1422,5 +1422,22 @@
    144
   ],
   "pivot_note": "bottom-left on the ground"
+ },
+ "workshop": {
+  "door": [
+   48,
+   94
+  ],
+  "file": "buildings/workshop.png",
+  "frame": [
+   96,
+   96
+  ],
+  "lit": "buildings/workshop_lit.png",
+  "pivot": [
+   0,
+   96
+  ],
+  "pivot_note": "bottom-left on the ground"
  }
 }

@@ -23,6 +23,7 @@ var _dug := {}
 
 
 func before() -> void:
+	SuiteSandbox.enter("two_drivers")   # first: never the real profile, settings or picks file
 	_real_profile = Save.profile
 	_real_settings = Save.settings_path
 	Save.settings_path = "user://test_settings_two_drivers.json"
@@ -38,6 +39,7 @@ func after() -> void:
 	Save.profile = _real_profile
 	Save._load()
 	Game.quit_exits = true
+	SuiteSandbox.leave()   # last: the real profile, settings and picks come back
 
 
 func before_test() -> void:

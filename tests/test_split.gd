@@ -288,3 +288,11 @@ func test_input_is_forwarded_into_hosted_scenes() -> void:
 	_dir.forward_input = false
 	get_tree().root.push_input(ev)
 	assert_int(got.size()).is_equal(1)
+
+
+func before() -> void:
+	SuiteSandbox.enter("split")   # never the real profile, settings or picks file
+
+
+func after() -> void:
+	SuiteSandbox.leave()

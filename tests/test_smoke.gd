@@ -8,6 +8,7 @@ var _real_picks := ""
 
 ## This suite boots main.tscn: its own settings and picks files, never the real ones.
 func before() -> void:
+	SuiteSandbox.enter("smoke")   # first: never the real profile, settings or picks file
 	_real_settings = Save.settings_path
 	Save.settings_path = "user://test_settings_smoke.json"
 	Save.reload_settings()
@@ -20,6 +21,7 @@ func after() -> void:
 	Save.settings_path = _real_settings
 	Save.reload_settings()
 	Roster.picks_path = _real_picks
+	SuiteSandbox.leave()   # last: the real profile, settings and picks come back
 
 
 func test_main_scene_loads() -> void:

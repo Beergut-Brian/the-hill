@@ -104,7 +104,7 @@ signal pick_changed(player: int, id: String)
 signal said(player: int, id: String, path: String)   # a voice line started; player -1: shared voice
 
 var data_path := "res://data/roster.json"   # tests point this at a fixture, then reload()
-var picks_path: String                       # the shared file; tests point this at user://
+var picks_path: String                       # the shared file; tests/scripted runs: user:// (boot_picks_path)
 var characters_tag: String                   # the openjar-characters tag the roster came from
 
 func roster() -> Array[String]               # playable ids in chooser order
@@ -219,7 +219,7 @@ func flush() -> void                         # writes if dirty; Game.end_round()
 func wipe() -> void
 
 # Per install, not per profile: user://settings.json, written on every set_setting().
-var settings_path: String                    # tests point this elsewhere
+var settings_path: String                    # tests point this elsewhere; scripted runs boot on user://scratch_settings.json
 func get_setting(key: String, default = null)
 func set_setting(key: String, value) -> void
 func reload_settings() -> void
@@ -380,11 +380,24 @@ func count_buildings(id: StringName) -> int
 func add_building(id: StringName, cell: Vector2i) -> int       # Events.building_placed
 func move_building(index: int, to: Vector2i) -> void           # Events.building_moved (free, any vehicle or on foot)
 func backpack_capacity() -> int
+func tool_level() -> int                 # B-06: sum of `dig_power` (Workshop) effects, 0..TOOL_MAX (2). HillPlayer reads it:
+                                         #   level 1+ on foot = the bigger shovel (one more cell per dig, a gold glint);
+                                         #   each level digs 35% quicker and drives vehicles 15% faster
 func visit_layer(player: int, layer_index: int) -> bool
 func deepest_of(player: int) -> int
 func to_save() -> Dictionary             # {"treasures", "vehicles", "buildings", "players"}
 func load_save(data: Dictionary) -> void
 ```
+
+### Voice lines (`scripts/audio/voice_lines.gd`, class `VoiceLines`; gap-close lane, 2026-11-10)
+
+HillGame adds one `VoiceLines` node. The players' picked characters speak with their library voice pack
+(Roster info `voice`) on `treasure_found` (the finder: `found`), a Workshop (`upgrade`, each player), other
+buildings (`built`, at most every 20 s) and `resident_arrived` (`hello`). Game cues map to the library's
+recorded lines in `Audio.LIBRARY_CUES` (`found` -> `win`/`cheer`, `rock_name` -> `cheer`, `narrate` ->
+`ready`/`wait`, `upgrade` -> `cheer`/`win`, `built` -> `cheer`, `bonk` -> `oops`, `hello` -> `join`);
+`Audio.bark_stream` tries the pack's own cue, then those, then the synth placeholder. Characters without
+a pack say nothing from VoiceLines.
 
 ### `TimeOfDay` (`scripts/autoload/TimeOfDay.gd`): the surface clock (Art lane, 2026-11-10)
 
