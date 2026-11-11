@@ -15,7 +15,9 @@
 ##   onto a snow pile in the nest (a soft pop). Nothing is lost; they dig on from there.
 ## - Lava (W-14): a lava pocket's pool (generator.lava_pockets) is a bounce pad: standing on it
 ##   launches the player LAVA_HOP px/s up (a hop of at most hop_height(), about 4 tiles), with a
-##   boing and an orange splash. It never hurts and never ends anything.
+##   boing and an orange splash. It never hurts and never ends anything. For HOT_SECS after, the
+##   player wears a little flame over the head and a warm flash (the "that's why"), and their
+##   camera gets a small kick on the bounce. A player with no shovel bounces the same.
 ## Stun hooks the player's `intent_source` (wrapping whatever source it had); the player script is
 ## not changed. All timers run in physics time.
 class_name Hazards
@@ -50,6 +52,10 @@ const HOLE_FALL := 210.0
 ## Lava: the launch speed (px/s up) and the pause before the same player bounces again.
 const LAVA_HOP := 360.0
 const LAVA_COOL := 0.3
+## How long the "hot" flame icon and warm flash stay on a bounced player.
+const HOT_SECS := 1.0
+## The bounce's own cue (Needs the Audio lane); `dragon_boing` plays until it exists.
+const LAVA_CUE := "lava_boing"
 const SNOW := Color(0.94, 0.97, 1.0)
 const LAVA := Color("ff8a2a")
 const LAVA_TOP := Color("ffc94a")
@@ -128,6 +134,11 @@ func is_dropping(p: int) -> bool:
 ## Seconds since player p last bounced off lava (INF if never).
 func since_bounce(p: int) -> float:
 	return float(_hop_t.get(p, INF))
+
+
+## True for HOT_SECS after player p bounced off lava (the flame icon shows).
+func is_hot(p: int) -> bool:
+	return since_bounce(p) < HOT_SECS
 
 
 ## The highest a lava bounce lifts anyone (px), from LAVA_HOP and the world's gravity.
@@ -330,7 +341,11 @@ func bounce(pl: HillPlayer) -> void:
 	_hop_t[p] = 0.0
 	pl.velocity = Vector2(pl.velocity.x, -LAVA_HOP)
 	pl.bump()
-	Audio.play("dragon_boing")
+	if Audio.has_cue(LAVA_CUE):
+		Audio.play(LAVA_CUE)
+	else:
+		Audio.play("dragon_boing")
+	ScreenKick.kick(p, 2.5, 0.25)
 	var feet := u.world.to_local(pl.global_position)
 	u.burst(feet, LAVA, 16, 140.0)
 	u.burst(feet, LAVA_TOP, 8, 90.0)
@@ -557,7 +572,7 @@ class _StarsFx extends Node2D:
 		if not is_instance_valid(hazards):
 			return false
 		var p := player.player
-		return hazards.is_stunned(p) or hazards.is_sliding(p) or hazards.is_dropping(p) or hazards.since_bounce(p) < 0.45
+		return hazards.is_stunned(p) or hazards.is_sliding(p) or hazards.is_dropping(p) or hazards.is_hot(p)
 
 	func _process(delta: float) -> void:
 		_t += delta
@@ -601,6 +616,15 @@ class _StarsFx extends Node2D:
 			# Boing: an orange ring springs out under the feet.
 			var k := since / 0.45
 			draw_arc(Vector2(0, -2), 6.0 + k * 18.0, PI, TAU, 14, Color(Hazards.LAVA_TOP, 1.0 - k), 3.0)
+		if since < Hazards.HOT_SECS:
+			# Hot: a warm flash over the body that fades, and a flame over the head for HOT_SECS.
+			var f := since / Hazards.HOT_SECS
+			if since < 0.35:
+				var a := 0.45 * (1.0 - since / 0.35)
+				draw_rect(Rect2(-size.x * 0.5 - 2.0, -h - 2.0, size.x + 4.0, h + 4.0), Color(1.0, 0.55, 0.15, a))
+			var fade := clampf((1.0 - f) / 0.25, 0.0, 1.0)
+			var at := Vector2(0, -h - 14.0 - sin(_t * 9.0) * 1.5)
+			Hazards.draw_flame(self, at, 7.0 + sin(_t * 23.0) * 0.8, fade)
 
 
 static func draw_star(ci: CanvasItem, at: Vector2, r: float, col: Color) -> void:
@@ -614,6 +638,27 @@ static func draw_star(ci: CanvasItem, at: Vector2, r: float, col: Color) -> void
 		outline.append(at + (q - at) * 1.35)
 	ci.draw_colored_polygon(outline, OUTLINE)
 	ci.draw_colored_polygon(pts, col)
+
+
+## A small cartoon flame (outlined orange drop, yellow heart) centred at `at`, `r` tall-ish.
+static func draw_flame(ci: CanvasItem, at: Vector2, r: float, alpha := 1.0) -> void:
+	var outer := PackedVector2Array()
+	var inner := PackedVector2Array()
+	for i in 13:
+		var a := PI * 0.5 + i * TAU / 12.0
+		var v := Vector2(cos(a), sin(a))
+		# A drop: round below, pulled to a point on top.
+		var pull := maxf(0.0, -v.y)
+		outer.append(at + Vector2(v.x * r * 0.75 * (1.0 - pull * 0.7), v.y * r * (1.0 + pull * 0.6)))
+		inner.append(at + Vector2(v.x * r * 0.4 * (1.0 - pull * 0.7), r * 0.3 + v.y * r * 0.55 * (1.0 + pull * 0.6)))
+	outer.remove_at(outer.size() - 1)
+	inner.remove_at(inner.size() - 1)
+	var rim := PackedVector2Array()
+	for q in outer:
+		rim.append(at + (q - at) * 1.25)
+	ci.draw_colored_polygon(rim, Color(OUTLINE, alpha))
+	ci.draw_colored_polygon(outer, Color(LAVA, alpha))
+	ci.draw_colored_polygon(inner, Color(Color("ffe27a"), alpha))
 
 
 static func draw_flake(ci: CanvasItem, at: Vector2, r: float, col: Color) -> void:
@@ -650,9 +695,10 @@ class _DeepArt extends Node2D:
 		var x0 := pool.position.x * 16.0
 		var x1 := pool.end.x * 16.0
 		var base := pool.end.y * 16.0
-		# A warm glow above it.
+		# A warm glow above it, flickering a little (two sines, so it never looks like a blink).
+		var flick := 1.0 + 0.35 * sin(_t * 7.3 + x0) * sin(_t * 2.9 + x0 * 0.5)
 		for k in 3:
-			draw_rect(Rect2(x0 - 6 - k * 4, base - 22 - k * 6, x1 - x0 + 12 + k * 8, 22 + k * 6), Color(1.0, 0.55, 0.15, 0.07))
+			draw_rect(Rect2(x0 - 6 - k * 4, base - 22 - k * 6, x1 - x0 + 12 + k * 8, 22 + k * 6), Color(1.0, 0.55, 0.15, 0.07 * flick))
 		var top := PackedVector2Array()
 		var n := int((x1 - x0) / 4.0)
 		for i in n + 1:

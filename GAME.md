@@ -462,3 +462,9 @@ Full notes, quoted: `playtests/2026-11-10.md`. Lanes follow this section where i
   - **The reward** for a new pair (after the unfold): a big heart pops over the arc, gold sparkles at both roofs, both buildings hop, the `town_hearts` chime, and the flowers grow. Once per pair: loading a save shows the pairs already grown, and moving a building away wilts its flowers.
   - **Not built:** GAME.md's invisible adult-layer bonuses (crew hauls more beside barns, faster pond drain, extra lit layer, Mole finds more). Hearts and flowers only.
   - **`--demo-beat=adjacency|pond|heart_row`** (`scripts/gameplay/adjacency_beats.gd`).
+- 2026-11-10 (Hazards lane, lava pockets W-14, hill-lava-1):
+  - **The lava bounce was already on `dev`** (Hazards-3: pools placed from `data/hazards/crystal_lava_pocket.tres`, 4 per world, a ~66 px hop, no damage). This pass adds only the "that's why": a **1 s flame icon** over the bounced player's head with a short **warm orange flash** on their body, a **small camera kick** (`ScreenKick`, 2.5 px for 0.25 s) on the bounced player's view, and a **flickering** glow over each pool. No text anywhere.
+  - **The camera beat is a kick, not a pan to the pool.** The pool is always under the player's feet at that moment, so it is already on screen; a pan would belong to the Camera lane (S-06).
+  - **The bounce's own cue is `lava_boing`** (Audio lane). Until that file exists, `dragon_boing` plays, so the action is never silent.
+  - **No shovel, still a bounce:** lava never looks at the player's tool.
+  - **"Digs into lava"** = digging into a pocket's room and walking or falling onto the pool. Digging out the floor under a pool is still possible (the pool then floats over a hole); left to the Dig lane (`hill-dig-1`), which owns what can be dug.
