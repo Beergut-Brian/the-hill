@@ -896,3 +896,11 @@ func test_polar_water_pile_settles() -> void:
 	for i in 30:
 		w.step_water()
 	assert_array(_sorted(w.water_cells())).is_equal(before)
+
+
+func before() -> void:
+	SuiteSandbox.enter("tileworld")   # never the real profile, settings or picks file
+
+
+func after() -> void:
+	SuiteSandbox.leave()

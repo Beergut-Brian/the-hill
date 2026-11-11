@@ -37,6 +37,10 @@ var ice_holes: Array = []
 ## W-14 lava pockets: [{room: Rect2i (air), pool: Rect2i (the bottom air row's middle: the bounce
 ## pad), layer: int}], from data/hazards kind lava_pocket.
 var lava_pockets: Array = []
+## W-11: one frozen fish per ice rink, in a floor block (dig it out: Underground). Not seeded by
+## the treasure rows; FISH is the TreasureData id the first one counts as.
+const FISH := &"frozen_fish"
+var fish_cells: Array[Vector2i] = []
 ## Cells forced to one tile whatever the noise says: [[Rect2i, tile], ...] (rink and nest floors).
 var _forced: Array = []
 ## Columns of a hole: wide enough for every vehicle (the Drill Rig is 56 px).
@@ -49,6 +53,17 @@ var _mix_noise: FastNoiseLite
 var _carved: Array[Rect2i] = []
 var _calm: Array[Rect2i] = []
 var _layer_lut := PackedInt32Array()
+## C-17: palette index -> the block's depth_from. A mix entry deeper than the cell falls back to
+## the layer's main block (Sand only in the lower Stone layer).
+var _min_depth: Dictionary = {}
+## Minor kinds per layer index (LayerData.minor_kinds): [[palette index, share, shape, depth_from,
+## depth_to], ...]. They only ever replace a main-block cell outside the calm rects (landings,
+## treasures, the pocket), so the rest of a seeded world is unchanged by them.
+var _minor: Array = []
+var _minor_seed := 0
+var _vein_noise: FastNoiseLite
+## |vein noise| below share * VEIN_K is an ore streak (tuned so the share is about right).
+const VEIN_K := 0.55
 
 
 ## layers: LayerData rows; ids: block id -> palette index; treasures: TreasureData rows.
@@ -81,6 +96,24 @@ func configure(layers: Array, ids: Dictionary, treasures: Array = []) -> void:
 var _treasures: Array = []
 var _hazards: Array = []            # HazardData rows
 
+
+## BlockData rows by id (Underground.blocks): mix entries obey each block's depth_from.
+func configure_block_depths(blocks: Dictionary) -> void:
+	_min_depth = {}
+	for k in blocks:
+		var b := blocks[k] as BlockData
+		if b != null and _ids.has(b.id):
+			_min_depth[int(_ids[b.id])] = b.depth_from
+	_minor = []
+	for l: LayerData in layer_rows:
+		var list: Array = []
+		for k in l.minor_kinds:
+			var m := blocks.get(StringName(str(k))) as BlockData
+			if m != null and _ids.has(m.id):
+				list.append([int(_ids[m.id]), float(l.minor_kinds[k]), m.minor_shape, m.depth_from, m.depth_to])
+		list.sort_custom(func(a: Array, b: Array) -> bool: return a[0] < b[0])
+		_minor.append(list)
+
 ## Near a landing: this many tiles left or right of the shaft, this many rows under the room.
 const NEAR_X := Vector2i(10, 30)
 const NEAR_Y := 16
@@ -109,6 +142,12 @@ func setup(p_shape: WorldShape, p_seed: int) -> void:
 	_mix_noise.noise_type = FastNoiseLite.TYPE_SIMPLEX_SMOOTH
 	_mix_noise.frequency = 0.11
 	_mix_noise.fractal_type = FastNoiseLite.FRACTAL_NONE
+	_minor_seed = p_seed
+	_vein_noise = FastNoiseLite.new()
+	_vein_noise.seed = p_seed + 911
+	_vein_noise.noise_type = FastNoiseLite.TYPE_SIMPLEX_SMOOTH
+	_vein_noise.frequency = 0.09
+	_vein_noise.fractal_type = FastNoiseLite.FRACTAL_NONE
 	_layer_lut = PackedInt32Array()
 	_layer_lut.resize(HEIGHT)
 	for d in HEIGHT:
@@ -221,7 +260,7 @@ func _plan(p_seed: int) -> void:
 func _plan_pickups(p_seed: int) -> void:
 	var rng := RandomNumberGenerator.new()
 	rng.seed = p_seed + 4111
-	var rows := _treasures.filter(func(t: TreasureData) -> bool: return not t.stays)
+	var rows := _treasures.filter(func(t: TreasureData) -> bool: return not t.stays and t.id != FISH)
 	rows.sort_custom(func(a: TreasureData, b: TreasureData) -> bool: return String(a.id) < String(b.id))
 	for t: TreasureData in rows:
 		var li := _layer_index(t.layer)
@@ -283,6 +322,7 @@ func _plan_deep(p_seed: int) -> void:
 	ice_holes.clear()
 	lava_pockets.clear()
 	_forced.clear()
+	fish_cells.clear()
 	var rng := RandomNumberGenerator.new()
 	rng.seed = p_seed + 104729
 	for h: HazardData in _hazards:
@@ -333,6 +373,10 @@ func _try_ice_hole(r: Rect2i, li: int, ice_tile: int) -> bool:
 	# The rink's floor is all ice (the layer has some stone); the nest's floor is solid.
 	var floor_x := r.position.x - 1 if dir > 0 else r.position.x + HOLE_W
 	_forced.append([Rect2i(floor_x, r.end.y, r.size.x - HOLE_W + 1, 1), ice_tile])
+	# The frozen fish: in the floor, a third of the way from the rink's far end (away from the hole).
+	var solid_w := r.size.x - HOLE_W
+	var fx := r.position.x + solid_w / 3 if dir > 0 else r.end.x - 1 - solid_w / 3
+	fish_cells.append(Vector2i(fx, r.end.y))
 	var under := layer_of_depth(nest.end.y)
 	_forced.append([Rect2i(nest.position.x - 1, nest.end.y, nest.size.x + 2, 1), int(_ids.get(_main_block(layer_rows[under]), 1))])
 	return true
@@ -443,10 +487,67 @@ func _mix_tile(cell: Vector2i) -> int:
 	if li >= _mix.size() or (_mix[li] as Array).is_empty():
 		return _band_tile(shape.depth_of(cell))
 	var v := clampf(_mix_noise.get_noise_2d(cell.x, cell.y) * 0.9 + 0.5, 0.0, 0.9999)
+	var pick: int = (_mix[li] as Array).back()[0]
 	for e in _mix[li]:
 		if v < e[1]:
-			return e[0]
-	return (_mix[li] as Array).back()[0]
+			pick = e[0]
+			break
+	var main: int = (_mix[li] as Array)[0][0]
+	var depth := shape.depth_of(cell)
+	if int(_min_depth.get(pick, 0)) > depth:
+		pick = main
+	if pick == main and li < _minor.size() and not (_minor[li] as Array).is_empty():
+		var m := _minor_tile(cell, depth, _minor[li])
+		if m > 0 and not _in_calm(cell):
+			return m
+	return pick
+
+
+## The minor kind (palette index) laid into this main-block cell, or 0. Shapes (BlockData.minor_shape):
+## run = flat runs of 6 in slots of 8, on every fourth row; patch = clumps in a 3x3 grid; vein =
+## thin streaks along a zero line of a noise; dot = lone cells.
+func _minor_tile(cell: Vector2i, depth: int, list: Array) -> int:
+	for e in list:
+		if depth < int(e[3]) or depth >= int(e[4]):
+			continue
+		var share: float = e[1]
+		var salt: int = int(e[0]) * 7919
+		var hit := false
+		match StringName(e[2]):
+			&"run":
+				var off := posmod(cell.x, 8)
+				hit = posmod(cell.y, 4) == 1 and off >= 1 and off <= 6 \
+						and _h01(floori(cell.x / 8.0), cell.y, salt) < share * 4.0 * 8.0 / 6.0
+			&"patch":
+				hit = _h01(floori(cell.x / 3.0), floori(cell.y / 3.0), salt) < share * 1.5 \
+						and _h01(cell.x, cell.y, salt + 1) < 0.67
+			&"vein":
+				hit = absf(_vein_noise.get_noise_3d(cell.x, cell.y, salt)) < share * VEIN_K
+			_:
+				hit = _h01(cell.x, cell.y, salt) < share
+		if hit:
+			return int(e[0])
+	return 0
+
+
+func _in_calm(cell: Vector2i) -> bool:
+	for c in _calm:
+		if c.has_point(cell):
+			return true
+	return false
+
+
+## A stable 0..1 hash of (x, y, salt) and the world seed.
+func _h01(x: int, y: int, salt: int) -> float:
+	var h := (x * 73856093) ^ (y * 19349663) ^ ((salt + _minor_seed) * 83492791)
+	h = (h ^ (h >> 13)) * 1274126177
+	h = h ^ (h >> 16)
+	return float(h & 0xFFFFFF) / 16777216.0
+
+
+## The fish (index into fish_cells) frozen in `cell`, or -1.
+func fish_at(cell: Vector2i) -> int:
+	return fish_cells.find(cell)
 
 
 func base_water(cell: Vector2i) -> bool:

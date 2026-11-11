@@ -101,9 +101,10 @@ slot's pick. Player colours stay with the slot (`Players.COLOR`), never the char
 
 ```gdscript
 signal pick_changed(player: int, id: String)
+signal said(player: int, id: String, path: String)   # a voice line started; player -1: shared voice
 
 var data_path := "res://data/roster.json"   # tests point this at a fixture, then reload()
-var picks_path: String                       # the shared file; tests point this at user://
+var picks_path: String                       # the shared file; tests/scripted runs: user:// (boot_picks_path)
 var characters_tag: String                   # the openjar-characters tag the roster came from
 
 func roster() -> Array[String]               # playable ids in chooser order
@@ -111,7 +112,8 @@ func has(id: String) -> bool
 func info(id: String) -> Dictionary          # {} if unknown, else:
 	# id, name ("Jeff"), glb ("res://assets/characters/jeff/jeff.glb" or ""),
 	# pixel ("res://assets/characters/jeff/pixel.png" or ""), voice ("res://.../voice/" or ""),
-	# barks (Array of file stems in voice/), default_for (1, 2 or 0)
+	# barks (Array of file stems in voice/), catchphrase ("res://.../voice/catchphrase.ogg" or ""),
+	# default_for (1, 2 or 0)
 func default_for(player: int) -> String      # data/roster.json defaults.P1 / .P2
 func pick(player: int) -> String             # never "" while the roster has a character
 func set_pick(player: int, id: String) -> bool   # false (no change) if unknown or the other's pick
@@ -119,7 +121,12 @@ func next_free(player: int, dir: int) -> String  # dir +1 / -1 through roster(),
                                                  # other player's pick; pick(player) if none free
 func taken(id: String, by_other_than: int) -> bool
 func reload() -> void                        # re-read roster.json, args, the shared file
-func bark(id: String) -> bool                # plays a random voice bark; false if it has none
+func bark(id: String, player := -1) -> bool  # plays a random voice bark; false if it has none
+func catchphrase(id: String, player := -1) -> bool  # the catchphrase, else bark(); false if neither
+func voice_player(player := -1) -> AudioStreamPlayer  # P1 / P2: that slot's own panned voice
+                                                 # (VoiceP1 / VoiceP2 bus); -1: the shared one.
+                                                 # A new line cuts off only that voice's last one
+var last_said: Dictionary                    # voice (player or -1) -> res:// path of its last line
 ```
 
 **Resolving a slot** at start (`reload()`), first hit that is in `roster()`:
@@ -157,7 +164,8 @@ add_child(body)
 
 **The chooser** (lobby): joined and not ready, left / right (stick or D-pad) calls
 `Roster.set_pick(p, Roster.next_free(p, dir))`; the podium swaps with a squash/pop and a poof, the
-plate shows the new name, the character barks (else the `char_swap` cue). Ready: left / right does
+plate shows the new name, the `char_swap` cue plays, and `SAY_SETTLE` (0.3 s) after the last step
+the character says `Roster.catchphrase(id, p)` once (`docs/ui.md` "Chooser voice"). Ready: left / right does
 nothing; B un-readies. Solo: Select picks which podium the pad drives (A, B and left / right).
 
 ### `Players` (`scripts/autoload/Players.gd`)
@@ -211,7 +219,7 @@ func flush() -> void                         # writes if dirty; Game.end_round()
 func wipe() -> void
 
 # Per install, not per profile: user://settings.json, written on every set_setting().
-var settings_path: String                    # tests point this elsewhere
+var settings_path: String                    # tests point this elsewhere; scripted runs boot on user://scratch_settings.json
 func get_setting(key: String, default = null)
 func set_setting(key: String, value) -> void
 func reload_settings() -> void
@@ -372,11 +380,24 @@ func count_buildings(id: StringName) -> int
 func add_building(id: StringName, cell: Vector2i) -> int       # Events.building_placed
 func move_building(index: int, to: Vector2i) -> void           # Events.building_moved (free, any vehicle or on foot)
 func backpack_capacity() -> int
+func tool_level() -> int                 # B-06: sum of `dig_power` (Workshop) effects, 0..TOOL_MAX (2). HillPlayer reads it:
+                                         #   level 1+ on foot = the bigger shovel (one more cell per dig, a gold glint);
+                                         #   each level digs 35% quicker and drives vehicles 15% faster
 func visit_layer(player: int, layer_index: int) -> bool
 func deepest_of(player: int) -> int
 func to_save() -> Dictionary             # {"treasures", "vehicles", "buildings", "players"}
 func load_save(data: Dictionary) -> void
 ```
+
+### Voice lines (`scripts/audio/voice_lines.gd`, class `VoiceLines`; gap-close lane, 2026-11-10)
+
+HillGame adds one `VoiceLines` node. The players' picked characters speak with their library voice pack
+(Roster info `voice`) on `treasure_found` (the finder: `found`), a Workshop (`upgrade`, each player), other
+buildings (`built`, at most every 20 s) and `resident_arrived` (`hello`). Game cues map to the library's
+recorded lines in `Audio.LIBRARY_CUES` (`found` -> `win`/`cheer`, `rock_name` -> `cheer`, `narrate` ->
+`ready`/`wait`, `upgrade` -> `cheer`/`win`, `built` -> `cheer`, `bonk` -> `oops`, `hello` -> `join`);
+`Audio.bark_stream` tries the pack's own cue, then those, then the synth placeholder. Characters without
+a pack say nothing from VoiceLines.
 
 ### `TimeOfDay` (`scripts/autoload/TimeOfDay.gd`): the surface clock (Art lane, 2026-11-10)
 
@@ -416,6 +437,14 @@ Save key `"time_of_day"`.
   the shaft to that landing (`CraneRide.DROP`, 1.1 s; the whole ride stays under 2 s). They stay
   locked until they land; `ride_finished` fires when they come in at the mouth, `CraneRide.landed`
   when each one touches down.
+- **Pick a layer on the way down (Camera lane, 2026-11-10, S-04):** while the cage goes down,
+  up / down (edge presses of any rider's stick) moves the pick: pictures beside the shaft
+  (`LayerPick`: the sun over Hillville on top, then every layer down to the deepest rider's) and
+  a gold cage beside the picked one. It starts at the deepest layer; it never goes deeper than
+  that; up past the top layer picks Hillville and the cage comes back up (riders step out where
+  they were, `ride_finished(riders, &"hillville")`, no dump, no save). Each press keeps the cage
+  going `PICK_LINGER` (0.7 s) longer, never past `PICK_MAX` (4 s). `HillElevator.pick_of(p)`,
+  `nudge_pick(p, dir)`. Rides up are unchanged.
 - Going up empties the riders' backpacks into the shaft pile.
 - Every ride autosaves (also every 60 s, and on `Game.quit_requested`).
 - A vehicle rides with its driver.
@@ -777,6 +806,15 @@ static func wants_split(was_split: bool, same_scene: bool, offset: Vector2, scre
 | Same scene, past `split_at` of one screen on either axis | Split |
 | Between the two | Whatever it was |
 | Different scenes | Split, each half its own scene |
+
+**The Hill's camera feel (Camera lane, 2026-11-10, S-06 / S-07):** `CameraLead` (in the play scene,
+after the director each frame) leads each camera that follows one player a little ahead of where
+they dig or drive (underground only) and eases back when they stop, and zooms out a little in
+the Dump Truck and the Crane. It only moves the camera's position (so the scene's camera limits
+hold) and zoom; the split rules above are untouched. The shared camera (one view, two players)
+gets no lead and the wider zoom of the two. All values are in `data/camera.tres` (`CameraTuning`):
+base zoom 2.0 (S-07, until the TV check), lead 64 x 40 world px, vehicle zoom 0.85x (1.7).
+`ScreenKick` shakes use the camera offset and stack on top.
 
 Split is always player 0 left, player 1 right, with a divider in the two players' colours. Each
 scene lives in its own world (own physics space), so two scenes never collide with each other.

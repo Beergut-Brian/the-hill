@@ -10,8 +10,9 @@ signal loaded()
 var profile: String = "p1"
 var _data: Dictionary = {}
 var _dirty := false
-## Tests point this somewhere else so they never touch the real settings.
-var settings_path := "user://settings.json"
+## Tests point this somewhere else so they never touch the real settings. A test or scripted run
+## (scripted_run()) starts on a scratch file, so nothing it changes reaches the family's settings.
+var settings_path := boot_settings_path(OS.get_cmdline_args() + OS.get_cmdline_user_args())
 var _settings: Dictionary = {}
 
 
@@ -31,6 +32,26 @@ static func profile_from_args(args: PackedStringArray, default: String) -> Strin
 			if id.is_valid_identifier():   # keeps it a plain file name under user://saves
 				out = id
 	return out
+
+
+## Flags that mean nobody is playing: gdUnit, --shots / --screenshot-after frames, --ui= / --demo /
+## --demo-beat= showcases. Such a run must never read or write the files the family's games share.
+const SCRIPTED_FLAGS := ["--shots=", "--screenshot-after=", "--ui=", "--demo", "--demo-beat="]
+const SCRATCH_SETTINGS := "user://scratch_settings.json"
+
+
+static func scripted_run(args: PackedStringArray) -> bool:
+	for a in args:
+		if a.contains("GdUnitCmdTool") or a.contains("addons/gdUnit4"):
+			return true
+		for flag in SCRIPTED_FLAGS:
+			if a == flag or (flag.ends_with("=") and a.begins_with(flag)):
+				return true
+	return false
+
+
+static func boot_settings_path(args: PackedStringArray) -> String:
+	return SCRATCH_SETTINGS if scripted_run(args) else "user://settings.json"
 
 
 func get_value(key: String, default = null):
@@ -82,6 +103,13 @@ func wipe_settings() -> void:
 	_settings = {}
 	if FileAccess.file_exists(settings_path):
 		DirAccess.remove_absolute(settings_path)
+
+
+## Switch to another profile's save (the test sandbox): flushes the current one, loads the new.
+func use_profile(id: String) -> void:
+	flush()
+	profile = id
+	_load()
 
 
 func wipe() -> void:

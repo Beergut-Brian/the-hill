@@ -130,7 +130,12 @@ static func draw_vehicle(ci: CanvasItem, d: VehicleData, face: int, driver: Colo
 		var rr := SpriteArt.row(cf, "ride")
 		if not rr.is_empty():
 			SpriteArt.draw(ci, cf, 0, int(rr.row), head * f, flip)
+	var smoky := who >= 0 and id != &"crane"
+	if smoky:
+		_draw_exhaust(ci, id, Vector2(fs), piv, face, t, moving, true)
 	SpriteArt.draw(ci, file, col, int(body_row.get("row", 0)), Vector2.ZERO, flip)
+	if smoky:
+		_draw_exhaust(ci, id, Vector2(fs), piv, face, t, moving, false)
 	# Bucket or arm over the body.
 	var tf := tool_frame(tip, aim)
 	if id == &"front_loader":
@@ -146,6 +151,51 @@ static func draw_vehicle(ci: CanvasItem, d: VehicleData, face: int, driver: Colo
 		var bf := int(t * 14.0 * spin * 2.0) % 4 if spin > 0.05 else 0
 		var shake := Vector2(0, sin(t * 60.0)) * spin
 		SpriteArt.draw(ci, "vehicles/drill_rig_bit.png", bf, 0, (SpriteArt.point(file, "bit") + shake) * f, flip)
+
+
+## H-11: while someone drives, the vehicle's exhaust stack puffs smoke: slow round puffs idling,
+## quicker ones streaming back while it rolls. Stateless (a function of t), shapes only.
+const EXHAUST_IDLE := 1.6
+const EXHAUST_DRIVE := 4.0
+const SMOKE := Color(0.97, 0.96, 0.92)
+const SMOKE_EDGE := Color(0.23, 0.16, 0.27, 0.45)
+## Top of the stack in each sprite, from the pivot, facing right (read off the sheets). Ids marked
+## in STACK_DRAWN have no stack in their art, so a small one is drawn behind the body.
+const EXHAUST_AT := {
+	&"front_loader": Vector2(4.5, -31), &"excavator": Vector2(3, -35),
+	&"dump_truck": Vector2(3, -30), &"drill_rig": Vector2(-4.5, -49),
+}
+const STACK_DRAWN := [&"dump_truck"]
+
+
+static func exhaust_point(id: StringName, fs: Vector2, piv: Vector2, face: int) -> Vector2:
+	var at: Vector2 = EXHAUST_AT.get(id, Vector2(-piv.x + 7.0, -fs.y * 0.62))
+	return Vector2(at.x * face, at.y)
+
+
+static func exhaust_rate(moving: bool) -> float:
+	return EXHAUST_DRIVE if moving else EXHAUST_IDLE
+
+
+static func _draw_exhaust(ci: CanvasItem, id: StringName, fs: Vector2, piv: Vector2, face: int, t: float, moving: bool, stack: bool) -> void:
+	var top := exhaust_point(id, fs, piv, face)
+	if not stack:
+		_draw_puffs(ci, top, face, t, moving)
+		return
+	if not EXHAUST_AT.has(id) or STACK_DRAWN.has(id):
+		ci.draw_rect(Rect2(top + Vector2(-2.5, 0), Vector2(5, 9)), Color(0.23, 0.16, 0.27))
+		ci.draw_rect(Rect2(top + Vector2(-1.5, 1), Vector2(3, 8)), Color(0.49, 0.52, 0.62))
+
+
+static func _draw_puffs(ci: CanvasItem, top: Vector2, face: int, t: float, moving: bool) -> void:
+	var rate := exhaust_rate(moving)
+	for k in 3:
+		var ph := fposmod(t * rate / 3.0 + k / 3.0, 1.0)
+		var drift := Vector2(-face * (2.0 + (20.0 if moving else 4.0)) * ph, -18.0 * ph - 2.0)
+		var r := 2.5 + 4.5 * ph
+		var a := 1.0 - ph * ph
+		ci.draw_circle(top + drift, r + 1.0, Color(SMOKE_EDGE, SMOKE_EDGE.a * a))
+		ci.draw_circle(top + drift, r, Color(SMOKE, 0.95 * a))
 
 
 ## The Dump Truck's bed (tipping about its hinge) and the heap in it.

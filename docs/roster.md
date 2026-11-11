@@ -18,6 +18,7 @@ the Mole or the Dragon never appear) it copies into `assets/characters/<id>/`:
 | `<id>.glb` | the 3D master (standard Jarling: `idle`, `run`, `kick`, `cheer`, ten gear slots). Godot extracts `<id>_*.png` textures on import; commit them too |
 | `pixel.png` | the pixel form, front view at native size (40x32), drawn by the library's own sprite code (needs `python3` + Pillow) |
 | `voice/*.ogg` | recorded barks (none yet in `v0.3.0`) |
+| `voice/catchphrase.ogg` | the library's `voice/lib/catchphrase_big.ogg` (only that file from `lib/`), said by the chooser; `"catchphrase"` in `data/roster.json`, `""` without one. Not a bark |
 
 and writes `data/roster.json` (roster order, names, defaults, player colours, `res://` paths, the
 tag) and the characters block in `assets/CREDITS.md`. It reads the tag with `git show` (Git LFS
@@ -50,13 +51,15 @@ outside every game's `user://`. Keyed by the launcher's save profile (`Save.prof
 
 Written the moment a pick changes: read, change only this profile's two slots, keep every other
 key, write `players.json.tmp`, rename. Tests point `Roster.picks_path` at `user://` so they never
-write the real one.
+write the real one: every suite runs inside `SuiteSandbox.enter/leave` (tests/suite_sandbox.gd), and a
+gdUnit or scripted run (`--shots=`, `--screenshot-after=`, `--ui=`, `--demo`, `--demo-beat=`) boots on
+`user://scratch_players.json` (`Roster.boot_picks_path`), never the shared file.
 
 ## 4. The chooser
 
 In the lobby, on your podium, before you ready up: left / right (stick, D-pad, keys) swaps your
-character (squash, poof, pop, name bounce, bark or the `char_swap` cue), skipping the other
-player's pick. A readies and locks it, B unlocks. Solo: Select switches which podium the pad
+character (squash, poof, pop, name bounce, the `char_swap` cue), skipping the other
+player's pick; when you stop, the character says its catchphrase once (`docs/ui.md` "Chooser voice"). A readies and locks it, B unlocks. Solo: Select switches which podium the pad
 drives. Details and the per-game notes: `docs/ui.md` "The character chooser", "Per game".
 
 ## 5. Spawning the pick in game

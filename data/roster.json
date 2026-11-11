@@ -1,12 +1,28 @@
 {
 	"source": "openjar-characters",
-	"characters_tag": "v0.4.0",
+	"characters_tag": "v0.5.1",
 	"roster": [
 		"jeff",
 		"chuck",
 		"astro_ana",
+		"big_tiny",
+		"bloom",
+		"boxbot",
+		"captain_crumbs",
 		"coach_whistle",
+		"el_burrito",
+		"foreman_dot",
+		"granny_gravel",
+		"lampy",
+		"mayor_pip",
+		"old_reel",
+		"professor_fizz",
+		"rexy",
 		"ribbit",
+		"scrap",
+		"sir_clank",
+		"snooze",
+		"yoji",
 		"zorp"
 	],
 	"defaults": {
@@ -24,6 +40,7 @@
 			"pixel": "res://assets/characters/jeff/pixel.png",
 			"voice": "",
 			"barks": [],
+			"catchphrase": "",
 			"default_for": 1
 		},
 		"chuck": {
@@ -32,38 +49,349 @@
 			"pixel": "res://assets/characters/chuck/pixel.png",
 			"voice": "",
 			"barks": [],
+			"catchphrase": "",
 			"default_for": 2
 		},
 		"astro_ana": {
 			"name": "Astro Ana",
 			"glb": "res://assets/characters/astro_ana/astro_ana.glb",
 			"pixel": "res://assets/characters/astro_ana/pixel.png",
+			"voice": "res://assets/characters/astro_ana/voice/",
+			"barks": [
+				"cheer",
+				"join",
+				"lose",
+				"oops",
+				"ready",
+				"swap_in",
+				"wait",
+				"win"
+			],
+			"catchphrase": "res://assets/characters/astro_ana/voice/catchphrase.ogg",
+			"default_for": 0
+		},
+		"big_tiny": {
+			"name": "Big Tiny",
+			"glb": "res://assets/characters/big_tiny/big_tiny.glb",
+			"pixel": "res://assets/characters/big_tiny/pixel.png",
+			"voice": "res://assets/characters/big_tiny/voice/",
+			"barks": [
+				"cheer",
+				"join",
+				"lose",
+				"oops",
+				"ready",
+				"swap_in",
+				"wait",
+				"win"
+			],
+			"catchphrase": "res://assets/characters/big_tiny/voice/catchphrase.ogg",
+			"default_for": 0
+		},
+		"bloom": {
+			"name": "Bloom",
+			"glb": "res://assets/characters/bloom/bloom.glb",
+			"pixel": "res://assets/characters/bloom/pixel.png",
 			"voice": "",
 			"barks": [],
+			"catchphrase": "",
+			"default_for": 0
+		},
+		"boxbot": {
+			"name": "Boxbot",
+			"glb": "res://assets/characters/boxbot/boxbot.glb",
+			"pixel": "res://assets/characters/boxbot/pixel.png",
+			"voice": "res://assets/characters/boxbot/voice/",
+			"barks": [
+				"cheer",
+				"join",
+				"lose",
+				"oops",
+				"ready",
+				"swap_in",
+				"wait",
+				"win"
+			],
+			"catchphrase": "res://assets/characters/boxbot/voice/catchphrase.ogg",
+			"default_for": 0
+		},
+		"captain_crumbs": {
+			"name": "Captain Crumbs",
+			"glb": "res://assets/characters/captain_crumbs/captain_crumbs.glb",
+			"pixel": "res://assets/characters/captain_crumbs/pixel.png",
+			"voice": "res://assets/characters/captain_crumbs/voice/",
+			"barks": [
+				"cheer",
+				"join",
+				"lose",
+				"oops",
+				"ready",
+				"swap_in",
+				"wait",
+				"win"
+			],
+			"catchphrase": "res://assets/characters/captain_crumbs/voice/catchphrase.ogg",
 			"default_for": 0
 		},
 		"coach_whistle": {
 			"name": "Coach Whistle",
 			"glb": "res://assets/characters/coach_whistle/coach_whistle.glb",
 			"pixel": "res://assets/characters/coach_whistle/pixel.png",
+			"voice": "res://assets/characters/coach_whistle/voice/",
+			"barks": [
+				"cheer",
+				"join",
+				"lose",
+				"oops",
+				"ready",
+				"swap_in",
+				"wait",
+				"win"
+			],
+			"catchphrase": "res://assets/characters/coach_whistle/voice/catchphrase.ogg",
+			"default_for": 0
+		},
+		"el_burrito": {
+			"name": "El Burrito",
+			"glb": "res://assets/characters/el_burrito/el_burrito.glb",
+			"pixel": "res://assets/characters/el_burrito/pixel.png",
+			"voice": "res://assets/characters/el_burrito/voice/",
+			"barks": [
+				"cheer",
+				"join",
+				"lose",
+				"oops",
+				"ready",
+				"swap_in",
+				"wait",
+				"win"
+			],
+			"catchphrase": "res://assets/characters/el_burrito/voice/catchphrase.ogg",
+			"default_for": 0
+		},
+		"foreman_dot": {
+			"name": "Foreman Dot",
+			"glb": "res://assets/characters/foreman_dot/foreman_dot.glb",
+			"pixel": "res://assets/characters/foreman_dot/pixel.png",
+			"voice": "res://assets/characters/foreman_dot/voice/",
+			"barks": [
+				"cheer",
+				"join",
+				"lose",
+				"oops",
+				"ready",
+				"swap_in",
+				"wait",
+				"win"
+			],
+			"catchphrase": "res://assets/characters/foreman_dot/voice/catchphrase.ogg",
+			"default_for": 0
+		},
+		"granny_gravel": {
+			"name": "Granny Gravel",
+			"glb": "res://assets/characters/granny_gravel/granny_gravel.glb",
+			"pixel": "res://assets/characters/granny_gravel/pixel.png",
+			"voice": "res://assets/characters/granny_gravel/voice/",
+			"barks": [
+				"cheer",
+				"join",
+				"lose",
+				"oops",
+				"ready",
+				"swap_in",
+				"wait",
+				"win"
+			],
+			"catchphrase": "res://assets/characters/granny_gravel/voice/catchphrase.ogg",
+			"default_for": 0
+		},
+		"lampy": {
+			"name": "Lampy",
+			"glb": "res://assets/characters/lampy/lampy.glb",
+			"pixel": "res://assets/characters/lampy/pixel.png",
+			"voice": "res://assets/characters/lampy/voice/",
+			"barks": [
+				"cheer",
+				"join",
+				"lose",
+				"oops",
+				"ready",
+				"swap_in",
+				"wait",
+				"win"
+			],
+			"catchphrase": "res://assets/characters/lampy/voice/catchphrase.ogg",
+			"default_for": 0
+		},
+		"mayor_pip": {
+			"name": "Mayor Pip",
+			"glb": "res://assets/characters/mayor_pip/mayor_pip.glb",
+			"pixel": "res://assets/characters/mayor_pip/pixel.png",
+			"voice": "res://assets/characters/mayor_pip/voice/",
+			"barks": [
+				"cheer",
+				"join",
+				"lose",
+				"oops",
+				"ready",
+				"swap_in",
+				"wait",
+				"win"
+			],
+			"catchphrase": "res://assets/characters/mayor_pip/voice/catchphrase.ogg",
+			"default_for": 0
+		},
+		"old_reel": {
+			"name": "Old Reel",
+			"glb": "res://assets/characters/old_reel/old_reel.glb",
+			"pixel": "res://assets/characters/old_reel/pixel.png",
 			"voice": "",
 			"barks": [],
+			"catchphrase": "",
+			"default_for": 0
+		},
+		"professor_fizz": {
+			"name": "Professor Fizz",
+			"glb": "res://assets/characters/professor_fizz/professor_fizz.glb",
+			"pixel": "res://assets/characters/professor_fizz/pixel.png",
+			"voice": "res://assets/characters/professor_fizz/voice/",
+			"barks": [
+				"cheer",
+				"join",
+				"lose",
+				"oops",
+				"ready",
+				"swap_in",
+				"wait",
+				"win"
+			],
+			"catchphrase": "res://assets/characters/professor_fizz/voice/catchphrase.ogg",
+			"default_for": 0
+		},
+		"rexy": {
+			"name": "Rexy",
+			"glb": "res://assets/characters/rexy/rexy.glb",
+			"pixel": "res://assets/characters/rexy/pixel.png",
+			"voice": "res://assets/characters/rexy/voice/",
+			"barks": [
+				"cheer",
+				"join",
+				"lose",
+				"oops",
+				"ready",
+				"swap_in",
+				"wait",
+				"win"
+			],
+			"catchphrase": "res://assets/characters/rexy/voice/catchphrase.ogg",
 			"default_for": 0
 		},
 		"ribbit": {
 			"name": "Ribbit",
 			"glb": "res://assets/characters/ribbit/ribbit.glb",
 			"pixel": "res://assets/characters/ribbit/pixel.png",
-			"voice": "",
-			"barks": [],
+			"voice": "res://assets/characters/ribbit/voice/",
+			"barks": [
+				"cheer",
+				"join",
+				"lose",
+				"oops",
+				"ready",
+				"swap_in",
+				"wait",
+				"win"
+			],
+			"catchphrase": "res://assets/characters/ribbit/voice/catchphrase.ogg",
+			"default_for": 0
+		},
+		"scrap": {
+			"name": "Scrap",
+			"glb": "res://assets/characters/scrap/scrap.glb",
+			"pixel": "res://assets/characters/scrap/pixel.png",
+			"voice": "res://assets/characters/scrap/voice/",
+			"barks": [
+				"cheer",
+				"join",
+				"lose",
+				"oops",
+				"ready",
+				"swap_in",
+				"wait",
+				"win"
+			],
+			"catchphrase": "res://assets/characters/scrap/voice/catchphrase.ogg",
+			"default_for": 0
+		},
+		"sir_clank": {
+			"name": "Sir Clank",
+			"glb": "res://assets/characters/sir_clank/sir_clank.glb",
+			"pixel": "res://assets/characters/sir_clank/pixel.png",
+			"voice": "res://assets/characters/sir_clank/voice/",
+			"barks": [
+				"cheer",
+				"join",
+				"lose",
+				"oops",
+				"ready",
+				"swap_in",
+				"wait",
+				"win"
+			],
+			"catchphrase": "res://assets/characters/sir_clank/voice/catchphrase.ogg",
+			"default_for": 0
+		},
+		"snooze": {
+			"name": "Snooze",
+			"glb": "res://assets/characters/snooze/snooze.glb",
+			"pixel": "res://assets/characters/snooze/pixel.png",
+			"voice": "res://assets/characters/snooze/voice/",
+			"barks": [
+				"cheer",
+				"join",
+				"lose",
+				"oops",
+				"ready",
+				"swap_in",
+				"wait",
+				"win"
+			],
+			"catchphrase": "res://assets/characters/snooze/voice/catchphrase.ogg",
+			"default_for": 0
+		},
+		"yoji": {
+			"name": "Yoji",
+			"glb": "res://assets/characters/yoji/yoji.glb",
+			"pixel": "res://assets/characters/yoji/pixel.png",
+			"voice": "res://assets/characters/yoji/voice/",
+			"barks": [
+				"cheer",
+				"join",
+				"lose",
+				"oops",
+				"ready",
+				"swap_in",
+				"wait",
+				"win"
+			],
+			"catchphrase": "res://assets/characters/yoji/voice/catchphrase.ogg",
 			"default_for": 0
 		},
 		"zorp": {
 			"name": "Zorp",
 			"glb": "res://assets/characters/zorp/zorp.glb",
 			"pixel": "res://assets/characters/zorp/pixel.png",
-			"voice": "",
-			"barks": [],
+			"voice": "res://assets/characters/zorp/voice/",
+			"barks": [
+				"cheer",
+				"join",
+				"lose",
+				"oops",
+				"ready",
+				"swap_in",
+				"wait",
+				"win"
+			],
+			"catchphrase": "res://assets/characters/zorp/voice/catchphrase.ogg",
 			"default_for": 0
 		}
 	}

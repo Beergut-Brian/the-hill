@@ -63,3 +63,11 @@ func test_vehicle_nose_lamp_is_a_light_only_while_driving() -> void:
 	p.stop_driving()
 	await get_tree().process_frame
 	assert_bool(u.world._darkness.lights.has(lamp)).is_false()
+
+
+func before() -> void:
+	SuiteSandbox.enter("art_underground")   # never the real profile, settings or picks file
+
+
+func after() -> void:
+	SuiteSandbox.leave()
