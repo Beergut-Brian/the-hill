@@ -14,7 +14,7 @@ const SKY := Color("58c4f0")
 const GRASS := Color("6fbf3a")
 const SUN := Color("ffd54a")
 ## Block id -> column in icons/blocks.png (assets/sprites/manifest.json "block_icons").
-const ICON_COL := {&"dirt": 0, &"clay": 1, &"stone": 2, &"ice": 3, &"crystal": 4, &"edgestone": 5, &"strangestone": 6}
+const ICON_COL := {&"dirt": 0, &"clay": 1, &"stone": 2, &"ice": 3, &"crystal": 4, &"edgestone": 5, &"strangestone": 6, &"sand": 7}
 
 var layers: Array = []      # LayerData, shallowest first (only the reachable ones)
 var riders: Array = []      # player ids (their colours on the cage)
