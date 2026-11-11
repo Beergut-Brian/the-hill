@@ -50,6 +50,11 @@ var drivers: Dictionary = {}       # StringName -> player driving it
 var _anchor: Node2D
 var _anchor_on := false
 var _waking := {}
+## B-03: who sleeps in the House at night (-1: nobody; the bucket by day). Rechecked every HOUSE_CHECK s.
+var _house_sleeper := -1
+var _house_check := 0.0
+const HOUSE_NIGHT := 0.5
+const HOUSE_CHECK := 0.5
 
 
 func _ready() -> void:
@@ -90,6 +95,9 @@ func _ready() -> void:
 	var sound := HillAudio.new()   # Audio lane: engines, layered music, snore, barks
 	sound.game = self
 	add_child(sound)
+	var voices := VoiceLines.new()   # P-06: the picked characters speak with their library voices
+	voices.game = self
+	add_child(voices)
 	book_layer = Control.new()
 	book_layer.name = "BookLayer"
 	book_layer.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
@@ -149,7 +157,8 @@ func _ready() -> void:
 		var beat := HillBeatRunner.beat_arg(OS.get_cmdline_user_args() + OS.get_cmdline_args())
 		var runner: Node = HillDemoRunner.new()
 		if beat != "":
-			runner = CameraBeats.new() if CameraBeats.CAMERA_BEATS.has(beat) else HazardBeats.new() if HazardBeats.HAZARD_BEATS.has(beat) else VehicleBeats.new() if VehicleBeats.VEHICLE_BEATS.has(beat) else PolishBeats.new() if PolishBeats.POLISH_BEATS.has(beat) else ArcBeats.new() if ArcBeats.ARC_BEATS.has(beat) else HillBeatRunner.new()
+			var gap: Script = load("res://scripts/gameplay/gap_beats.gd")
+			runner = gap.new() if gap.get("GAP_BEATS").has(beat) else CameraBeats.new() if CameraBeats.CAMERA_BEATS.has(beat) else HazardBeats.new() if HazardBeats.HAZARD_BEATS.has(beat) else VehicleBeats.new() if VehicleBeats.VEHICLE_BEATS.has(beat) else PolishBeats.new() if PolishBeats.POLISH_BEATS.has(beat) else ArcBeats.new() if ArcBeats.ARC_BEATS.has(beat) else HillBeatRunner.new()
 		runner.set("game", self)
 		if beat != "":
 			runner.set("beat", beat)
@@ -245,6 +254,11 @@ func note_scenes() -> void:
 
 func _physics_process(delta: float) -> void:
 	elevator.check(delta)
+	_house_check -= delta
+	if _house_check <= 0.0:
+		_house_check = HOUSE_CHECK
+		if house_sleeper() != _house_sleeper:
+			_update_sleeper()
 	for p: int in players:
 		if director.scene_of(p) == UNDERGROUND and not elevator.is_riding(p):
 			Progress.visit_layer(p, underground.layer_index_at(players[p].global_position))
@@ -326,6 +340,16 @@ func wake(p: int) -> HillPlayer:
 	var scene := HILLVILLE
 	var tip_node: Node = null
 	var face := 1
+	var house := house_node() if house_sleeper() == p else null
+	if house != null:
+		# B-03: asleep in the House at night: out of the front door with a hop and a puff.
+		var node_h := spawn(p, house.door_position() + Vector2(0, -2.0), HILLVILLE)
+		node_h.velocity = Vector2(90.0, -200.0)
+		node_h.bump()
+		hillville.puff(house.door_position(), Hillville.CREAM, 10)
+		Audio.play("hop_out")
+		house.wake_bump()
+		return node_h
 	if p == Players.P2 or not players.is_empty():
 		var lp := loader_position()
 		scene = lp.scene
@@ -357,17 +381,42 @@ func loader_position() -> Dictionary:
 	return {"scene": HILLVILLE, "pos": _loader_spawn(), "facing": 1}
 
 
-## The sleeping player drawn in vehicle `id`'s bucket, or -1.
+## The sleeping player drawn in vehicle `id`'s bucket, or -1 (by night with a House, they sleep there).
 func sleeper_in(id: StringName) -> int:
-	if id == LOADER and not players.has(Players.P2):
+	if id == LOADER and not players.has(Players.P2) and house_sleeper() < 0:
 		return Players.P2
 	return -1
+
+
+## B-03 (GAME.md: "Jeff and Chuck sleep here"): the player asleep in the House, or -1. The absent
+## P2 moves from the Loader's bucket into the first House once its lights are on (night), and back
+## at dawn; pressing a button then wakes them out of the House's door instead of the bucket.
+func house_sleeper() -> int:
+	if players.has(Players.P2) or Progress.count_buildings(&"house") == 0:
+		return -1
+	return Players.P2 if Building.current_lights() >= HOUSE_NIGHT else -1
+
+
+## The first House's node up top, or null.
+func house_node() -> Building:
+	if build == null:
+		return null
+	for i in Progress.buildings.size():
+		if Progress.buildings[i].id == &"house":
+			return build.building_node(i)
+	return null
 
 
 func _update_sleeper() -> void:
 	var v: Vehicle = vehicles.get(LOADER)
 	if v != null:
 		v.sleeper = sleeper_in(LOADER)
+	_house_sleeper = house_sleeper()
+	var first := house_node()
+	if hillville != null:
+		for b in hillville.buildings_root().get_children():
+			if b is Building and (b as Building).data != null and (b as Building).data.id == &"house":
+				(b as Building).sleeper = _house_sleeper if b == first else -1
 
 
 ## The elevator (and tests): put a player in a scene at a position and set them up there.
