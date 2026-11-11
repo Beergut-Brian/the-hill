@@ -44,6 +44,7 @@ func before_test() -> void:
 
 func after_test() -> void:
 	Audio.synth_missing = true
+	Audio.pack_root = Audio.CHARACTERS_DIR
 	for k in [97, 98, 99]:
 		Audio.engine_stop(k)
 	if is_instance_valid(_game):
@@ -311,38 +312,55 @@ func test_treasures_get_bigger_with_depth() -> void:
 
 # --- barks -----------------------------------------------------------------------------------
 
+## Fixtures only (never the real roster): tests/fixtures/voice_packs/ is laid out the way
+## openjar-characters plans the packs (<id>/voice/<line id>.ogg) with renamed placeholders;
+## voice_packs_none/ has no packs at all.
+const PACKS := "res://tests/fixtures/voice_packs/"
+const NO_PACKS := "res://tests/fixtures/voice_packs_none/"
+const RESIDENT_BARKS := [["mole", "oh_dear"], ["gnome_foreman", "mutter"], ["gnome_foreman", "whistle"],
+		["dragon", "rumble"], ["dragon", "yawn"]]
+
+
 func test_a_resident_pack_line_replaces_the_placeholder_when_it_lands() -> void:
-	# The five Hill speakers have no recorded audio in openjar-characters v0.5.0: all placeholders.
-	for pair in [["jeff", "rock_name"], ["chuck", "narrate"], ["mole", "oh_dear"],
-			["gnome_foreman", "mutter"], ["gnome_foreman", "whistle"], ["dragon", "rumble"]]:
-		assert_bool(Audio.bark_is_real(pair[0], pair[1])).is_false()
-	# A pack laid out the way the library plans it (README bark ids) is found under those ids.
-	var root := "res://tests/fixtures/voice_packs/"
-	Audio.pack_root = root
+	Audio.pack_root = NO_PACKS
+	assert_bool(Audio.bark_is_real("mole", "oh_dear")).is_false()
+	# The same bark once a pack lands: found under the line ids the pack's README plans.
+	Audio.pack_root = PACKS
 	var got := {}
 	for i in 8:
 		var s := Audio.bark_stream("mole", "oh_dear")
 		got[s.resource_path.get_file()] = true
 	assert_array(got.keys()).contains_exactly_in_any_order(["mole_oh_dear.ogg", "mole_oh_dear_dear.ogg"])
-	assert_str(Audio.bark_stream("dragon", "rumble").resource_path).is_equal(root + "dragon/voice/dragon_rumble_low.ogg")
-	assert_str(Audio.bark_stream("gnome_foreman", "mutter").resource_path).is_equal(root + "gnome_foreman/voice/foreman_hm.ogg")
+	assert_str(Audio.bark_stream("dragon", "rumble").resource_path).is_equal(PACKS + "dragon/voice/dragon_rumble_low.ogg")
+	assert_str(Audio.bark_stream("gnome_foreman", "mutter").resource_path).is_equal(PACKS + "gnome_foreman/voice/foreman_hm.ogg")
 	assert_bool(Audio.bark_is_real("mole", "oh_dear")).is_true()
 	# A line the pack has not recorded (no whistle, no yawn) keeps the placeholder.
-	assert_bool(Audio.bark_is_real("gnome_foreman", "whistle")).is_false()
-	assert_bool(Audio.bark_is_real("dragon", "yawn")).is_false()
+	assert_str(Audio.bark_stream("gnome_foreman", "whistle").resource_path).starts_with(Audio.VOICE_DIR)
+	assert_str(Audio.bark_stream("dragon", "yawn").resource_path).starts_with(Audio.VOICE_DIR)
 	# The rate caps are the same for real lines.
 	Audio.advance(30.0)
 	assert_bool(Audio.bark("mole", "oh_dear")).is_true()
 	assert_bool(Audio.bark("dragon", "rumble")).is_false()      # one bark at a time
 	Audio._voice.stop()
-	Audio.pack_root = Audio.CHARACTERS_DIR
+
+
+func test_a_missing_pack_keeps_the_placeholder_and_still_speaks() -> void:
+	Audio.pack_root = NO_PACKS
+	for pair in RESIDENT_BARKS:
+		var s := Audio.bark_stream(pair[0], pair[1])
+		assert_object(s).is_not_null()
+		assert_str(s.resource_path).starts_with(Audio.VOICE_DIR + "%s_%s" % pair)
+		assert_bool(Audio.bark_is_real(pair[0], pair[1])).is_false()
+	Audio.advance(30.0)
+	assert_bool(Audio.bark("dragon", "rumble")).is_true()
+	Audio._voice.stop()
 
 
 func test_barks_fall_back_to_placeholders_and_are_rate_capped() -> void:
-	for pair in [["jeff", "rock_name"], ["chuck", "narrate"], ["mole", "oh_dear"],
-			["gnome_foreman", "mutter"], ["gnome_foreman", "whistle"], ["dragon", "rumble"], ["dragon", "yawn"]]:
+	Audio.pack_root = NO_PACKS
+	# Every Hill bark has something to say (a pack line or its placeholder), whatever is synced.
+	for pair in [["jeff", "rock_name"], ["chuck", "narrate"]] + RESIDENT_BARKS:
 		assert_object(Audio.bark_stream(pair[0], pair[1])).is_not_null()
-		assert_bool(Audio.bark_is_real(pair[0], pair[1])).is_false()
 	assert_object(Audio.bark_stream("jeff", "no_such_line")).is_null()
 	Audio.advance(30.0)
 	assert_bool(Audio.bark("mole", "oh_dear")).is_true()
