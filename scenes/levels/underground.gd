@@ -18,6 +18,7 @@ const LAYER_DIR := "res://data/layers/"
 const TREASURE_DIR := "res://data/treasures/"
 const HAZARD_DIR := "res://data/hazards/"
 const GATE_DIR := "res://data/gates/"
+const PUZZLE_DIR := "res://data/puzzles/"
 const WIDTH := HillGenerator.WIDTH
 const HEIGHT := HillGenerator.HEIGHT
 const DEFAULT_SEED := 20261110
@@ -73,6 +74,8 @@ var strange: StrangeBubble
 var _gushes: Array = []
 ## Kid-safe hazards (bonk, float, cave-in) and the residents' behaviour; see their scripts.
 var hazards: Hazards
+## C-22: the boulder walls and vehicle blocks (scripts/gameplay/puzzles.gd).
+var puzzles: Puzzles
 var residents: UndergroundResidents
 ## W-03 / W-11: roots, waving worms, snow drifts on the rinks and the frozen fish (pictures only).
 var life: DepthLife
@@ -95,6 +98,7 @@ func _ready() -> void:
 	generator = HillGenerator.new()
 	generator.configure(_layers, ids, load_rows(TREASURE_DIR))
 	generator.configure_hazards(load_rows(HAZARD_DIR))
+	generator.configure_puzzles(load_rows(PUZZLE_DIR))
 	generator.configure_block_depths(blocks)
 	generator.configure_gates(load_rows(GATE_DIR), int(ids.get(&"gaterock", 0)), int(ids.get(&"hardrock", -1)))
 	var back := Node2D.new()
@@ -137,6 +141,9 @@ func _ready() -> void:
 	hazards = Hazards.new()
 	add_child(hazards)
 	hazards.setup(self)
+	puzzles = Puzzles.new()
+	add_child(puzzles)
+	puzzles.setup(self)
 	residents = UndergroundResidents.new()
 	add_child(residents)
 	residents.setup(self)
@@ -409,6 +416,8 @@ func haul_boulder(i: int, player := -1) -> void:
 
 
 func _on_dig_blocked(cell: Vector2i, block: StringName, player: int) -> void:
+	if puzzles != null and puzzles.on_dig_blocked(cell, player):
+		return
 	Audio.play("dig_blocked")
 	burst(world.shape.center_of(cell), Color.WHITE, 8, 70.0)
 	if block == &"strangestone" and strange != null:

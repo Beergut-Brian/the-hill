@@ -14,11 +14,32 @@ var game: Node
 var tuning: CameraTuning = CameraTuning.load_default()
 var _lead := {}    # player -> Vector2 (world px, smoothed)
 var _zoom := {}    # player -> float (smoothed)
+## C-22: a camera beat toward something the player can't see (a wall a boulder broke off screen):
+## player -> {offset: Vector2 (world px from them), t: float (seconds in), dur: float}.
+var _peek := {}
+const GROUP := &"camera_lead"
 
 
 func _ready() -> void:
 	name = "CameraLead"
 	process_priority = 10
+	add_to_group(GROUP)
+
+
+## Slides player p's view toward `offset` (world px from them) and back over `secs`: a quick
+## ease over (a fifth of the time), a hold, an ease home. A newer peek replaces an older one.
+func peek(p: int, offset: Vector2, secs := 1.6) -> void:
+	_peek[p] = {"offset": offset, "t": 0.0, "dur": maxf(secs, 0.2)}
+
+
+## Player p's peek offset right now (world px), ZERO when none.
+func peek_of(p: int) -> Vector2:
+	var e: Dictionary = _peek.get(p, {})
+	if e.is_empty():
+		return Vector2.ZERO
+	var k := float(e.t) / float(e.dur)
+	var w := smoothstep(0.0, 0.2, k) * (1.0 - smoothstep(0.75, 1.0, k))
+	return (e.offset as Vector2) * w
 
 
 ## Player p's current lead (world px from their position).
@@ -77,6 +98,10 @@ func step(delta: float) -> void:
 		var nx := _ease(cur.x, want.x, tuning.lead_in if want.x != 0.0 else tuning.ease_back, delta)
 		var ny := _ease(cur.y, want.y, tuning.lead_in if want.y != 0.0 else tuning.ease_back, delta)
 		_lead[p] = Vector2(nx, ny)
+		if _peek.has(p):
+			_peek[p].t += delta
+			if float(_peek[p].t) >= float(_peek[p].dur):
+				_peek.erase(p)
 		_zoom[p] = _ease(_zoom.get(p, tuning.zoom), t.zoom, tuning.zoom_ease, delta)
 
 
@@ -105,7 +130,7 @@ func apply() -> void:
 	var s := dir.split_amount
 	for i in 2:
 		var p: int = i if ps.size() == 2 else int(ps[0])
-		var lead: Vector2 = lead_of(p)
+		var lead: Vector2 = lead_of(p) + peek_of(p)
 		var z: float = zoom_of(p)
 		if shared:
 			lead *= s
