@@ -6,6 +6,7 @@
 script = ExtResource("1")
 zoom = 2.0
 lead_px = Vector2(64, 40)
+foot_lead_px = Vector2(0, 40)
 lead_in = 2.5
 ease_back = 1.6
 dead_zone = 0.25

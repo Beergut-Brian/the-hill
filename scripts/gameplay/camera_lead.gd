@@ -56,7 +56,7 @@ func target_of(p: int) -> Dictionary:
 	var under: bool = game.director.scene_of(p) == HillGame.UNDERGROUND
 	var lead := Vector2.ZERO
 	if under or tuning.lead_up_top:
-		lead = heading(node) * tuning.lead_px
+		lead = heading(node) * (tuning.lead_px if node.vehicle != null else tuning.foot_lead_px)
 	var z := tuning.zoom
 	if node.vehicle != null and (under or tuning.vehicle_zoom_up_top):
 		z *= tuning.zoom_factor(node.vehicle.id)

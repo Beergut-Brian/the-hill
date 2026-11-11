@@ -315,3 +315,48 @@ into the game). Add `--ui-pixel` for a `pixel_art` skin (pixel forms on the podi
 
 Performance: the sunburst is one full-screen shader; the `SCENE` backdrop renders at 1/16 of the
 pixels; 3D characters render in two small SubViewports. All of it is gone once the round starts.
+
+## Button hints (gameplay; the-hill PT10-8, ready for the template)
+
+A small panel per player that shows **only the buttons that matter right now**: a controller
+glyph (UiStyle's neutral Xbox-layout disc with a dark ring) and a **picture** of what it does.
+No words, so it is allowed on gameplay screens (`docs/kid-design.md`). Rows pop (grow and settle)
+when what a button does changes; the panel fits its rows and fades out when the list is empty.
+
+```gdscript
+var hints: ButtonHints = preload("res://scenes/ui/kit/button_hints.tscn").instantiate()
+hints.accent = Players.COLOR[p]        # edge in the player's colour
+hints.align_right = p == Players.P2    # P2's panel grows leftward from the right edge
+hints.size = Vector2(320, 260)         # rows sit at the bottom of this box
+add_child(hints)
+# Every frame (it only redraws when the list changes):
+hints.show_hints([{"button": "a", "icon": &"dig"}, {"button": "b", "icon": &"jump"}])
+```
+
+| API | What it does |
+| --- | --- |
+| `show_hints(list) -> bool` | `[{button: "a"\|"b"\|"x"\|"y", icon: StringName, dim?: bool}]`, sorted A, B, X, Y. Same list: no-op (false). |
+| `hints()` | The current list. |
+| `ButtonHints.register_icon(&"name", func(ci, rect, alpha))` | A game's own picture. Static: call `ButtonHints.unregister_icon(&"name")` before the lambda's owner is freed, or Godot aborts at exit. |
+| `ButtonHints.draw_icon(ci, id, rect, alpha)` / `draw_button(ci, centre, h, "a", alpha, ring)` | The same drawings anywhere (the-hill draws the elevator's A over a player's head with `draw_button`). |
+| `glyph_height` (44), `accent`, `align_right` | Look. |
+
+Built-in pictures: `dig`, `jump`, `climb`, `enter`, `exit` (a person, a vehicle, an arrow toward it
+or away), `ride` (a cage with up / down arrows), `book`, `scoop`, `tip`, `hook`, `drill`, `horn`,
+`ok`, `back`.
+
+**The context lives in the game, not the kit.** The Hill's `HillHintLayer`
+(`scripts/gameplay/hill_hint_layer.gd`) puts one panel in the bottom outer corner of each
+player's view (`ScreenDirector.view_rect_of`, inside the 5% safe area: P1 left, P2 right, each in
+their own half in split) and asks `HillHintLayer.for_player(game, node)` every frame:
+
+| Situation | Shows |
+| --- | --- |
+| Underground on foot | A dig (A climb while the stick points up), B jump |
+| Up top on foot | B jump, X book (A only with a ghost to place) |
+| Beside a parked vehicle | B get in |
+| Driving | A the vehicle's job (scoop / tip / dig / drill / hook), B get out |
+| Standing in the elevator cage | A ride (dim while the car comes or rides) |
+| Build book open | A ok, B back, X book |
+
+A game adopting it writes its own `for_player` with the same shape and keeps the kit as is.
