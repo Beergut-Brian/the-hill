@@ -12,6 +12,8 @@ class_name HillPlayer
 extends CharacterBody2D
 
 signal swung(cell: Vector2i)       # a dig that found nothing to remove
+## A dig press with no shovel (the Mole has it): HillStory shows the empty-hands bubble.
+signal no_shovel()
 signal honked()
 
 const WIDTH := 12.0
@@ -40,6 +42,9 @@ var player := 0
 var game: Node
 var world: TileWorld
 var locked := false
+## Story (contract "Shovel"): false while the Mole has the shovel. On foot, A then swings empty
+## hands (no_shovel) and digs nothing; a vehicle still digs. The dig code reads can_dig().
+var has_shovel := true
 ## The stick this physics frame (zero while locked); the camera lead reads it (S-06).
 var move_intent := Vector2.ZERO
 var intent_source := Callable()
@@ -412,7 +417,16 @@ func aim_of(move: Vector2) -> Vector2i:
 func _dig(move: Vector2) -> void:
 	if ability != null and ability.on_dig(move):
 		return
+	if not can_dig():
+		_swing = 1.0
+		no_shovel.emit()
+		return
 	dig_now(move)
+
+
+## False on foot while the Mole has the shovel (has_shovel); a vehicle always digs.
+func can_dig() -> bool:
+	return has_shovel or vehicle != null
 
 
 ## One dig (or scoop up top) toward `move`; true when it removed something.

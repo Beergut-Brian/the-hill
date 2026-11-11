@@ -130,6 +130,10 @@ var mole_home := Vector2.ZERO
 var warmth := 0.0
 ## Tunable for tests and beats (the GAME.md numbers are the constants).
 var steal_cooldown := STEAL_COOLDOWN
+## Story lane (MoleArc): false turns off the old quick theft on digging (steal() still works for
+## the old "steal" beat), and hide_home keeps him out of sight at home while he still steals.
+var auto_steal := true
+var hide_home := false
 
 var _t := 0.0
 var _mole := {"state": &"wander", "t": 0.0, "target": 0.0, "pause": 1.0, "wave": 0.0, "armed": true}
@@ -337,7 +341,7 @@ func _tick_mole(ps: Array[HillPlayer], delta: float) -> void:
 		_tick_visits(ps, delta)
 		if not _visit.is_empty():
 			return
-	if u.story.in_town(Story.MOLE):
+	if u.story.in_town(Story.MOLE) or hide_home:
 		mole.visible = false
 		return
 	# Home: shuffle between spots in the landing room, pausing to squint; wave at visitors.
@@ -434,7 +438,7 @@ func mole_steals() -> bool:
 
 
 func _on_tile_dug(cell: Vector2i, _block: StringName, p: int) -> void:
-	if mole == null or p < 0 or not mole_steals():
+	if mole == null or p < 0 or not mole_steals() or not auto_steal:
 		return
 	var pl := _player(p)
 	if pl == null or pl.vehicle != null:
@@ -551,7 +555,7 @@ func _end_theft(now: bool) -> void:
 	_mole.pause = 1.0
 	mole.position = mole_home
 	_mole.target = mole_home.x
-	mole.visible = not u.story.in_town(Story.MOLE)
+	mole.visible = not u.story.in_town(Story.MOLE) and not hide_home
 	if mole.visible and not now:
 		Audio.play("mole_dig")
 		u.burst(mole_home + Vector2(0, -6), DIRT, 8, 70.0)

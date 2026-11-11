@@ -1,5 +1,6 @@
 ## The residents' arcs underground (Gameplay lane, 2026-11-10), in simulated physics time on a real
-## HillGame: the Mole's three shovel thefts (never blocking, never while driving) bring him up; the
+## HillGame: the Mole's three shovel thefts (the legacy quick theft, kept for the "steal" beat; play
+## uses the Story lane's MoleArc cutscenes, never while driving) bring him up; the
 ## opened Gnome Room frees the crew; the Caveman follows to the shaft; the Dragon's second meeting
 ## brings her up in pieces; every phase survives a save; the Lost & Found visit glows and gives.
 class_name TestResidentArcsUnderground
@@ -136,8 +137,9 @@ func test_three_thefts_bring_the_mole_up_and_there_is_no_fourth() -> void:
 		assert_float(res.theft_time()).is_less(0.0)
 		assert_int(_mole_encounters()).is_equal(i + 1)
 		if i < 2:
-			# Back at home, still stealing.
-			assert_bool(res.mole.visible).is_true()
+			# Back at home, still stealing, and out of sight: since the playtest 2026-11-10 rebuild
+			# (MoleArc, hide_home) he does not show himself until his scenes.
+			assert_bool(res.mole.visible).is_false()
 			assert_vector(res.mole.position).is_equal(res.mole_home)
 			assert_int(_game.story.phase(Story.MOLE)).is_equal(ResidentState.Phase.ENCOUNTERED)
 	assert_int(stolen[0]).is_equal(3)
@@ -152,11 +154,15 @@ func test_three_thefts_bring_the_mole_up_and_there_is_no_fourth() -> void:
 	assert_bool(res.mole.visible).is_false()
 
 
-func test_digging_on_foot_brings_a_theft_that_never_blocks_digging_or_walking() -> void:
+## Playtest 2026-11-10 (GAME.md item 3): the instant on-dig theft is gone. Digging on foot never
+## stops (no theft pops up on the spot); the Story lane's MoleArc counts the tiles toward its
+## hints and its cutscene theft instead (tests/test_story_cutscenes.gd).
+func test_digging_on_foot_no_longer_brings_the_quick_theft_but_counts_toward_the_arc() -> void:
 	_make()
 	var p := _join(P1)
 	var u := _game.underground
 	var res := u.residents
+	assert_bool(res.auto_steal).is_false()
 	_stage(Rect2i(56, 14, 4, 2), Vector2i(59, 15))
 	await _physics(5)
 	var dug := [0]
@@ -164,22 +170,14 @@ func test_digging_on_foot_brings_a_theft_that_never_blocks_digging_or_walking() 
 		if who == P1:
 			dug[0] += 1
 	Events.tile_dug.connect(on_dug)
-	_hold(Vector2(1, 0), true)
-	await _until(func() -> bool: return res.theft_time() >= 0.0, 600)
-	assert_float(res.theft_time()).is_greater_equal(0.0)
-	assert_int(dug[0]).is_greater_equal(UndergroundResidents.STEAL_FIRST)
 	var x0 := p.global_position.x
-	var d0: int = dug[0]
-	var bag0 := p.backpack_count()
-	# Keeps digging and walking through the whole theft.
-	await _until(func() -> bool: return res.theft_time() < 0.0, 300)
-	assert_int(_mole_encounters()).is_equal(1)
-	assert_int(dug[0]).is_greater(d0 + 3)
+	_hold(Vector2(1, 0), true)
+	await _physics(360)
+	assert_int(dug[0]).is_greater(UndergroundResidents.STEAL_FIRST)
+	assert_float(res.theft_time()).is_less(0.0)
+	assert_int(_mole_encounters()).is_equal(0)
 	assert_float(p.global_position.x).is_greater(x0 + 32.0)
-	assert_int(p.backpack_count()).is_greater_equal(bag0)
-	# The cooldown: digging on does not bring a second one at once.
-	await _physics(180)
-	assert_int(_mole_encounters()).is_equal(1)
+	assert_int(int(_game.story_scenes.mole.state().tiles)).is_greater(0)
 	Events.tile_dug.disconnect(on_dug)
 
 
