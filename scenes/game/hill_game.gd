@@ -167,7 +167,7 @@ func _ready() -> void:
 			# (HillGame -> TwoDriverBeats -> VehicleBeats -> HillGame) that breaks every script.
 			var gap: Script = load("res://scripts/gameplay/gap_beats.gd")
 			var story_beats: Script = load("res://scripts/gameplay/story_beats.gd")
-			runner = story_beats.new() if story_beats.get("STORY_BEATS").has(beat) else gap.new() if gap.get("GAP_BEATS").has(beat) else load("res://scripts/gameplay/two_driver_beats.gd").new() if beat == "drivers" else DepthBeats.new() if DepthBeats.DEPTH_BEATS.has(beat) else CameraBeats.new() if CameraBeats.CAMERA_BEATS.has(beat) else HazardBeats.new() if HazardBeats.HAZARD_BEATS.has(beat) else VehicleBeats.new() if VehicleBeats.VEHICLE_BEATS.has(beat) else PolishBeats.new() if PolishBeats.POLISH_BEATS.has(beat) else ArcBeats.new() if ArcBeats.ARC_BEATS.has(beat) else HillBeatRunner.new()
+			runner = story_beats.new() if story_beats.get("STORY_BEATS").has(beat) else LooseBeats.new() if LooseBeats.LOOSE_BEATS.has(beat) else gap.new() if gap.get("GAP_BEATS").has(beat) else load("res://scripts/gameplay/two_driver_beats.gd").new() if beat == "drivers" else DepthBeats.new() if DepthBeats.DEPTH_BEATS.has(beat) else CameraBeats.new() if CameraBeats.CAMERA_BEATS.has(beat) else HazardBeats.new() if HazardBeats.HAZARD_BEATS.has(beat) else VehicleBeats.new() if VehicleBeats.VEHICLE_BEATS.has(beat) else PolishBeats.new() if PolishBeats.POLISH_BEATS.has(beat) else ArcBeats.new() if ArcBeats.ARC_BEATS.has(beat) else HillBeatRunner.new()
 		runner.set("game", self)
 		if beat != "":
 			runner.set("beat", beat)

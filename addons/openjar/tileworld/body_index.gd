@@ -160,9 +160,9 @@ func remove_prop(p: BreakableProp) -> void:
 func support_cells(b: FallingBody) -> Array[Vector2i]:
 	var shape := world.shape
 	var p := world.local_pos(b)
-	var half := maxf(maxf(b.size_px.x, b.size_px.y) * 0.5 - 1.0, 1.0)
-	var c0 := shape.cell_at(p - Vector2(half, half))
-	var c1 := shape.cell_at(p + Vector2(half, half))
+	var half := _half(b)
+	var c0 := shape.cell_at(p - half)
+	var c1 := shape.cell_at(p + half)
 	var out: Array[Vector2i] = []
 	for y in range(c0.y, c1.y + 1):
 		for x in range(c0.x, c1.x + 1):
@@ -173,12 +173,21 @@ func support_cells(b: FallingBody) -> Array[Vector2i]:
 	return out
 
 
+## Half the body's extent per axis, one px in: a wide body (a dropped prop) rests on its own row.
+## Round or tumbling non-square bodies use the larger side both ways (they turn).
+func _half(b: FallingBody) -> Vector2:
+	if b.round or (not b.lock_rotation and not is_equal_approx(b.size_px.x, b.size_px.y)):
+		var m := maxf(maxf(b.size_px.x, b.size_px.y) * 0.5 - 1.0, 1.0)
+		return Vector2(m, m)
+	return Vector2(maxf(b.size_px.x * 0.5 - 1.0, 1.0), maxf(b.size_px.y * 0.5 - 1.0, 1.0))
+
+
 func _supported(b: FallingBody) -> bool:
 	var shape := world.shape
 	var p := world.local_pos(b)
-	var half := maxf(maxf(b.size_px.x, b.size_px.y) * 0.5 - 1.0, 1.0)
-	var c0 := shape.cell_at(p - Vector2(half, half))
-	var c1 := shape.cell_at(p + Vector2(half, half))
+	var half := _half(b)
+	var c0 := shape.cell_at(p - half)
+	var c1 := shape.cell_at(p + half)
 	for y in range(c0.y, c1.y + 1):
 		for x in range(c0.x, c1.x + 1):
 			if world.is_solid(shape.below(Vector2i(x, y))):

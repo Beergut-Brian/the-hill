@@ -33,6 +33,13 @@ const DRAIN_PER_TOWER := 2
 const DRAIN_REACH := 14
 ## Stone blocks a hauled boulder gives (into the Crane's backpack).
 const BOULDER_BLOCKS := 4
+## W-20: these break into chunks (cut from their picture) when dug under. Every other treasure
+## drops whole (W-19), like a boulder, and stays where it lands.
+const BREAKS: Array[StringName] = [&"buried_car", &"bathtub", &"gnome_room"]
+## W-19 / W-20: A (a dig or a swing) by a player within this many px of a loose treasure or a
+## chunk, plus the thing's own half size, picks it up. Only once it has had time to land.
+const GRAB_REACH := 26.0
+const GRAB_AFTER_FRAMES := 24
 
 @export var world_seed := DEFAULT_SEED
 
@@ -41,6 +48,12 @@ var generator: HillGenerator
 var blocks: Dictionary = {}          # StringName -> BlockData
 var props: Dictionary = {}           # StringName treasure id -> Array[BreakableProp]
 var boulders: Array[FallingBody] = []
+## W-19: a pickup treasure that came loose (dropped whole, or the bathtub's chunks): id -> Array of
+## FallingBody. It is found only when a player picks it up with A (then all of it goes at once).
+var loose: Dictionary = {}
+## W-20: chunks of a treasure that stays (the car, the Gnome Room's walls; already found when they
+## broke): A by one pops it into the backpack as a block of the layer, nothing else changes.
+var rubble: Array[FallingBody] = []
 var players_root: Node2D
 ## 0..1, the elevator animates it; flash_layer says which landing's cage.
 var cage_flash := 0.0:
@@ -131,6 +144,7 @@ func _ready() -> void:
 	world.body_landed.connect(_on_body_landed)
 	world.prop_broke.connect(_on_prop_broke)
 	world.water_entered.connect(_on_water_entered)
+	players_root.child_entered_tree.connect(_on_player_added)
 	world.update_chunks()
 
 
@@ -240,6 +254,7 @@ func _spawn_bodies() -> void:
 		prop.color = TREASURE_COLORS.get(s.id, Color("f2c94c"))
 		prop.position = Vector2(r.position) * cs
 		prop.set_meta(&"treasure", s.id)
+		prop.whole = not BREAKS.has(s.id)
 		world.add_child(prop)
 		if not props.has(s.id):
 			props[s.id] = []
@@ -255,14 +270,22 @@ func _on_tile_dug(cell: Vector2i, block: StringName, player: int) -> void:
 	Audio.play(cue)
 	burst(world.shape.center_of(cell), block_color(block), 10)
 	for s in generator.treasure_spots:
-		if (s.rect as Rect2i).grow(2).has_point(cell):
+		if not loose.has(s.id) and (s.rect as Rect2i).grow(2).has_point(cell) and not _under(s.rect, cell):
 			_found(s.id, player, (s.rect as Rect2i))
+	if player >= 0:
+		grab_loose(_player_node(player))
 	if generator.fish_at(cell) >= 0:
 		_dig_fish(cell, player)
 	for i in _gushes.size():
 		var g: Dictionary = _gushes[i]
 		if g.t < 0.0 and not g.done and (g.rect as Rect2i).grow(1).has_point(cell):
 			start_gush(i)
+
+
+## W-19: the row right under a treasure. Digging there does not find it: it comes loose instead
+## (once enough of that row is gone) and is found when a player picks it up.
+static func _under(rect: Rect2i, cell: Vector2i) -> bool:
+	return cell.y == rect.end.y and cell.x >= rect.position.x and cell.x < rect.end.x
 
 
 func _found(id: StringName, player: int, rect: Rect2i) -> void:
@@ -333,7 +356,8 @@ func _free_prop(prop: Variant, now: bool) -> void:
 		n.queue_free()
 
 
-## After loading a save: found pickups are gone from the ground, hauled boulders stay hauled.
+## After loading a save: found pickups are gone from the ground, hauled boulders stay hauled, and
+## a treasure whose ground was dug away drops (or breaks) again, landing about where it was.
 func after_load() -> void:
 	for id: StringName in props.keys():
 		var td := Progress.treasure_data(id)
@@ -341,6 +365,10 @@ func after_load() -> void:
 			for prop in props[id]:
 				_free_prop(prop, true)
 			props.erase(id)
+	for id: StringName in props.keys():
+		for prop in (props[id] as Array).duplicate():
+			if prop is BreakableProp and is_instance_valid(prop):
+				(prop as BreakableProp)._check_support()
 	for i in Progress.hauled:
 		if i >= 0 and i < boulders.size() and is_instance_valid(boulders[i]):
 			boulders[i].free()
@@ -386,6 +414,7 @@ func _on_body_landed(b: Node2D, speed: float) -> void:
 	Audio.play("fall")
 	if b == null or players_root == null:
 		return
+	_on_body_landed_loose(b)
 	var at := to_local(b.global_position)
 	for n in players_root.get_children():
 		var pl := n as HillPlayer
@@ -397,19 +426,133 @@ func _on_body_landed(b: Node2D, speed: float) -> void:
 			ScreenKick.kick(pl.player, 1.0 + 2.5 * k, 0.25)
 
 
+## W-19 / W-20: a prop's ground went. A whole drop falls like a boulder (its picture, sparkle and
+## lamp ride along); a break crumbles into picture chunks with a happy crumble. Pieces are loot, not
+## walls: they land on tiles but never block a player. A pickup treasure is now loose (found when a
+## player picks it up); one that stays (car, tooth, Gnome Room) is found now, as before.
 func _on_prop_broke(prop: Node2D, pieces: Array) -> void:
-	Audio.play("prop_break")
+	var bp := prop as BreakableProp
+	var whole := bp != null and bp.whole
+	var tint: Color = bp.color if bp != null else Color.WHITE
+	if whole:
+		Audio.play("pop")
+		burst(prop.position + Vector2(bp.footprint) * 8.0, Color(0.8, 0.7, 0.55), 10, 70.0)
+	else:
+		Audio.play("wall_crumble")
+		for piece in pieces:
+			burst((piece as Node2D).position, tint.lightened(0.3), 4, 90.0)
+	var now := Engine.get_physics_frames()
 	for piece in pieces:
-		# Pieces are loot, not walls: they land on tiles but never block a player.
 		(piece as FallingBody).collision_layer = 4
-	if prop.has_meta(&"treasure"):
-		var id: StringName = prop.get_meta(&"treasure")
-		var bp := prop as BreakableProp
-		var td := Progress.treasure_data(id)
-		if td != null and not td.stays:
-			for piece in pieces:
-				(piece as Node).queue_free()
-		_found(id, -1, Rect2i(world.shape.cell_at(prop.position + Vector2(8, 8)), bp.footprint))
+		# They do land on each other, so a crumbled car settles as a little heap, not one row.
+		(piece as FallingBody).collision_mask |= 4
+		(piece as Node).set_meta(&"loose_at", now)
+	if not prop.has_meta(&"treasure"):
+		return
+	var id: StringName = prop.get_meta(&"treasure")
+	if not whole:
+		# Its lamp goes with the prop (freed next frame): drop it from the world's lights first.
+		for c in prop.find_children("*", "Node2D", true, false):
+			world.remove_light(c)
+		world.remove_light(prop)
+	var arr: Array = props.get(id, [])
+	arr.erase(prop)
+	arr.append_array(pieces)
+	for piece in pieces:
+		(piece as Node).set_meta(&"treasure", id)
+	var td := Progress.treasure_data(id)
+	if td != null and not td.stays:
+		if not loose.has(id):
+			loose[id] = []
+		(loose[id] as Array).append_array(pieces)
+		return
+	if not whole:
+		for piece in pieces:
+			rubble.append(piece)
+	_found(id, -1, Rect2i(world.shape.cell_at(prop.position + Vector2(8, 8)), bp.footprint))
+
+
+func _on_body_landed_loose(b: Node2D) -> void:
+	if b.has_meta(&"treasure") and loose.has(b.get_meta(&"treasure")):
+		# A loose treasure lands with a little sparkle: it is still there to pick up.
+		burst(b.position + Vector2(0, -6), Color("fff2a8"), 8, 70.0)
+
+
+func _on_player_added(n: Node) -> void:
+	var pl := n as HillPlayer
+	if pl != null and not pl.swung.is_connected(_on_swung):
+		pl.swung.connect(_on_swung.bind(pl))
+
+
+func _on_swung(_cell: Vector2i, pl: HillPlayer) -> void:
+	grab_loose(pl)
+
+
+## W-19 / W-20: the player's A picks up the nearest loose thing in reach, once it has landed. A
+## loose treasure is found (the reveal pops it over them and all of its pieces go); a chunk of the
+## car or the Gnome Room pops into their backpack as one block of the layer (a full backpack: a
+## puff and it stays). True when something was picked up.
+func grab_loose(pl: HillPlayer) -> bool:
+	if pl == null or not is_instance_valid(pl) or not pl.is_inside_tree():
+		return false
+	var at := world.to_local(pl.global_position) - Vector2(0, pl.body_size().y * 0.5)
+	var best: FallingBody = null
+	var bd := INF
+	for b in _loose_bodies():
+		var d := world.local_pos(b).distance_to(at)
+		if d < bd and d <= GRAB_REACH + maxf(b.size_px.x, b.size_px.y) * 0.5 and _landed(b):
+			bd = d
+			best = b
+	if best == null:
+		return false
+	var id: StringName = best.get_meta(&"treasure", &"")
+	if loose.has(id):
+		for b in loose[id]:
+			if is_instance_valid(b):
+				burst((b as Node2D).position, Color("fff2a8"), 8, 80.0)
+		loose.erase(id)
+		var cell := world.shape.cell_at(world.local_pos(best))
+		_found(id, pl.player, Rect2i(cell, Vector2i.ONE))
+		return true
+	var block := main_block_at(world.local_pos(best).y)
+	if not pl.keep_block(block):
+		burst(world.local_pos(best), Color(1, 1, 1, 0.8), 6, 60.0)
+		Audio.play("backpack_full")
+		return false
+	rubble.erase(best)
+	Audio.play("pop")
+	burst(world.local_pos(best), block_color(block), 10, 100.0)
+	best.queue_free()
+	return true
+
+
+func _loose_bodies() -> Array[FallingBody]:
+	var out: Array[FallingBody] = []
+	for id in loose:
+		for b in loose[id]:
+			if is_instance_valid(b):
+				out.append(b)
+	for b in rubble:
+		if is_instance_valid(b):
+			out.append(b)
+	return out
+
+
+func _landed(b: FallingBody) -> bool:
+	var since := Engine.get_physics_frames() - int(b.get_meta(&"loose_at", 0))
+	return since >= GRAB_AFTER_FRAMES and (b.sleeping or b.linear_velocity.length() < 40.0)
+
+
+## The main block (biggest block_mix share) of the layer at depth y (px).
+func main_block_at(y: float) -> StringName:
+	var l: LayerData = _layers[clampi(layer_index_at(Vector2(0, y)), 0, _layers.size() - 1)]
+	var best: StringName = &"dirt"
+	var bw := -1.0
+	for b in l.block_mix:
+		if float(l.block_mix[b]) > bw and blocks.has(StringName(b)):
+			bw = float(l.block_mix[b])
+			best = StringName(b)
+	return best
 
 
 func _on_water_entered(cell: Vector2i) -> void:

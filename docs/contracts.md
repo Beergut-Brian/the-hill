@@ -396,8 +396,15 @@ HillGame adds one `VoiceLines` node. The players' picked characters speak with t
 buildings (`built`, at most every 20 s) and `resident_arrived` (`hello`). Game cues map to the library's
 recorded lines in `Audio.LIBRARY_CUES` (`found` -> `win`/`cheer`, `rock_name` -> `cheer`, `narrate` ->
 `ready`/`wait`, `upgrade` -> `cheer`/`win`, `built` -> `cheer`, `bonk` -> `oops`, `hello` -> `join`);
-`Audio.bark_stream` tries the pack's own cue, then those, then the synth placeholder. Characters without
-a pack say nothing from VoiceLines.
+`Audio.bark_stream` tries the pack's own cue, then the pack's planned lines (`Audio.PACK_LINES`), then
+those, then the synth placeholder. Characters without a pack say nothing from VoiceLines.
+
+Resident barks (Audio lane, voice-packs-1): `Audio.PACK_LINES` maps `"<id>/<cue>"` to the line ids the
+resident's openjar-characters pack plans (its `voice/README.md` bark table); every id found joins one
+shuffled bag. Resident packs are vendored to `assets/characters/<id>/voice/` by `sync_characters.sh`
+for the ids in `scripts/tools/sync_residents.txt`, listed under `"residents"` in `data/roster.json`
+(`{id: {name, voice, barks}}`; absent when none has audio). Roster ignores that block: residents are
+never playable. A missing pack or line keeps the placeholder; caps are the same for real lines.
 
 ### `TimeOfDay` (`scripts/autoload/TimeOfDay.gd`): the surface clock (Art lane, 2026-11-10)
 
