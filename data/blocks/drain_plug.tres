@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="BlockData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/data/block_data.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = &"drain_plug"
+color = Color(0.50, 0.52, 0.55, 1)
+breakable = false
+dig_sound = &"dig_stone"
+depth_from = 0
+depth_to = 0
+value = 0

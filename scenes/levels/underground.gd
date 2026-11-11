@@ -12,11 +12,16 @@ signal treasure_dug(id: StringName, player: int)
 ## The Crane hauled boulder `index` (into boulders / generator.boulder_spots) out.
 signal boulder_hauled(index: int, player: int)
 
-const BLOCK_ORDER: Array[StringName] = [&"dirt", &"clay", &"stone", &"ice", &"crystal", &"edgestone", &"strangestone"]
+const BLOCK_ORDER: Array[StringName] = [&"dirt", &"clay", &"stone", &"ice", &"crystal", &"edgestone", &"strangestone",
+		&"cracked_wall", &"strut", &"drain_plug", &"heavy_stone"]
+## C-22 puzzle tiles drawn with an existing terrain column (Puzzles draws the cracks, planks, grate
+## and bolts over them).
+const LOOKS_LIKE := {&"cracked_wall": &"stone", &"strut": &"dirt", &"drain_plug": &"stone", &"heavy_stone": &"stone"}
 const BLOCK_DIR := "res://data/blocks/"
 const LAYER_DIR := "res://data/layers/"
 const TREASURE_DIR := "res://data/treasures/"
 const HAZARD_DIR := "res://data/hazards/"
+const PUZZLE_DIR := "res://data/puzzles/"
 const WIDTH := HillGenerator.WIDTH
 const HEIGHT := HillGenerator.HEIGHT
 const DEFAULT_SEED := 20261110
@@ -60,6 +65,8 @@ var _gushes: Array = []
 ## Kid-safe hazards (bonk, float, cave-in) and the residents' behaviour; see their scripts.
 var hazards: Hazards
 var residents: UndergroundResidents
+## C-22 engineering puzzles (drain, boulder and wall, heavy block); see puzzles.gd.
+var puzzles: Puzzles
 ## Which residents have been met (thaw, reveal); HillGame swaps in its saved Story.
 var story := Story.new()
 var _drain_t := 0.0
@@ -77,6 +84,7 @@ func _ready() -> void:
 	generator = HillGenerator.new()
 	generator.configure(_layers, ids, load_rows(TREASURE_DIR))
 	generator.configure_hazards(load_rows(HAZARD_DIR))
+	generator.configure_puzzles(load_rows(PUZZLE_DIR))
 	var back := Node2D.new()
 	back.name = "Backdrop"
 	back.z_index = -100
@@ -87,6 +95,8 @@ func _ready() -> void:
 	world.add_to_group(&"tile_world")
 	if HillTileArt.available():
 		world.tile_art = HillTileArt.new(generator, world.collision_layer)
+		for k: StringName in LOOKS_LIKE:
+			(world.tile_art as HillTileArt).looks_like[int(ids[k])] = int(ids[LOOKS_LIKE[k]])
 	world.setup(shape, generator, palette, world_seed)
 	add_child(world)
 	var bands: Array = []
@@ -96,6 +106,9 @@ func _ready() -> void:
 	for r: Rect2i in generator.pockets:
 		_gushes.append({"rect": r, "t": -1.0, "acc": 0.0, "done": false, "cells": _cells_of(r)})
 	_spawn_bodies()
+	puzzles = Puzzles.new()
+	world.add_child(puzzles)
+	puzzles.setup(self)
 	var keeper := Node2D.new()
 	keeper.name = "Keeper"
 	keeper.position = landing(0)
@@ -323,6 +336,8 @@ func after_load() -> void:
 	for i in Progress.hauled:
 		if i >= 0 and i < boulders.size() and is_instance_valid(boulders[i]):
 			boulders[i].free()
+	if puzzles != null:
+		puzzles.after_load()
 
 
 ## The nearest boulder still in the ground within `reach` px of `pos`, as an index, or -1.
@@ -353,6 +368,8 @@ func haul_boulder(i: int, player := -1) -> void:
 
 
 func _on_dig_blocked(cell: Vector2i, block: StringName, player: int) -> void:
+	if puzzles != null and puzzles.on_dig_blocked(cell, block, player):
+		return
 	Audio.play("dig_blocked")
 	burst(world.shape.center_of(cell), Color.WHITE, 8, 70.0)
 	if block == &"strangestone" and strange != null:

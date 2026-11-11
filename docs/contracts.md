@@ -493,6 +493,41 @@ Residents: `Underground.residents` (`UndergroundResidents`) and `HillGame.town`
 ENCOUNTERED only; she needs 2 encounters to arrive) each fire once per save and emit
 `Events.resident_encountered` (and `resident_arrived` for the Caveman).
 
+### Underground puzzles (Puzzles lane, 2026-11-10, C-22)
+
+Three engineering puzzles, each solved with the stick and A, none can be lost or undone, each ends
+in a gift of the layer's main block (into the solver's bag, the rest onto the pile) with a sparkle
+and `treasure_reveal`. `Underground.puzzles` (`Puzzles`, `scripts/gameplay/puzzles.gd`, a child of
+the TileWorld so it draws in cells):
+
+```gdscript
+const HEAVY_BLOCKS := 3                      # stone a lifted heavy block gives (into the bag)
+signal solved(index: int, player: int)       # index into generator.puzzles; the gift popped
+signal too_heavy(index: int, player: int)    # a hand or the wrong vehicle bounced off a heavy block
+var done: Array[bool]
+var boulders: Dictionary                     # boulder_wall index -> its FallingBody (not Underground.boulders)
+func is_solved(i: int) -> bool
+func index_of(id: StringName) -> int
+func on_dig_blocked(cell: Vector2i, block: StringName, player: int) -> bool   # Underground asks first
+func after_load() -> void                    # re-reads solved state from the world, no gift
+```
+
+Solved state is read from the world (tiles and water are already saved), so there is no save key.
+The puzzle tiles are four unbreakable `BlockData` rows a dig bounces off: `cracked_wall`, `strut`,
+`drain_plug`, `heavy_stone` (appended to `Underground.BLOCK_ORDER`, so earlier palette ids and saves
+are unchanged; `HillTileArt.looks_like` draws them with an existing terrain column and Puzzles draws
+the cracks, planks, grate and bolts over them). A bounce on `drain_plug` opens it, on `strut` knocks
+the whole strut out; a bounce on `heavy_stone` while driving a `lifted_by` vehicle lifts the block.
+The puzzle boulder is not in `Underground.boulders`, so the Crane cannot haul it and it never bonks.
+
+Placement is data: `data/puzzles/<id>.tres` (`PuzzleData`: `kind` = `&"drain"` |
+`&"boulder_wall"` | `&"heavy_block"`, `layer`, `near_landing`, `gift`, `lifted_by`), placed by
+HillGenerator on a fourth seeded stream after everything else, so no earlier placement moves:
+`generator.puzzles` `[{id, kind, layer, rect, data, gift: Vector2i, ...per-kind Rect2i}]`
+(drain: pocket, wall, nook, plug, chute, sump; boulder_wall: nook, cavity, strut, drop, crack,
+room; heavy_block: tunnel, block, room). A drain's water is `generator.puzzle_water`, not
+`pockets`, so it never gushes.
+
 ### Data schemas (`scripts/data/*.gd`, rows in `data/`)
 
 All are `Resource` classes with `@export` fields; ids are `StringName` and equal the file stem.
