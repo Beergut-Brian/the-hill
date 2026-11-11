@@ -223,11 +223,13 @@ func test_a_worm_waves_only_when_the_player_is_close_then_ducks_back() -> void:
 	assert_int(life.waving_worms().size()).is_equal(0)
 	# Right beside the left wall: the worm pops out and waves.
 	p.set_physics_process(true)
+	Audio._last_start.erase("worm_boop")
 	_put(Vector2i(room.position.x, room.end.y))
 	p.set_physics_process(false)
 	var n := await _until(func() -> bool: return life.is_waving(wall), 60)
 	assert_int(n).is_less(60)
 	assert_bool(life.is_waving(wall)).is_true()
+	assert_bool(Audio._last_start.has("worm_boop")).override_failure_message("a waving worm boops (A-16)").is_true()
 	assert_int(int(life.worms[wall].dir)).is_equal(1)
 	# Walk away: it ducks back in, and rests (no wave) even after a moment.
 	p.set_physics_process(true)
@@ -300,7 +302,9 @@ func test_the_frozen_fish_is_a_treasure_once() -> void:
 	var b: Vector2i = g.fish_cells[1]
 	_put(b)
 	await _physics(2)
+	Audio._last_start.erase("fish_free")
 	u.world.dig(b, [Vector2i.ZERO], P1)
+	assert_bool(Audio._last_start.has("fish_free")).override_failure_message("a fish that swims off cracks free (A-17)").is_true()
 	assert_int(found.count(HillGenerator.FISH)).is_equal(1)
 	assert_int(Progress.treasures.count(HillGenerator.FISH)).is_equal(1)
 	assert_int(u.life._fish_free.size()).is_equal(1)
