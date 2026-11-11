@@ -34,7 +34,8 @@ extends Node2D
 signal mole_rescued(player: int)
 signal caveman_thawed()
 signal dragon_revealed()
-## W-17: a sleeping snore was felt by a player (loudness 0..1, 1 in the cavern).
+## W-17: one sleeping snore, the single clock for its sound (HillAudio, louder by depth), puff and
+## sway. `loudness` is how strongly it is felt (the sway: 1 in the cavern, 0 = only heard further up).
 signal dragon_snored(loudness: float)
 ## The Mole took a shovel (and is about to give it straight back). Story already counted it.
 signal shovel_stolen(player: int)
@@ -999,9 +1000,8 @@ func _tick_dragon(ps: Array[HillPlayer], delta: float) -> void:
 
 ## W-17: while she sleeps, a slow snore every SNORE_EVERY seconds: a smoke puff from her nose and a
 ## gentle sway of the view for anyone in the cavern, fainter up through the Crystal layer, none
-## above. Never during the first meeting (S6 keeps the reveal shake-free).
-## TODO(audio): a periodic `dragon_snore` call waits for the cue in assets/audio/CUES.md
-## (PLAN-STATUS W-17); `dragon_snored` is the hook for it.
+## above. Never during the first meeting (S6 keeps the reveal shake-free). Every snore with
+## someone underground emits `dragon_snored`, and HillAudio plays the sound on it (same frame).
 func _tick_snore(ps: Array[HillPlayer], delta: float) -> void:
 	_snore_t -= delta
 	if _snore_t > 0.0:
@@ -1022,6 +1022,7 @@ func _tick_snore(ps: Array[HillPlayer], delta: float) -> void:
 	if loudest > 0.0:
 		snores += 1
 		_rings.append({"pos": dragon.position + DRAGON_MOUTH * dragon.scale, "t": 0.0})
+	if not ps.is_empty():
 		dragon_snored.emit(loudest)
 
 

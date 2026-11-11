@@ -330,10 +330,17 @@ func test_the_dragon_snore_sways_the_cavern_and_not_topsoil() -> void:
 	var feet := Vector2(r.dragon.position.x - UndergroundResidents.REVEAL_NEAR - 40.0, HillGenerator.CAVERN.end.y * 16.0 - 2.0)
 	_game.place_player(P1, HillGame.UNDERGROUND, feet)
 	var felt := [0.0]
+	var ha := _game.get_node("HillAudio") as HillAudio
+	var heard := [-1]       # HillAudio's sound count at the moment of the puff (one clock, W-17)
 	r.dragon_snored.connect(func(k: float) -> void: felt[0] = k)
+	r.dragon_snored.connect(func(_k: float) -> void: heard[0] = ha.snores_played, CONNECT_DEFERRED)
+	var played_before := ha.snores_played
 	await _physics(int(UndergroundResidents.SNORE_EVERY * 60.0) + 20)
 	assert_int(r.snores).is_greater_equal(1)
 	assert_float(felt[0]).is_equal(1.0)
+	# The sound played on the same snore as the puff, at full Bottom loudness.
+	assert_int(heard[0]).is_greater(played_before)
+	assert_float(ha.last_snore).is_equal(1.0)
 	assert_bool(_game.story.dragon_met()).is_false()
 	await _physics(10)
 	assert_float(_game.kick.peak(P1)).is_greater(0.0)
