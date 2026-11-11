@@ -51,7 +51,7 @@ X out of scope, Q open questions, F build phases.
 | C-14 | S1 Loop | Backpack full is never a hard stop; the icon goes round and happy | built | tests/test_hill_game.gd::test_full_backpack_never_stops_digging; scenes/game/hud.gd | |
 | C-15 | S1 Loop | Ride up and the backpack dumps at the shaft pile | built | tests/test_hill_game.gd::test_ride_down_to_deepest_and_up_dumps_backpacks | |
 | C-16 | S1 Loop | Treasures unlock one specific thing each (car → Garage, Gnome Room → Gnome Village) | built | tests/test_vehicles_treasures.gd::test_each_garage_gives_the_next_vehicle_and_the_drill_garage_waits_for_the_tooth; tests/test_resident_arcs_underground.gd::test_opening_the_gnome_room_frees_the_crew | Car → Garage, tooth → Drill Garage, Gnome Room → crew freed → Gnome Village restore (PR 9) |
-| C-17 | S1 Loop | Blocks by depth: dirt, clay, stone, sand, ice, crystal | built | data/blocks/sand.tres; tests/test_depth_life.gd::test_every_block_resolves_to_a_data_row_and_a_tile, ::test_sand_lies_only_in_the_lower_stone_layer, ::test_digging_sand_behaves_like_dirt; handoff/frames/depth_sand_dig.png | Depth life lane: Sand (id 8, pale gold tile, `dig_dirt` cue, dug like dirt, value 5) sits in the lower Stone layer (depth 100 to 130, `stone.tres` mix 0.78 stone / 0.12 sand / 0.1 clay; the generator only puts a block at or below its `depth_from`). On the pile and the elevator picker. Pebbles, pipes, ore and geodes still have no data rows, so they were not added; roots, snow and the frozen fish are drawn (W-03, W-11). The build book (`scenes/ui/build_book.gd`, UI lane) does not list sand yet |
+| C-17 | S1 Loop | Blocks by depth: dirt, clay, stone, sand, ice, crystal | built | data/blocks/sand.tres; tests/test_depth_life.gd::test_every_block_resolves_to_a_data_row_and_a_tile, ::test_sand_lies_only_in_the_lower_stone_layer, ::test_digging_sand_behaves_like_dirt; handoff/frames/depth_sand_dig.png | Depth life lane: Sand (id 8, pale gold tile, `dig_dirt` cue, dug like dirt, value 5) sits in the lower Stone layer (depth 100 to 130, `stone.tres` mix 0.78 stone / 0.12 sand / 0.1 clay; the generator only puts a block at or below its `depth_from`). On the pile and the elevator picker. Pebbles, old pipes, ore veins and geodes were added by the content-2 lane (W-31, W-32); roots, snow and the frozen fish are drawn (W-03, W-11). The build book (`scenes/ui/build_book.gd`, UI lane) does not list sand yet |
 | C-18 | S1 Loop | Deeper blocks are worth more; some buildings need a specific kind | built | data/buildings/garage.tres (clay+stone), data/buildings/lighthouse.tres (stone+crystal) | |
 | C-19 | S1 Loop | No fail state: nothing underground hurts; town can't be damaged | built | tests/test_hazards_residents.gd::test_a_falling_boulder_bonks_briefly_and_takes_nothing, ::test_a_breached_pocket_floats_the_player_and_takes_nothing | |
 | C-20 | S1 Loop | Session 10–20 min, saves at every trip up | built | scenes/game/elevator.gd (every ride autosaves); tests/test_hill_game.gd::test_save_round_trip | Session length is unmeasured until the first playtest |
@@ -97,6 +97,8 @@ X out of scope, Q open questions, F build phases.
 | W-28 | S6 | Hazard counts as data; one of each kind near the first landings | built | tests/test_hazards_residents.gd::test_hazard_rows_place_per_layer_with_a_few_near_the_first_landings | |
 | W-29 | S6 | Cave-in: the Mole digs you out ~1.6 s, the game frees you by 4 s | built | tests/test_hazards_residents.gd::test_digging_into_a_cave_in_traps_then_the_mole_frees_in_time, ::test_a_trapped_player_is_free_within_trap_max_even_without_the_mole; .scratch/shots/rescue/t005.0s.png | |
 | W-30 | S7 | Treasures per layer are pickups: pop up, fly into the bag | built | tests/test_vehicles_treasures.gd::test_a_pickup_pops_up_flies_into_the_bag_and_lands_on_the_shelf | |
+| W-31 | S1 Clay | Blocks: clay, pebbles, old pipes | built | data/blocks/{pebbles,pipe}.tres; data/layers/clay.tres `minor_kinds`; tests/test_minor_blocks.gd::test_every_minor_kind_resolves_to_a_data_row_and_a_tile, ::test_minor_kinds_lie_in_their_layer_and_leave_the_rest_of_the_world_unchanged, ::test_digging_a_minor_kind_puts_it_in_the_bag_once; handoff/frames/minor_clay_pebbles_pipe.png, minor_pebbles_pipe_close.png | Content-2 lane (2026-11-10). Row added by the lane: S1's Clay "Blocks" column had no row. Pebbles (id 9, clumps of grey stones on clay) and pipe (id 10, a blue-teal pipe in flat runs of up to 6 on every fourth row) only replace Clay-layer clay cells outside the calm rects (landings, treasures, the pocket), so the rest of a seeded world is unchanged. Both dig like clay (`dig_clay`, shovel, value 2), go in the bag and onto the town pile. No building costs them yet |
+| W-32 | S1 Stone | Blocks: stone, ore veins, geodes | built | data/blocks/{ore,geode}.tres; data/layers/stone.tres `minor_kinds`; tests/test_minor_blocks.gd (same three tests); handoff/frames/minor_stone_ore_geode.png, minor_ore_geode_close.png | Content-2 lane (2026-11-10). Row added by the lane, as W-31. Ore (id 11, gold nuggets on a seam, thin wiggly streaks) and geode (id 12, a round shell with lilac crystals, lone cells) only replace Stone-layer stone cells. Both dig like stone (`dig_stone`, shovel, value 4). Stone stays dark until the Lighthouse (W-10), so the gold reads dim there; darkness was not changed |
 
 ## Up top: Hillville
 
@@ -300,11 +302,11 @@ and `assets/audio/music/` (seeded synth SFX from `assets/audio/tools/make_cues.p
 
 ## Totals
 
-Counted from the Status column, 192 rows, on `dev` at `8ee8d2d` (2026-11-10) plus M-08 (chooser-catchphrase lane):
+Counted from the Status column, 194 rows, on `dev` at `8ee8d2d` (2026-11-10) plus M-08 (chooser-catchphrase lane) and W-31, W-32 (content-2 lane, added built):
 
 | built | partial | missing | superseded | dropped | later | total |
 | --- | --- | --- | --- | --- | --- | --- |
-| 148 | 27 | 8 | 1 | 4 | 4 | 192 |
+| 150 | 27 | 8 | 1 | 4 | 4 | 194 |
 
 Before the plan-sync: 112 built, 47 partial, 22 missing, 2 superseded, 4 dropped, 4 later.
 
