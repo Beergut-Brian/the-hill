@@ -28,8 +28,16 @@ var _shown := 0.0    # panel fade
 var _t := 0.0
 
 
+## The registry is a static var, so it outlives every scene. Unregister an icon before the object or
+## script that owns `draw` is freed (a lambda from a test, a level): a Callable left in it is
+## destroyed at engine exit after its owner, which corrupts the heap and aborts the process.
 static func register_icon(id: StringName, draw: Callable) -> void:
 	_icons[id] = draw
+
+
+## Drops an icon added with register_icon (no-op if it is not there).
+static func unregister_icon(id: StringName) -> void:
+	_icons.erase(id)
 
 
 ## The hint list now (sorted A, B, X, Y). Same list again: nothing happens.

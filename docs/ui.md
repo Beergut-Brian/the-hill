@@ -337,7 +337,7 @@ hints.show_hints([{"button": "a", "icon": &"dig"}, {"button": "b", "icon": &"jum
 | --- | --- |
 | `show_hints(list) -> bool` | `[{button: "a"\|"b"\|"x"\|"y", icon: StringName, dim?: bool}]`, sorted A, B, X, Y. Same list: no-op (false). |
 | `hints()` | The current list. |
-| `ButtonHints.register_icon(&"name", func(ci, rect, alpha))` | A game's own picture. |
+| `ButtonHints.register_icon(&"name", func(ci, rect, alpha))` | A game's own picture. Static: call `ButtonHints.unregister_icon(&"name")` before the lambda's owner is freed, or Godot aborts at exit. |
 | `ButtonHints.draw_icon(ci, id, rect, alpha)` / `draw_button(ci, centre, h, "a", alpha, ring)` | The same drawings anywhere (the-hill draws the elevator's A over a player's head with `draw_button`). |
 | `glyph_height` (44), `accent`, `align_right` | Look. |
 

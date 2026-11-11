@@ -377,9 +377,12 @@ func test_button_hints_kit_pops_changed_rows_and_takes_custom_icons() -> void:
 	var drawn := [false]
 	ButtonHints.register_icon(&"test_icon", func(_ci: CanvasItem, _r: Rect2, _a: float) -> void: drawn[0] = true)
 	ButtonHints.draw_icon(bh, &"test_icon", Rect2(0, 0, 10, 10))
+	# The lambda belongs to this suite: leaving it in the static registry crashed Godot at exit.
+	ButtonHints.unregister_icon(&"test_icon")
 	assert_bool(drawn[0]).is_true()
 	bh.show_hints([])
 	assert_array(bh.hints()).is_empty()
+	assert_bool(ButtonHints._icons.has(&"test_icon")).is_false()
 	bh.free()
 
 
