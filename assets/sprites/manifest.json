@@ -196,6 +196,56 @@
    }
   }
  },
+ "cow": {
+  "facing": "right",
+  "file": "characters/cow.png",
+  "frame": [
+   56,
+   40
+  ],
+  "note": "Barn cow: traced from the cow proposal's 3D master (quadruped), pail in the mouth (in_mouth). art/tools/make_crew_cow_art.py",
+  "pivot": [
+   28,
+   40
+  ],
+  "rows": {
+   "graze": {
+    "fps": 0,
+    "frames": 1,
+    "row": 3
+   },
+   "hop": {
+    "fps": 0,
+    "frames": 1,
+    "row": 4
+   },
+   "idle": {
+    "fps": 0,
+    "frames": 1,
+    "row": 0
+   },
+   "pail": {
+    "fps": 0,
+    "frames": 1,
+    "row": 5
+   },
+   "pail_walk": {
+    "fps": 6,
+    "frames": 4,
+    "row": 6
+   },
+   "trot": {
+    "fps": 8,
+    "frames": 2,
+    "row": 2
+   },
+   "walk": {
+    "fps": 6,
+    "frames": 4,
+    "row": 1
+   }
+  }
+ },
  "crane": {
   "boom": [
    40,
@@ -865,6 +915,46 @@
    2,
    2
   ]
+ },
+ "gnome_crew": {
+  "facing": "right",
+  "file": "characters/gnome_crew.png",
+  "frame": [
+   40,
+   32
+  ],
+  "note": "Gnome crew: traced from the Gnome Foreman's 3D master (no clipboard); whistle on the chest below the beard, held out in front of the face in `whistle`. art/tools/make_crew_cow_art.py",
+  "pivot": [
+   20,
+   32
+  ],
+  "rows": {
+   "cheer": {
+    "fps": 4,
+    "frames": 2,
+    "row": 2
+   },
+   "idle": {
+    "fps": 2,
+    "frames": 2,
+    "row": 0
+   },
+   "idle_side": {
+    "fps": 0,
+    "frames": 1,
+    "row": 4
+   },
+   "march": {
+    "fps": 6,
+    "frames": 4,
+    "row": 1
+   },
+   "whistle": {
+    "fps": 0,
+    "frames": 1,
+    "row": 3
+   }
+  }
  },
  "gnome_room": {
   "door": [

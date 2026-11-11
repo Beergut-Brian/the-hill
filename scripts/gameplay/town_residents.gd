@@ -20,6 +20,8 @@ signal cheered()
 signal marched(building: StringName)
 
 const FOREMAN_FILE := "characters/foreman.png"
+## The crew's own sheet (V-09): traced from the Foreman's 3D master, no clipboard.
+const CREW_FILE := "characters/gnome_crew.png"
 const CAVEMAN_FILE := "characters/caveman.png"
 const MOLE_FILE := "characters/mole.png"
 const DRAGON_FILE := "characters/dragon.png"
@@ -94,7 +96,7 @@ func setup(p_game: Node, hv: Hillville) -> void:
 	foreman = _sprite(FOREMAN_FILE, "idle", Vector2(CREW_X + CREW_SIZE * CREW_GAP, 0.0))
 	foreman.flip_h = true
 	for i in CREW_SIZE:
-		var s := _sprite(FOREMAN_FILE, "idle", Vector2(CREW_X + i * CREW_GAP, 0.0))
+		var s := _sprite(CREW_FILE, "idle", Vector2(CREW_X + i * CREW_GAP, 0.0))
 		s.scale = Vector2.ONE * 0.8
 		s.modulate = CREW_TINTS[i % CREW_TINTS.size()]
 		s.flip_h = true
