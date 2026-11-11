@@ -116,7 +116,7 @@ func test_book_cards_affordable_greyed_and_garage_gate() -> void:
 	_build.book_pressed(0)
 	assert_bool(_build.captures(0)).is_true()
 	var book := _build.book_of(0) as BuildBook
-	assert_array(book.card_ids()).is_equal([&"barn", &"house"])
+	assert_array(book.card_ids()).is_equal([&"barn", &"house", &"workshop"])
 	assert_bool(book.card_affordable(0)).is_false()
 	Inventory.add(&"dirt", 10)
 	assert_bool(book.card_affordable(0)).is_true()
@@ -125,7 +125,7 @@ func test_book_cards_affordable_greyed_and_garage_gate() -> void:
 	assert_bool(_build.captures(0)).is_false()
 	Progress.find_treasure(&"buried_car")
 	_build.book_pressed(0)
-	assert_array((_build.book_of(0) as BuildBook).card_ids()).is_equal([&"barn", &"house", &"garage"])
+	assert_array((_build.book_of(0) as BuildBook).card_ids()).is_equal([&"barn", &"house", &"garage", &"workshop"])
 
 
 func test_book_moves_and_closes_with_b() -> void:

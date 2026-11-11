@@ -42,6 +42,15 @@ var reveal := 1.0:
 var _glow: Node2D
 ## Lighthouses only: the night sweep and the placement flare.
 var beam: LighthouseBeam
+## Houses only (B-03): the player asleep inside at night (-1: nobody). Zs drift out of the attic window.
+var sleeper := -1:
+	set(v):
+		sleeper = v
+		queue_redraw()
+var _zt := 0.0
+var _bump := 0.0
+## Workshops only: the hammer, sparks and chimney smoke (B-06).
+var fx: WorkshopFx
 ## 0 closed .. 1 rolled up (Garage only).
 var door_open := 0.0:
 	set(v):
@@ -83,9 +92,18 @@ func _ready() -> void:
 		beam = LighthouseBeam.new()
 		beam.building = self
 		add_child(beam)
+	if data != null and data.id == &"workshop":
+		fx = WorkshopFx.new()
+		fx.name = "WorkshopFx"
+		fx.building = self
+		add_child(fx)
 
 
 func _process(_delta: float) -> void:
+	if sleeper >= 0 or _bump > 0.0:
+		_zt += _delta
+		_bump = maxf(0.0, _bump - _delta * 3.0)
+		queue_redraw()
 	var l := current_lights() if not ghost else 0.0
 	if not is_equal_approx(l, _lights):
 		_lights = l
@@ -136,6 +154,32 @@ func _draw() -> void:
 		draw_rect(Rect2(0, -3, s.x, 8), c)
 	elif art and _lights > 0.0:
 		paint_lit(self, data.id, Rect2(0, -s.y, s.x, s.y), door_open, _lights)
+	if sleeper >= 0 and not ghost:
+		_draw_snore(s)
+	if _bump > 0.0:
+		# Someone just woke and ran out: the door bangs open (a flash of light and a wobble).
+		draw_rect(Rect2(s.x * 0.18, -s.y * 0.36, s.x * 0.2, s.y * 0.36), Color(1.0, 0.92, 0.6, _bump * 0.8))
+
+
+## Called when the House's sleeper wakes (HillGame.wake).
+func wake_bump() -> void:
+	_bump = 1.0
+	queue_redraw()
+
+
+## B-03: sleepy Zs (zig-zag shapes, no letters) drifting up out of the attic window, in the sleeper's
+## slot colour, outlined so they read against the night sky.
+func _draw_snore(s: Vector2) -> void:
+	var win := Vector2(s.x * 0.5, -s.y * 0.69)
+	var col: Color = Players.COLOR.get(sleeper, Color.WHITE)
+	for k in 3:
+		var ph := fmod(_zt * 0.45 + k / 3.0, 1.0)
+		var p := win + Vector2(4.0 + ph * 18.0 + sin(ph * TAU) * 3.0, -6.0 - ph * 30.0)
+		var z := 2.5 + ph * 3.5
+		var a := 1.0 - ph * ph
+		var pts := PackedVector2Array([p + Vector2(-z, -z), p + Vector2(z, -z), p + Vector2(-z, z), p + Vector2(z, z)])
+		draw_polyline(pts, Color(OUTLINE, a), 4.0)
+		draw_polyline(pts, Color(col.lightened(0.45), a), 2.0)
 
 
 ## The bottom `reveal` of the sprite (whole planks: 6 px rows of the sheet).
