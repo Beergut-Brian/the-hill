@@ -1,6 +1,6 @@
 # Plan status: The Hill
 
-True on `dev` at `8ee8d2d` (2026-11-10, plan-sync lane). Lanes: update your rows in the same commit as the work
+True on `dev` at `6d3b3cc` (2026-11-10, gap-close-1 lane; rows not named in "Gap-close 2026-11-10" were last checked at `8ee8d2d` by the plan-sync lane). Lanes: update your rows in the same commit as the work
 (format: `~/openjar/lanes/plan-status-format.md`). Gary: add rows when a new brief arrives; never
 delete rows, supersede them.
 
@@ -124,7 +124,7 @@ X out of scope, Q open questions, F build phases.
 | B-08 | S1 | Museum: restore the Flooded Cabin; shows every treasure and how many are left per layer | built | tests/test_resident_arcs.gd::test_restore_card_only_while_arrived_and_paying_rebuilds_plank_by_plank, ::test_museum_takes_the_treasure_shelf_and_the_caveman_polishes; data/buildings/museum.tres | Restoring the Flooded Cabin makes the Museum; it takes over the Treasure Shelf (PR 9) |
 | B-09 | S1 | Gnome Village: restore the Crooked Watchtower; the crew digs 20–50 blocks while the game is closed, up to a cap | built | tests/test_resident_arcs.gd::test_gnome_village_crew_leaves_a_capped_pile_after_time_away; handoff/frames/crew_overnight_march.png | Merged with resident-arcs (b9966b0); checked by polish-2 |
 | B-10 | S1 | Water Tower, 15 stone + 10 ice: drains floods faster; generic look | built | tests/test_vehicles_treasures.gd::test_water_tower_drains_flooded_tunnels_near_a_player; .scratch/shots/shelf/t008.0s.png | S7 gates it behind the Crane |
-| B-11 | S1 | Dragon Perch: restore the Ruined Keep; she warms the Ice layer so it's not slippery | partial | tests/test_resident_arcs.gd::test_dragon_perch_flies_her_up_and_warms_the_ice; tests/test_resident_arcs_underground.gd::test_a_cold_save_keeps_the_ice_layer_cold; data/buildings/dragon_perch.tres | The Perch restores and she flies up to it (PR 9). The warm-ice payoff can't be felt: ice isn't slippery yet (W-11) |
+| B-11 | S1 | Dragon Perch: restore the Ruined Keep; she warms the Ice layer so it's not slippery | built | tests/test_resident_arcs.gd::test_dragon_perch_flies_her_up_and_warms_the_ice; tests/test_resident_arcs_underground.gd::test_a_cold_save_keeps_the_ice_layer_cold; tests/test_hazards_deep.gd::test_warm_ice_does_not_slide_and_other_ground_never_does; data/buildings/dragon_perch.tres | The Perch restores and she flies up to it (PR 9). Since hazards-3 (PR 15) ice is slippery, and `Story.ice_warm()` turns the glide off, so the payoff is felt (gap-close-1 sync) |
 | B-12 | S1 | Gnome crew comeback clip: pile at the shaft, gnomes march out with a whistle | built | tests/test_resident_arcs.gd::test_the_crew_award_runs_on_load_from_the_saved_stamp; handoff/frames/crew_overnight_march.png | Five gnomes march out of the shaft to the pile with a block each (scripts/gameplay/ruin_sites.gd `_draw_clip`); cues `whistle`, `crew_march` |
 | B-13 | S1 Art | Buildings are multi-tile sprites with a 3-frame unfold | built | tests/test_art_sprites.gd::test_building_art_and_garage_door_frames | |
 
@@ -194,7 +194,7 @@ X out of scope, Q open questions, F build phases.
 | S-12 | S1 Tech | Awake `RigidBody2D` cap 60; 9 chunks per player | built | tests/test_tileworld.gd::test_awake_cap_queues_wakes, ::test_chunk_budget_limits_new_chunks_per_call | |
 | S-13 | CLAUDE.md / S1 | 60 fps at 1080p on a GTX 1060 | partial | addons/openjar/tileworld/demo (stress run) | The sim cost has been measured. Frame rate on a real GPU hasn't (the producer box renders in software) |
 | S-14 | S1 Tech / F-5 | Move tile world + split screen into `openjar-addons`, tagged | missing | ~/openjar/openjar-addons/addons/openjar has no tileworld or split_screen | Both still live in this repo's `addons/openjar/` |
-| S-15 | S1 Tech | `PictoBubble` scene for arcs, costs and prompts, then moved to `openjar-addons/ui/` | missing | none (no PictoBubble class; bubbles drawn in build_book.gd / town_residents.gd) | |
+| S-15 | S1 Tech | `PictoBubble` scene for arcs, costs and prompts, then moved to `openjar-addons/ui/` | partial | scripts/gameplay/picto_bubble.gd (class PictoBubble; used by town_residents, underground_residents, treasure_shelf, strange_bubble) | PictoBubble exists in this repo as draw helpers (resident arcs). Not yet moved to `openjar-addons/ui/` (gap-close-1 sync) |
 | S-16 | S2 | Template features: grown-up menus, solo, `--demo`, `--shots=`, release smoke-boot, `store/jar.glb` | partial | tests/test_lobby.gd::test_saved_solo_stays_off_at_boot; tests/test_hill_demo.gd; .scratch/shots/lobby/t003.0s.png; tests/test_store.gd::test_manifest_names_the_jar; tests/test_store.gd::test_zip_carries_the_jar_and_store_art; tests/test_store.gd::test_jar_fits_the_launcher_budget | `store/jar.glb` built (store-art-1: a cut-away hill slice, `art/tools/make_jar.sh`; the release manifest always names it and the release fails without it; launcher frame in the lane hand-off). Still open: the lobby version label reads v0.0.1, not the tag (template-wide bug) |
 | S-17 | S2 | Premium slice spend logged in GAME.md by the producer | missing | none (no spend log in GAME.md) | |
 | S-18 | S6 / S7 | `--demo-beat=` showcases (bonk … crystal; garage … lineup) | built | .scratch/shots/{lineup,book,shelf,rescue,reveal,crystal}/ | Polish-2 adds lighthouse, cows, strange, scoop, snore (scripts/gameplay/polish_beats.gd) |
@@ -298,11 +298,11 @@ and `assets/audio/music/` (seeded synth SFX from `assets/audio/tools/make_cues.p
 
 ## Totals
 
-Counted from the Status column, 191 rows, on `dev` at `8ee8d2d` (2026-11-10):
+Counted from the Status column (by script), 191 rows, gap-close-1 branch on `dev` at `6d3b3cc` (the old table had drifted from the rows):
 
 | built | partial | missing | superseded | dropped | later | total |
 | --- | --- | --- | --- | --- | --- | --- |
-| 141 | 31 | 10 | 1 | 4 | 4 | 191 |
+| 148 | 27 | 7 | 1 | 4 | 4 | 191 |
 
 Before the plan-sync: 112 built, 47 partial, 22 missing, 2 superseded, 4 dropped, 4 later.
 
@@ -314,6 +314,18 @@ B-08, R-02, R-03, R-04, R-05, R-07, R-08, R-09, K-12, K-13 (resident arcs, PR 9)
 (audio pass, PR 12) to built. B-11, R-11, P-06, A-13, A-15 to partial. W-17 stays partial with a new reason.
 Only V-03 is still branch work.
 
+## Gap-close 2026-11-10
+
+Checked against `origin/dev` at `6d3b3cc` (gap-close-1 lane). B-11 to built (ice is slippery since PR 15,
+so warm ice is felt); S-15 missing to partial (PictoBubble exists, not extracted). No stick-only row exists
+(Kaden 2026-11-10 dropped that requirement), so none was dropped. Rows built by this lane are listed in its
+own commits.
+
+Finished lane branches **not on dev** at `6d3b3cc` (rows they claim stay as they are on dev until merged):
+`feature/hill-town-life-1` (C-23, C-26 hearts, B-03 House, R-09 gags), `feature/hill-loose-things-1` (W-19, W-20),
+`feature/hill-puzzles-1` (C-22), `feature/hill-depth-life-1` (C-17, W-03, W-11 fish and snow),
+`feature/hill-two-drivers` (H-09), `feature/hill-audio-2` (W-17, A-13 snore on `dragon_snored`, `lighthouse_on`).
+
 ## Next up
 
 These are the missing and partial rows, ranked by how much Kaden and his son will notice them in
@@ -323,13 +335,13 @@ play. Size: S = under a lane-hour, M = one lane session, L = several sessions or
 2. **Workshop** (B-06): a building from Kaden's list is not in the book, with no recorded decision. Build it (bigger shovel, faster vehicles, hammering and sparks) or record it as dropped. **M** (S to drop)
 3. **Adjacency hearts** (C-23, C-26): hearts float between buildings that like each other, on every build. Needs `data/adjacency.tres`. **M**
 4. **Real voices for the barks** (A-15, P-06): Jeff, Chuck and the residents talk in synth gibberish, heard every few minutes. Waits on the voice packs; the hooks are done. **M**
-5. **Slippery ice and sliding into holes** (W-11, W-13, B-11): the Ice layer plays like dirt, so the Dragon Perch's warm-ice payoff can't be felt. **M**
-6. **Excavator: cab-only spin and digging ponds** (H-03): his favourite vehicle. Cab spin needs a cab layer from Art. **M**
-7. **Crane: fast shaft ride, lifting buildings, wrecking ball** (H-05). **L**
-8. **Camera leads the dig, zooms out in big vehicles** (S-06). **M**
+5. ~~**Slippery ice and sliding into holes** (W-11, W-13, B-11): the Ice layer plays like dirt, so the Dragon Perch's warm-ice payoff can't be felt. **M**~~ done on dev (PR 14, 15, 18)
+6. ~~**Excavator: cab-only spin and digging ponds** (H-03): his favourite vehicle. Cab spin needs a cab layer from Art. **M**~~ done on dev (PR 14, 15, 18)
+7. ~~**Crane: fast shaft ride, lifting buildings, wrecking ball** (H-05). **L**~~ done on dev (PR 14, 15, 18)
+8. ~~**Camera leads the dig, zooms out in big vehicles** (S-06). **M**~~ done on dev (PR 14, 15, 18)
 9. **Topsoil and depth life: roots, waving worms, sand, snow, frozen fish** (W-03, C-17). **M**
-10. **Lava pockets that bounce you** (W-14): Crystal has no hazard. **M**
-11. **Pick a layer on the way down** (S-04). **M**
+10. ~~**Lava pockets that bounce you** (W-14): Crystal has no hazard. **M**~~ done on dev (PR 14, 15, 18)
+11. ~~**Pick a layer on the way down** (S-04). **M**~~ done on dev (PR 14, 15, 18)
 12. **Dragon snore in sync** (W-17, A-13): play the sound on `dragon_snored`, drop hill_audio's second sway. **S**
 13. **Loose things fall and props break** (W-19, W-20): treasures, bathtub, the Mole, the car, gnome-room walls. **M**
 14. **House: lights checked, Jeff and Chuck sleep there** (B-03). **S**
