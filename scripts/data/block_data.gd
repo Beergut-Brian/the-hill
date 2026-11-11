@@ -16,6 +16,10 @@ extends TileDef
 @export var slippery: bool = false
 ## Lava pockets: bounces the player.
 @export var bouncy: bool = false
+## Minor kinds only (pebbles, pipe, ore, geode): how LayerData.minor_kinds lays it into the
+## layer's main block. &"patch" small clumps, &"run" short flat runs, &"vein" thin wiggly streaks,
+## &"dot" lone cells. Empty for the main kinds (they come from block_mix).
+@export var minor_shape: StringName = &""
 ## "" = decided by `breakable`; else unbreakable until that game version.
 @export var breakable_from_version: String = ""
 

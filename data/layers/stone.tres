@@ -8,6 +8,7 @@ id = &"stone"
 depth_from = 70
 depth_to = 130
 block_mix = {&"stone": 0.78, &"sand": 0.12, &"clay": 0.1}
+minor_kinds = {&"ore": 0.05, &"geode": 0.012}
 hazards = Array[StringName]([&"boulder"])
 darkness = 0.8
 light_tint = Color(0.000, 0.000, 0.000, 1)

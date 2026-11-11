@@ -6,6 +6,9 @@ The id of every row equals its file stem (`dirt.tres` has `id = &"dirt"`).
 - `blocks/`     BlockData: dirt .. crystal, plus edgestone and strangestone (unbreakable until 2.0.0).
                 Sand (C-17) sits in the lower Stone layer (`depth_from` 100): the generator only puts a
                 block where the cell is at least its `depth_from`, else the layer's main block.
+                Minor kinds (W-31, W-32): pebbles and pipe in Clay, ore and geode in Stone. A layer's
+                `minor_kinds` (id -> share) lays them over its main block only, shaped by the block's
+                `minor_shape` (patch, run, vein, dot); every other cell of a seed stays the same.
 - `layers/`     LayerData: depth bands 0..300 with block mix, hazards, darkness, snore volume.
 - `treasures/`  TreasureData: one-of-a-kind finds and what they unlock. `frozen_fish` is not placed
                 by the seed: the generator puts one in the floor of every ice rink (W-11); the first
