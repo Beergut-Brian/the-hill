@@ -331,13 +331,13 @@ IDs `PT10-<n>` match the numbered list in GAME.md. Rows added by the lane that b
 
 ## Totals
 
-Counted from the Status column on `feature/hill-gap-close-4` (dev at `a6e6bd9` plus the gap-close-4 sync), 209 rows:
+Counted from the Status column on `feature/hill-gap-close-4` (dev at `a6e6bd9` plus the gap-close-4 sync and gap-close), 209 rows:
 
 | built | partial | missing | superseded | dropped | later | total |
 | --- | --- | --- | --- | --- | --- | --- |
-| 183 | 15 | 2 | 1 | 4 | 4 | 209 |
+| 186 | 12 | 2 | 1 | 4 | 4 | 209 |
 
-Before the gap-close-4 sync (dev at `a6e6bd9`): 181 built, 15 partial, 4 missing, 1 superseded, 4 dropped, 4 later.
+Before the gap-close-4 sync (dev at `a6e6bd9`): 181 built, 15 partial, 4 missing, 1 superseded, 4 dropped, 4 later. After the sync alone: 183 built, 15 partial, 2 missing.
 
 ## Gap-close-4 sync 2026-11-11
 
@@ -347,6 +347,8 @@ the openjar-addons repo (read only). To built: S-14 and F-5 (tags `v0.2.0` and `
 C-27 (dig-1 is on dev; stays partial on Gary's bottom-time pick), A-18, A-19 (audio-3 is on dev), S-15 (the
 addons move happened as `picto_bubble/`), V-03, V-09, F-3, the header. Left as they were: C-22 (its own
 lane), W-27, S-07, S-13 (weekend TV check), Q-02, F-0 (Kaden), S-17 (Gary's spend log), F-6 (roll-up).
+Then gap-close-4 built A-16 and A-17 (DepthLife plays `worm_boop` and `fish_free`) and S-15 (the barks pop
+the PictoBubble scene; `BarkBubble` removed): 186 built, 12 partial.
 
 ## Gap-close-3 audit 2026-11-11
 
