@@ -25,6 +25,12 @@ tag) and the characters block in `assets/CREDITS.md`. It reads the tag with `git
 files are smudged), so the library checkout can be on any branch. Ids that left the roster are
 removed. **New characters: rerun with the new tag, import, commit. No code change.**
 
+Residents' voices: for each id in `scripts/tools/sync_residents.txt` (non-playable library
+characters the game's barks speak as; the Hill lists `mole`, `gnome_foreman`, `dragon`) it copies only
+`voice/*.ogg` (no model, no `lib/`, no `source/`) into `assets/characters/<id>/voice/`, adds them to a
+`"residents"` block in `data/roster.json` and their CREDITS rows. A resident with no recorded audio gets
+no folder, so it keeps its synth placeholder. They never appear in `roster` or the chooser.
+
 Current: `v0.3.0`, Jeff (P1 default) and Chuck (P2 default).
 
 ## 2. Who each player is
