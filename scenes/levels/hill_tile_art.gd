@@ -14,6 +14,9 @@ var generator: HillGenerator
 var collision_layer := 1
 var cell := 16
 var _tile_set: TileSet
+## Palette id -> the palette id whose terrain column it is drawn with (tiles with no column of their
+## own, such as the C-22 puzzle tiles; Puzzles draws their detail over them).
+var looks_like: Dictionary = {}
 
 
 func _init(p_generator: HillGenerator, p_collision_layer := 1) -> void:
@@ -78,6 +81,7 @@ func _coords(src: TileSetAtlasSource) -> Array[Vector2i]:
 
 
 func solid_coords(c: Vector2i, id: int, open: int) -> Vector2i:
+	id = int(looks_like.get(id, id))
 	return Vector2i((id - 1) * VARIANTS + cell_hash(c) % VARIANTS, open)
 
 

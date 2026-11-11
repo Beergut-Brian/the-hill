@@ -43,6 +43,19 @@ const FISH := &"frozen_fish"
 var fish_cells: Array[Vector2i] = []
 ## Cells forced to one tile whatever the noise says: [[Rect2i, tile], ...] (rink and nest floors).
 var _forced: Array = []
+## C-22 puzzles from data/puzzles (PuzzleData), placed last on their own stream (_plan_puzzles):
+## [{id, kind, layer: int, rect: Rect2i (the whole footprint), data: PuzzleData, gift: Vector2i (the
+## cell the gift sits in), plus per kind (all Rect2i, absolute cells):
+##   drain:        pocket (water), wall (the dirt to dig: the channel), nook (where you stand),
+##                 plug (drain_plug tiles), chute, sump (dry, holds more than the pocket)
+##   boulder_wall: nook, cavity (the boulder rests on its floor), strut, drop, crack, room
+##   heavy_block:  tunnel, block (heavy_stone), room}]
+var puzzles: Array = []
+## The puzzle pockets' water (kept out of `pockets`: they never gush).
+var puzzle_water: Array[Rect2i] = []
+var _puzzle_rows: Array = []
+const PUZZLE_SIZES := {&"drain": Vector2i(14, 13), &"boulder_wall": Vector2i(8, 15), &"heavy_block": Vector2i(13, 5)}
+const PUZZLE_TILES := {&"drain": &"drain_plug", &"boulder_wall": &"cracked_wall", &"heavy_block": &"heavy_stone"}
 ## Columns of a hole: wide enough for every vehicle (the Drill Rig is 56 px).
 const HOLE_W := 4
 const NEST := Vector2i(8, 4)
@@ -106,6 +119,12 @@ const NEAR_Y := 16
 func configure_hazards(rows: Array) -> void:
 	_hazards = rows.duplicate()
 	_hazards.sort_custom(func(a: HazardData, b: HazardData) -> bool: return String(a.id) < String(b.id))
+
+
+## PuzzleData rows (data/puzzles). Without them no puzzle is placed.
+func configure_puzzles(rows: Array) -> void:
+	_puzzle_rows = rows.duplicate()
+	_puzzle_rows.sort_custom(func(a: PuzzleData, b: PuzzleData) -> bool: return String(a.id) < String(b.id))
 
 
 func _hazard_count(layer: StringName, kind: StringName, fallback: int) -> int:
@@ -230,6 +249,7 @@ func _plan(p_seed: int) -> void:
 	_plan_hazards(p_seed)
 	_plan_pickups(p_seed)
 	_plan_deep(p_seed)
+	_plan_puzzles(p_seed)
 	_carved.append(CAVERN)
 
 
@@ -323,6 +343,77 @@ func _plan_deep(p_seed: int) -> void:
 					_calm.append(r.grow(3))
 					_forced.append([floor_r, main])
 					break
+
+
+## C-22 puzzles on a fourth random stream, after everything else (so adding them moved nothing that
+## was already placed). Each keeps clear of every calm area; a row whose layer or tiles are missing
+## is skipped.
+func _plan_puzzles(p_seed: int) -> void:
+	puzzles.clear()
+	puzzle_water.clear()
+	var rng := RandomNumberGenerator.new()
+	rng.seed = p_seed + 15485863
+	for row: PuzzleData in _puzzle_rows:
+		var li := _layer_index(row.layer)
+		if li < 0 or not PUZZLE_SIZES.has(row.kind):
+			continue
+		if not _ids.has(PUZZLE_TILES[row.kind]) or (row.kind == &"boulder_wall" and not _ids.has(&"strut")):
+			continue
+		var l: LayerData = layer_rows[li]
+		var size: Vector2i = PUZZLE_SIZES[row.kind]
+		var r := _hazard_spot(rng, l, li, size, row.near_landing)
+		if r.size == Vector2i.ZERO:
+			r = _hazard_spot(rng, l, li, size, false)
+		if r.size == Vector2i.ZERO:
+			continue
+		var o := r.position
+		var main := int(_ids.get(_main_block(l), 1))
+		var pz := {"id": row.id, "kind": row.kind, "layer": li, "rect": r, "data": row}
+		var at := func(x: int, y: int, w: int, h: int) -> Rect2i: return Rect2i(o.x + x, o.y + y, w, h)
+		match row.kind:
+			&"drain":
+				pz.pocket = at.call(0, 0, 4, 4)
+				pz.wall = at.call(4, 2, 1, 2)
+				pz.nook = at.call(5, 2, 2, 2)
+				pz.plug = at.call(7, 2, 1, 2)
+				pz.chute = at.call(8, 2, 2, 7)
+				pz.sump = at.call(6, 9, 8, 4)
+				pz.gift = o + Vector2i(1, 3)
+				for k in [&"pocket", &"nook", &"chute", &"sump"]:
+					_carved.append(pz[k])
+				puzzle_water.append(pz.pocket)
+				_forced.append([at.call(4, 0, 1, 4), main])
+				_forced.append([pz.plug, int(_ids[&"drain_plug"])])
+			&"boulder_wall":
+				pz.nook = at.call(0, 4, 4, 2)
+				pz.cavity = at.call(4, 2, 2, 2)
+				pz.strut = at.call(4, 4, 2, 2)
+				pz.drop = at.call(4, 6, 2, 3)
+				pz.crack = at.call(3, 9, 4, 2)
+				pz.room = at.call(2, 11, 6, 3)
+				pz.gift = o + Vector2i(6, 13)
+				for k in [&"nook", &"cavity", &"drop", &"room"]:
+					_carved.append(pz[k])
+				_forced.append([pz.strut, int(_ids[&"strut"])])
+				_forced.append([pz.crack, int(_ids[&"cracked_wall"])])
+			&"heavy_block":
+				pz.tunnel = at.call(0, 1, 8, 3)
+				pz.block = at.call(8, 1, 2, 3)
+				pz.room = at.call(10, 1, 3, 3)
+				pz.gift = o + Vector2i(11, 3)
+				_carved.append(pz.tunnel)
+				_carved.append(pz.room)
+				_forced.append([pz.block, int(_ids[&"heavy_stone"])])
+		puzzles.append(pz)
+		_calm.append(r.grow(3))
+
+
+## The puzzle (index into puzzles) whose footprint holds `cell`, or -1.
+func puzzle_at(cell: Vector2i) -> int:
+	for i in puzzles.size():
+		if (puzzles[i].rect as Rect2i).has_point(cell):
+			return i
+	return -1
 
 
 ## A rink in layer li: ice floor, a HOLE_W-wide hole at the end away from the shaft whose chute
@@ -481,6 +572,9 @@ func fish_at(cell: Vector2i) -> int:
 
 func base_water(cell: Vector2i) -> bool:
 	for p in pockets:
+		if p.has_point(cell):
+			return true
+	for p in puzzle_water:
 		if p.has_point(cell):
 			return true
 	return pocket.has_point(cell)

@@ -4,7 +4,7 @@ extends GdUnitTestSuite
 
 const FOLDERS := {
 	"blocks": "BlockData", "layers": "LayerData", "treasures": "TreasureData",
-	"buildings": "BuildingData", "vehicles": "VehicleData",
+	"buildings": "BuildingData", "vehicles": "VehicleData", "puzzles": "PuzzleData",
 }
 
 
