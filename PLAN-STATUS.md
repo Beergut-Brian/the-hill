@@ -237,7 +237,7 @@ and `assets/audio/music/` (seeded synth SFX from `assets/audio/tools/make_cues.p
 
 | ID | Source | Item | Status | Proof | Notes |
 | --- | --- | --- | --- | --- | --- |
-| A-01 | CLAUDE.md | Sound on every action | built | tests/test_audio.gd::test_every_cue_resolves_to_a_file; tests/test_proto.gd::test_audio_synth_beep_for_missing_cues | On dev since PR 12: every cue in assets/audio/CUES.md has a file (seeded synth from make_cues.py). Still not in CUES.md: `cow_moo` (B-02), `lighthouse_on` (B-07) |
+| A-01 | CLAUDE.md | Sound on every action | built | tests/test_audio.gd::test_every_cue_resolves_to_a_file; tests/test_proto.gd::test_audio_synth_beep_for_missing_cues | On dev since PR 12: every cue in assets/audio/CUES.md has a file (seeded synth from make_cues.py). Still not in CUES.md: `cow_moo` (B-02), `lighthouse_on` (B-07). Audio-3 added `worm_boop`, `fish_flop`, `fish_free`, `dig_sand`, `drain_gurgle` (A-16 to A-19) |
 | A-02 | S1 Audio | `dig_<block>`: crumble, squelch, crack, crunch, chime | built | assets/audio/sfx/dig_*.ogg; tests/test_audio.gd::test_variants_rotate_without_repeats | Three variants per block, rotated (PR 12) |
 | A-03 | S1 Audio | `scoop`, `tip`: hydraulic whine, rattle | built | assets/audio/sfx/scoop_1-2, bucket_tip, dump_truck_tip; assets/audio/CUES.md | `tip` is an alias of `dump_truck_tip` (PR 12) |
 | A-04 | S1 Audio | `engine_<vehicle>`: looped, pitched by speed, one per vehicle | built | assets/audio/sfx/*_engine.wav; tests/test_audio.gd::test_engine_pitch_follows_speed, ::test_driving_in_the_game_runs_that_vehicles_engine | Looped per vehicle, pitched by speed (PR 12) |
@@ -252,6 +252,10 @@ and `assets/audio/music/` (seeded synth SFX from `assets/audio/tools/make_cues.p
 | A-13 | S1 Audio | `dragon_snore` louder by depth | partial | assets/audio/sfx/dragon_snore_1-2.ogg; tests/test_audio.gd::test_snore_gets_louder_with_depth | Plays and gets louder by depth (PR 12). Not synced with the puff and sway (W-17) |
 | A-14 | S1 Audio | Music: sunny up-top theme; the same theme slowed underground with a layer per zone; cavern choir | built | assets/audio/music/music_up.ogg, music_down.ogg, music_down_layer_1-4.wav, music_cavern.ogg; tests/test_audio.gd::test_music_crossfades_up_down_and_cavern, ::test_big_moments_duck_the_music | Up-top theme, slowed underground theme with a layer per zone, cavern track (PR 12) |
 | A-15 | S1 Audio | Barks: Mole "oh dear", Foreman mutters, Dragon rumbles, Jeff names rocks, Chuck narrates | partial | assets/audio/voice/*.ogg; tests/test_audio.gd::test_barks_fall_back_to_placeholders_and_are_rate_capped | All five bark hooks fire and are rate-capped (PR 12); the voices are synth gibberish placeholders until voice packs land |
+| A-16 | S1 Topsoil (W-03) | Worms that wave: a friendly "boop/giggle" | partial | assets/audio/sfx/worm_boop_1-2.ogg; tests/test_audio_depth.gd::test_every_new_cue_resolves_to_its_files | Audio-3: the cue is in (round rising boop + three-chirp giggle, capped 0.25 s / 2 voices). Not heard in game yet: depth-life (`feature/hill-depth-life-1`, not on `dev` when audio-3 ended) plays `pop` in `DepthLife._physics_process`; rename that call to `Audio.play("worm_boop")` once it lands |
+| A-17 | S1 Ice (W-11) | Frozen fish: a flip-flop when dug out, an ice crack when it swims off | partial | assets/audio/sfx/fish_flop_1-2.ogg, fish_free.ogg; tests/test_audio_depth.gd::test_digging_a_frozen_fish_out_flops | Audio-3: `fish_flop` plays from HillAudio on `Events.tile_dug` at a `HillGenerator.fish_at` cell (live as soon as depth-life is on `dev`, no edit needed). `fish_free` (crack, splash, bubbles) is in, but depth-life's `DepthLife.free_fish` still plays `splash`: rename it to `fish_free` when it lands |
+| A-18 | Depth-life report (W-03 sand) | Optional `dig_sand` (sand uses `dig_dirt`) | partial | assets/audio/sfx/dig_sand_1-3.ogg; handoff/audio3_preview.ogg (audio-3 hand-off) | Audio-3: three soft bright "shff" variants, made but not switched on. No speakers on the producer box, so the listen check was a spectral one only (brighter than dirt, no thump, -20 LUFS active, nothing harsh). Gary: listen to the preview; if it is right, set `data/blocks/sand.tres` `dig_sound = &"dig_sand"` (Content) |
+| A-19 | S1 Two depths (C-22) | Gurgle while the drain puzzle's water runs, under barks, stops when still | partial | assets/audio/sfx/drain_gurgle.wav; tests/test_audio_depth.gd::test_gurgle_runs_only_while_the_drain_water_moves, ::test_water_that_only_loads_in_or_jumps_once_is_not_running, ::test_gurgle_ducks_under_a_bark, ::test_the_gurgle_stops_when_the_audio_director_leaves | Audio-3: HillAudio watches each `generator.puzzles` drain (kind `&"drain"`) every 0.2 s; two moving checks in a row start the 2 s loop at -8 dB (-17 dB under a bark), 0.6 s of still water stops it. Tested against fakes; dormant in game until puzzles (`feature/hill-puzzles-1`) is on `dev` |
 
 ## Kid-design checks (S1, on top of docs/kid-design.md)
 
@@ -300,11 +304,11 @@ and `assets/audio/music/` (seeded synth SFX from `assets/audio/tools/make_cues.p
 
 ## Totals
 
-Counted from the Status column, 192 rows, on `dev` at `8ee8d2d` (2026-11-10) plus M-08 (chooser-catchphrase lane):
+Counted from the Status column, 196 rows, on `dev` at `8ee8d2d` (2026-11-10) plus M-08 (chooser-catchphrase lane) and A-16 to A-19 (audio-3 lane, all partial; recounted from the column, which had 149 built and 26 partial before them):
 
 | built | partial | missing | superseded | dropped | later | total |
 | --- | --- | --- | --- | --- | --- | --- |
-| 148 | 27 | 8 | 1 | 4 | 4 | 192 |
+| 149 | 30 | 8 | 1 | 4 | 4 | 196 |
 
 Before the plan-sync: 112 built, 47 partial, 22 missing, 2 superseded, 4 dropped, 4 later.
 

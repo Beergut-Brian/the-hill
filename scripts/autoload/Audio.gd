@@ -9,7 +9,8 @@
 ##
 ## Buses: Master (hard limiter at -1 dB, nothing clips) <- Music (duck amplifier), SFX, Voice.
 ## Engines: engine(key, cue) starts a looped engine per key (a player), engine_speed(key, 0..1)
-## pitches it (ENGINE_PITCH) and opens it up, engine_stop(key).
+## pitches it (ENGINE_PITCH) and opens it up, engine_stop(key). engine_level(key, db) gives a
+## non-engine loop (the drain gurgle) its own level instead.
 ## Music: music_state(theme, zone, cavern) drives the layered theme: one AudioStreamSynchronized of
 ## music_up, music_down and music_down_layer_1..N, crossfaded by stream volume, plus music_cavern
 ## on its own looped player. music(track) still plays a single file.
@@ -52,6 +53,7 @@ const CAPS := {
 	"*_horn": [0.15, 1], "horn": [0.15, 1], "honk": [0.3, 1], "dump_truck_reverse": [0.6, 1],
 	"backpack_full": [1.5, 1], "*_dig": [0.1, 2], "book_*": [0.1, 1],
 	"drill_rig_spin": [0.25, 1], "scoop": [0.1, 2], "rock_crack": [0.08, 2], "tree_fall": [0.2, 2],
+	"worm_boop": [0.25, 2],
 }
 ## Cues that duck the music: [dB, hold seconds].
 const DUCKS := {
@@ -430,6 +432,20 @@ func engine_stop(key) -> void:
 	_engines.erase(key)
 	p.stop()
 	p.queue_free()
+
+
+## A loop started with engine() that is not an engine (the drain gurgle): set its own level (dB)
+## and pitch; they glide there like an engine's.
+func engine_level(key, db: float, pitch: float = 1.0) -> void:
+	if not _engines.has(key):
+		return
+	_engines[key].target_db = db
+	_engines[key].target_pitch = pitch
+
+
+## The engine's target level (dB), or SILENT_DB when there is none.
+func engine_db(key) -> float:
+	return _engines[key].target_db if _engines.has(key) else SILENT_DB
 
 
 ## The engine's target pitch (what it glides to), or 0 when there is none.
