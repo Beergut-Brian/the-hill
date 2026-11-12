@@ -16,6 +16,7 @@ class FakeWorld extends RefCounted:
 
 class FakeGen extends RefCounted:
 	var puzzles: Array = []
+	var pockets: Array[Rect2i] = []
 	var fish := {}
 
 	func fish_at(c: Vector2i) -> int:
@@ -201,3 +202,69 @@ func test_the_gurgle_stops_when_the_audio_director_leaves() -> void:
 	assert_bool(_ha.gurgling).is_true()
 	_game.free()
 	assert_float(Audio.engine_db(HillAudio.GURGLE_KEY)).is_equal(Audio.SILENT_DB)
+
+
+## A-19 live: dev's C-22 has no drain-kind puzzle; the water a player drains is a water pocket
+## (`generator.pockets`). Its water running out into the tunnel gurgles; still pocket water does not.
+func test_a_water_pocket_running_out_into_the_tunnel_gurgles() -> void:
+	_u().generator.pockets = [Rect2i(10, 10, 3, 3)]
+	_fill_pocket()
+	_checks(10)
+	assert_bool(_ha.gurgling).is_false()
+	# A dig breaches the side: each check one cell runs out to the right, inside the margin.
+	var pocket: Array = _u().world.wet.keys()
+	for i in 3:
+		_u().world.wet.erase(pocket[i])
+		_u().world.wet[Vector2i(13 + i % HillAudio.POCKET_MARGIN, 12)] = true
+		_checks(1)
+	assert_bool(_ha.gurgling).is_true()
+	_checks(int(ceil(HillAudio.GURGLE_HOLD / HillAudio.GURGLE_POLL)) + 1)
+	assert_bool(_ha.gurgling).is_false()
+
+
+## The regions: drain puzzles by their rects, pockets grown by the margin, other puzzle kinds and
+## empty pockets skipped.
+func test_drain_regions_cover_drain_puzzles_and_grown_pockets_only() -> void:
+	var g := FakeGen.new()
+	g.puzzles = [{"kind": &"boulder_wall", "rect": Rect2i(0, 0, 4, 4)}, _drain()]
+	g.pockets = [Rect2i(20, 20, 4, 2), Rect2i()]
+	var regions := HillAudio.drain_regions(g)
+	assert_int(regions.size()).is_equal(2)
+	assert_int((regions[0] as Array).size()).is_equal(3)
+	assert_bool(regions[1][0] == Rect2i(20, 20, 4, 2).grow(HillAudio.POCKET_MARGIN)).is_true()
+	assert_array(HillAudio.drain_regions(null)).is_empty()
+
+
+## The real world: the generated Clay pocket sits still (no gurgle) until a tunnel is opened beside
+## it, then its water runs out and the gurgle plays. Staged: the cells beside the pocket are set to
+## air directly and the water is stepped by hand, no waiting on the clock.
+func test_the_real_clay_pocket_is_quiet_until_it_is_breached() -> void:
+	var u: Underground = load("res://scenes/levels/underground.tscn").instantiate()
+	_game.underground = u
+	_game.add_child(u)
+	var pocket: Rect2i = u.generator.pocket
+	assert_bool(pocket.size != Vector2i.ZERO).is_true()
+	var eye := Node2D.new()
+	u.world.add_child(eye)
+	eye.position = u.world.shape.center_of(pocket.get_center())
+	u.world.track(eye)
+	u.world.update_chunks(-1)
+	u.world.water_hz = 0.0          # the test steps the water itself
+	for i in 40:
+		u.world.step_water()
+	assert_bool(u.world.has_water(Vector2i(pocket.position.x + 1, pocket.end.y - 1))).is_true()
+	for i in 10:
+		u.world.step_water()
+		_checks(1)
+	assert_bool(_ha.gurgling).is_false()
+	# Open a tunnel off the pocket's bottom-right corner, inside the margin.
+	var air := 0
+	for x in range(pocket.end.x, pocket.end.x + HillAudio.POCKET_MARGIN):
+		for y in range(pocket.end.y - 2, pocket.end.y):
+			u.world.set_tile(Vector2i(x, y), air)
+	var ran := false
+	for i in 20:
+		u.world.step_water()
+		_checks(1)
+		ran = ran or _ha.gurgling
+	assert_bool(ran).is_true()
