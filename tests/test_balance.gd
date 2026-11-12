@@ -10,6 +10,7 @@ const SHEET := "res://data/BALANCE.md"
 const CAR_TARGET_S := 5 * 60
 const EXCAVATOR_TARGET_S := 15 * 60
 const BOTTOM_TARGET_S := 3 * 3600
+const BOTTOM_TARGET_MAX_S := 4 * 3600
 
 ## Stated allowances (BALANCE.md "Assumptions"): not in any file, kept generous.
 const SURFACE_WALK_S := 10.0      # spawn to the cage, once
@@ -185,6 +186,7 @@ func floors() -> Dictionary:
 		"tooth_row": tooth.position.y, "tooth_cols": tooth_cols, "tooth_s": roundi(tooth_s + tooth_back),
 		"haul_blocks": haul, "haul_trips": haul_trips, "haul_s": roundi(haul_s),
 		"drill_rows": HillGenerator.CAVERN.position.y - stone_floor, "drill_s": roundi(drill_s),
+		"rig_crystal_row_s": roundi(tile_s(crystal_tough, 1, rig.dig_tier) + fall),
 		"bottom_floor_s": roundi(bottom_s),
 		"backpack": Progress.backpack_capacity(),
 	}
@@ -327,9 +329,10 @@ func test_the_bottom_needs_the_drill_rig() -> void:
 		assert_int(g._layer_index(egg.layer)).is_greater_equal(crystal.layer)
 
 
-## KNOWN MISS (BALANCE.md, Gary's pick needed): with the gates the bottom floor is minutes, not
-## 3 to 4 hours. When the producer's tuning lands, flip this to is_greater_equal(BOTTOM_TARGET_S).
-func test_bottom_known_miss_is_still_what_the_sheet_says() -> void:
+## C-27 (bottom-1 lane, 2026-11-12): Crystal's hit points carry the bottom floor into the 3 to 4 h
+## target; the Drill Rig's auto-drill does the slow part on its own.
+func test_bottom_lands_in_three_to_four_hours() -> void:
 	var f := floors()
 	assert_int(f.bottom_floor_s).is_greater(f.excavator_floor_s)
-	assert_int(f.bottom_floor_s).is_less(BOTTOM_TARGET_S)
+	assert_int(f.bottom_floor_s).is_greater_equal(BOTTOM_TARGET_S)
+	assert_int(f.bottom_floor_s).is_less_equal(BOTTOM_TARGET_MAX_S)

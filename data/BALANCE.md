@@ -9,7 +9,10 @@ the Balance re-check lane (`hill-balance-recheck-1`) on `feature/hill-dig-1` aft
 Gate Rock bands (`data/gates/`) and Hard Rock. Checked again by `hill-balance-recheck-2` on
 `origin/dev` at `39a2212` (after PR 49, the C-22 boulder walls and vehicle blocks in Clay, and PRs
 50 to 53): every floor below is unchanged, and the C-22 puzzles are now counted against the routes
-("C-22 puzzles on the routes" below). `tests/test_balance.gd` recomputes every number in
+("C-22 puzzles on the routes" below). On 2026-11-12 the Bottom-layer balance lane
+(`hill-balance-bottom-1`, from `origin/dev` at `b04811e`) made the one data change that carries the
+bottom floor into its 3 to 4 h target: **Crystal's hit points, `data/blocks/crystal.tres`
+`toughness` 6 → 9000** ("The bottom: decided" below). `tests/test_balance.gd` recomputes every number in
 a `name = value` line below from the data rows and code constants, so a data change that moves one
 fails CI until this sheet is updated.
 
@@ -37,7 +40,7 @@ per hit (a Drill Rig bite is taller), so the deep floors are a little high, neve
 | Walk speed | 200 px/s | 0.08 s a cell | `hill_player.gd` `WALK` |
 | Shovel hits | power 1 / 2 / 4, every 0.30 / 0.22 / 0.16 s (0, 1, 2 Workshops) | | `data/dig.tres` `shovel_power`, `shovel_every` |
 | Vehicle hits | power 2 / 5 / 6 / 9, every 0.26 / 0.20 / 0.18 / 0.16 s (dig_tier 0 to 3) | | `data/dig.tres` `vehicle_power`, `vehicle_every` |
-| Toughness | dirt 3, clay 4, stone 5, crystal 6, Gate Rock 8 (Hard Rock 6, vehicles only) | | `data/blocks/*.tres` `toughness` |
+| Toughness | dirt 3, clay 4, stone 5, crystal 9000 (was 6; C-27, bottom-1), Gate Rock 8 (Hard Rock 6, vehicles only) | | `data/blocks/*.tres` `toughness` |
 | Vehicle speed | Excavator 100, Drill Rig 60 px/s, × 1.15 with a Workshop | | `data/vehicles/*.tres`; `hill_player.gd` `TOOL_DRIVE` |
 | Front Loader scoop up top | 0.35 s a tile | | `hill_player.gd` `SCOOP_EVERY` |
 | One row down, starting shovel, dirt | `row_down_ms = 1081` | 3 hits × 0.30 + 0.181 | was 321 before the dig lane |
@@ -105,17 +108,17 @@ the car tunnel on an unlucky seed; the floor assumes the straight line is clear.
 | | |
 | --- | --- |
 | Target | 10 800 to 14 400 s |
-| Current floor | `bottom_floor_s = 399` (about 6 min 39 s; was 134 with no gates) |
+| Current floor | `bottom_floor_s = 11108` (about 3 h 5 min; 399 before the Crystal hit points, 134 with no gates) |
 | Why this route | the Crystal and Bottom bands break only for dig_tier 3, the Drill Rig (the Dragon Egg that also opens the Bottom lies in Crystal, behind the Crystal band). The Drill Rig needs the Giant Tooth (Stone) and Garage 4. The Ice band needs the Crane (tier 2) or the Gnome crew; the Drill Rig breaks it too, so the floor skips the Gnome Room |
 | Calculation | 196.4 Excavator |
 | | + `tooth_s = 68`: 1.6 ride to Clay; the Excavator digs rows 34 to 103 (34 clay × (0.20 + 0.181), 3 Gate Rock × (2 × 0.20 + 0.181), 33 stone × 0.381 = 27.25), then 36 columns × (0.20 + 16 / 115) = 12.21; the player walks back 36 × 0.08, climbs 30 rows to the Stone landing (row 74) × 0.75, rides up 1.6 |
 | | + `haul_s = 17`: Garages 2 to 4 cost `haul_blocks = 90` blocks, `haul_trips = 2` Excavator loads (80 a bag): 2 × 2 rides + 90 ÷ 3 cells a bite × 0.339 |
 | | + 51: three Garages × (10 build + 1 roll-out + 6 `vehicle_unlock`): Dump Truck, Crane, Drill Rig |
-| | + `drill_s = 67`: 1.6 ride to Stone; the Drill Rig drills `drill_rows = 192` rows (74 to 266) × (0.16 + 0.181), every block and band one hit |
-| | = **399.0 s** |
-| Status | **Misses, by 2 h 53 min at the 3 h end** (10 800 − 399 = 10 401 s; the floor is about 1/27 of the target). The gates moved the floor from 2 min 14 s to 6 min 39 s. See "Gary's pick needed" |
+| | + `drill_s = 10776`: 1.6 ride to Stone; the Drill Rig drills `drill_rows = 192` rows (74 to 266): the 125 Stone, Ice, band and Bottom rows one hit each × (0.16 + 0.181) = 42.6, the 67 Crystal rows (191 to 257) 1000 hits each, `rig_crystal_row_s = 160` (1000 × 0.16 + 0.181) = 10 732 |
+| | = **11 108 s** (was 399.0 before Crystal's hit points) |
+| Status | **Meets: 3 h 5 min**, 5 min inside the 3 h end and 55 min under the 4 h end. Crystal is the Drill Rig's long, steady bore (about 2 min 40 s a row on auto-drill); everything above the Crystal band is as before |
 
-### Even the whole checklist is minutes, not hours
+### Even the whole checklist is minutes, not hours (true before bottom-1; still true above Crystal)
 
 Everything the hill can ask for in blocks today: Garage 1 (30), Garages 2 to 4 (3 × 30 = 90 more), two Workshops
 (30 stone), the four ruins (Old Shed 10, Crooked Watchtower 35, Flooded Cabin 30, Ruined Keep 40 =
@@ -189,17 +192,18 @@ target.
 ### Dig speed (time per tile with A held)
 
 `hits = ceil(toughness / power)`, `time = hits x seconds between hits`. Toughness: dirt 3, sand 3,
-clay 4, pebbles 4, pipe 4, stone 5, ice 5, ore 6, geode 6, crystal 6, Hard Rock 6, Gate Rock 8.
+clay 4, pebbles 4, pipe 4, stone 5, ice 5, ore 6, geode 6, Hard Rock 6, Gate Rock 8, crystal 9000
+(C-27 bottom-1: the only block tougher than Gate Rock, and only past the Drill Rig's band).
 
 | Digger | power | s / hit | dirt | clay | stone | crystal | Gate Rock | Hard Rock |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| Starting shovel | 1 | 0.30 | 0.90 s | 1.20 s | 1.50 s | 1.80 s | closed | bonk |
-| Sturdy Shovel (1 Workshop) | 2 | 0.22 | 0.44 s | 0.44 s | 0.66 s | 0.66 s | 0.88 s (band 1) | bonk |
-| Big Shovel (2 Workshops) | 4 | 0.16 | 0.16 s | 0.16 s | 0.32 s | 0.32 s | 0.32 s (band 1) | bonk |
-| Front Loader (tier 0) | 2 | 0.26 | 0.52 s | 0.52 s | 0.78 s | 0.78 s | closed | 0.78 s |
-| Excavator, Dump Truck (tier 1) | 5 | 0.20 | 0.20 s | 0.20 s | 0.20 s | 0.40 s | 0.40 s | 0.40 s |
-| Crane (tier 2) | 6 | 0.18 | 0.18 s | 0.18 s | 0.18 s | 0.18 s | 0.36 s | 0.18 s |
-| Drill Rig (tier 3) | 9 | 0.16 | 0.16 s | 0.16 s | 0.16 s | 0.16 s | 0.16 s | 0.16 s |
+| Starting shovel | 1 | 0.30 | 0.90 s | 1.20 s | 1.50 s | 45 min | closed | bonk |
+| Sturdy Shovel (1 Workshop) | 2 | 0.22 | 0.44 s | 0.44 s | 0.66 s | 16.5 min | 0.88 s (band 1) | bonk |
+| Big Shovel (2 Workshops) | 4 | 0.16 | 0.16 s | 0.16 s | 0.32 s | 6 min | 0.32 s (band 1) | bonk |
+| Front Loader (tier 0) | 2 | 0.26 | 0.52 s | 0.52 s | 0.78 s | 19.5 min | closed | 0.78 s |
+| Excavator, Dump Truck (tier 1) | 5 | 0.20 | 0.20 s | 0.20 s | 0.20 s | 6 min | 0.40 s | 0.40 s |
+| Crane (tier 2) | 6 | 0.18 | 0.18 s | 0.18 s | 0.18 s | 4.5 min | 0.36 s | 0.18 s |
+| Drill Rig (tier 3) | 9 | 0.16 | 0.16 s | 0.16 s | 0.16 s | 160 s | 0.16 s | 0.16 s |
 
 Before this pass every dig on foot took one hit every 0.14 s (vehicles 0.22 s), any block. A
 straight shaft through Topsoil on foot (30 rows) was about 4 s; now it is about 27 s with the
@@ -214,32 +218,43 @@ Big Shovel. Vehicles dig their whole body's cross-section plus their dig shape p
   vehicle (x1 to x5 carry) holds.
 - **Gate Rock** keeps as 1 stone a tile.
 
-## Gary's pick needed (not changed here)
+## The bottom: decided (bottom-1, 2026-11-12, the producer's call)
 
-**The gap:** the bottom floor is `bottom_floor_s = 399` s against 10 800 s, short by 10 401 s
-(2 h 53 min). Targets 1 and 2 are met (car 2 min 52 s early, Excavator 11 min 44 s early).
+**The gap it closed:** with every block 1 hit for the Drill Rig the bottom floor was 399 s against
+10 800 s, short by 2 h 53 min (re-check 2). Gary chose to close it in data.
 
-**Why data can't close it alone:** the floor is about 1/27 of the target. To reach 3 h by dig
-rates, every tile would have to take about 27 times as long (a Topsoil row about 29 s with the
-starting shovel), which breaks "big satisfying chunks". The building costs add up to 345 blocks,
-about 5 Excavator loads. The hours have to come from what a 5-year-old does between digs
-(exploring, residents, building, the Mole, cutscenes); only a timed playtest can measure them.
+**The lever:** Crystal's hit points, `data/blocks/crystal.tres` `toughness` 6 → 9000. One value,
+one block, below Clay only. Why this one and not the others:
 
-**The one data change I would make:** `data/gates/5_bottom.tres` `vehicle_tier = 3` → `0`, so the
-Bottom opens only for the Dragon Egg (found in Crystal), never by drilling through. It makes the
-end of the hill a story beat (find the egg, the Dragon wakes) instead of a drill-through, and every
-player who reaches the bottom has met the Dragon. What it does to the floors: the Drill Rig turns
-off its shaft in Crystal to the egg, `egg_cols = 25` columns × (0.16 + 16 / 69) and drives back
-25 × 16 / 69, `egg_detour_s = 16`, so the bottom floor goes from 399 s to about 415 s. Car and
-Excavator floors unchanged. It does **not** close the gap (still about 2 h 53 min short); it
-closes a design hole, not the time.
+- **Gate Rock must stay 7 or 8** (the Sturdy Shovel's 4 hits in the Clay band are in the car floor),
+  and Hard Rock, stone, ice and the Drill Rig's power are capped by it: a band is the toughest thing
+  above it, and the tiers must keep rising (`test_dig_progression`). So only a block below the
+  bands that matter can carry hours.
+- **Not Stone or Ice:** Stone is the first long session (the Excavator held down, minute 18 to 45),
+  and the Gnome crew opens Ice for walkers and the Crane; hours there would turn those promises into
+  a wall. Crystal is past the Crystal band, which only the Drill Rig breaks.
+- **The Drill Rig drills Crystal on its own** (A starts its auto-drill, A stops it), so the slow
+  part is not a held button. Every hit still cracks the tile, flashes, throws crumbs and plays its
+  sound; nothing is hidden and nothing moves anyone.
+- **Not the Drill Rig's rate:** its auto-drill pace is a code constant, and a slower Rig would make
+  the Crane the faster way through Stone and Ice, so the floor would stop being a floor.
 
-**And the target itself:** keep 3 to 4 h as the timed-playtest goal, and let this sheet's
-mechanical check be the gated floor (the bottom needs the Workshop, the car, four Garages, the
-Giant Tooth and the Drill Rig; about 6 to 7 min of perfect play). `test_balance.gd` keeps the miss
-as a known miss and fails if the bottom ever gets faster than the Excavator.
+**What it costs in play (for the playtest to judge):** a Crystal tile is 160 s for the Drill Rig,
+6 min for the Big Shovel or the Excavator, 4.5 min for the Crane. The 40% stone in Crystal (and the
+Bottom's mix) still digs as before, so walkers in Crystal can tunnel the stone veins. The Dragon Egg
+in Crystal: the egg-only Bottom gate (the old suggestion: `data/gates/5_bottom.tres` `vehicle_tier
+= 3` → `0`) would now cost `egg_cols = 25` columns of Crystal there and back, `egg_detour_s = 4012`
+(about 1 h 7 min) and push the floor to about 4 h 12 min, past the 4 h end, so it is **not** taken.
+The Bottom layer's own rows (stone and crystal half and half) are timed as stone, so the floor
+there is a few minutes low, never high.
+
+**Undo:** set `toughness` back to 6 and flip `test_bottom_lands_in_three_to_four_hours` back to a
+known miss; nothing else depends on it.
 
 ## What changed in data
 
-Nothing (re-check 2 too: C-22's rows contradict no GAME.md text and move no floor). No number contradicts GAME.md's own text (toughness, dig powers and intervals, band
+bottom-1 (2026-11-12): `data/blocks/crystal.tres` `toughness` 6 → 9000, the only change; it moves
+`drill_s`, `bottom_floor_s` and `egg_detour_s` and nothing else (car, Excavator, every band row,
+the puzzle counts unchanged). GAME.md's 2026-11-11 dig entry lists "crystal 6": superseded by the
+2026-11-12 decision line. Before that: nothing (re-check 2 too: C-22's rows contradict no GAME.md text and move no floor). No number contradicts GAME.md's own text (toughness, dig powers and intervals, band
 openers and target minutes all match "Playtest 2026-11-10 changes"), so there was no bug to fix.

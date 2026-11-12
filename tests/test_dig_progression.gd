@@ -134,11 +134,15 @@ func test_the_start_is_slow_and_every_upgrade_is_a_felt_jump() -> void:
 
 func test_every_block_has_hit_points_and_the_bands_are_the_toughest() -> void:
 	var gate := load("res://data/blocks/gaterock.tres") as BlockData
+	var crystal_from := (load("res://data/layers/crystal.tres") as LayerData).depth_from
 	for id in Underground.BLOCK_ORDER:
 		var b := load(Underground.BLOCK_DIR + String(id) + ".tres") as BlockData
 		assert_int(b.toughness).override_failure_message("%s toughness" % id).is_greater_equal(1)
-		if b.breakable:
-			assert_int(gate.toughness).is_greater_equal(b.toughness)
+		# C-27: Crystal (past the Drill Rig's band) is the slow rock the bottom's hours come from, so
+		# the bands only have to be the toughest above it.
+		if b.breakable and b.depth_from < crystal_from:
+			assert_int(gate.toughness).override_failure_message("%s tougher than Gate Rock" % id) \
+				.is_greater_equal(b.toughness)
 	var hard := load("res://data/blocks/hardrock.tres") as BlockData
 	assert_bool(hard.vehicle_only).is_true()
 	assert_int(hard.haul).is_greater_equal(3)
