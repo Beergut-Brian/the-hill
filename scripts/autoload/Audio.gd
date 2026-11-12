@@ -43,6 +43,8 @@ const ALIASES := {
 	"restore_plank": "plank", "dig_edgestone": "dig_stone", "dig_strangestone": "dig_stone",
 	# B-06 Workshop: stand-ins until Audio makes its own (gap-close-1, "Needs other lanes").
 	"workshop_hammer": "elevator_clank", "tool_upgrade": "treasure_pickup",
+	# B-02 cow bump, B-07 lighthouse flare: stand-ins until Audio makes its own (gap-close-6).
+	"cow_moo": "heart_preview", "lighthouse_on": "light_on",
 }
 ## [minimum seconds between two starts, maximum voices at once]. A key ending in * is a prefix.
 ## Anything not listed: DEFAULT_CAP.

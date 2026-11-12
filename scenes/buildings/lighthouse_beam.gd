@@ -25,6 +25,8 @@ func _ready() -> void:
 ## The placement moment: the lamp flares and shines down the hill.
 func flare() -> void:
 	_flare = FLARE_TIME
+	# The lamp lighting up is heard with the flare (`lighthouse_on`: a stand-in alias in Audio).
+	Audio.play("lighthouse_on")
 
 
 func flaring() -> bool:
