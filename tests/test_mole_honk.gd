@@ -62,13 +62,20 @@ func after_test() -> void:
 	Game._set_state(Game.State.LOBBY)
 
 
+## Frame counts in this suite are 60 Hz frames (1 s = 60): scaled to the physics tick rate, so a
+## budget is the same physics time at 30 or 120 Hz.
+func _ticks(n60: int) -> int:
+	return int(ceil(n60 * Engine.physics_ticks_per_second / 60.0))
+
+
 func _physics(n: int) -> void:
-	for i in n:
+	for i in _ticks(n):
 		await get_tree().physics_frame
 
 
 func _until(cond: Callable, max_frames: int) -> int:
 	var n := 0
+	max_frames = _ticks(max_frames)
 	while not cond.call() and n < max_frames:
 		await get_tree().physics_frame
 		n += 1
@@ -142,13 +149,13 @@ func test_the_mole_honks_an_empty_parked_vehicle_near_a_player_and_sits_in_it() 
 	_game.town.honked.connect(on_honk)
 	_game.town._mole.cd_honk = 0.0
 	var waited := await _until(func() -> bool: return _game.town.mole_mode() == &"honk", 60)
-	assert_int(waited).is_less(60)
+	assert_int(waited).is_less(_ticks(60))
 	assert_object(_game.town._mole.get("vehicle")).is_same(v)
 	# Ride the gag through: he sits on the seat and the horn sounds twice.
 	var sat := false
 	var frames := 0
 	var shot := OS.get_environment("PROOF_FRAME_DIR")   # set by the Proof lane under godot-render
-	while _game.town.mole_mode() != &"wait" and frames < 400:
+	while _game.town.mole_mode() != &"wait" and frames < _ticks(400):
 		await get_tree().physics_frame
 		frames += 1
 		if _game.town.mole_mode() == &"honk" and _game.town.mole.visible \
