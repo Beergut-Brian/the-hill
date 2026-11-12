@@ -1,6 +1,6 @@
 # Plan status: The Hill
 
-True on `dev` at `5f31a57` (2026-11-11, plan-sync lane). Lanes: update your rows in the same commit as the work
+True on `dev` at `61c697f` (2026-11-12, gap-close-5 sync). Lanes: update your rows in the same commit as the work
 (format: `~/openjar/lanes/plan-status-format.md`). Gary: add rows when a new brief arrives; never
 delete rows, supersede them.
 
@@ -23,10 +23,10 @@ one was looked at. To remake one, run
 `scripts/tools/shots.sh "" 4,8 $PWD/.scratch/shots/<beat> --demo --demo-beat=<beat>`; for `demo`, use
 `--demo` with times 6,12,18; for `lobby`, use `--ui=lobby-ready`.
 
-**Branch work that is not on `dev` (checked 2026-11-11 at `5f31a57`):** `feature/art-direction-options-2`
-(styles D and E, V-03), `feature/hill-puzzles-fix-1` (underground puzzles, C-22), `feature/hill-audio-2` and
-`feature/hill-audio-3` (extra cues). No dig-gates, barks-personality or gnome/cow art branch exists on origin,
-so C-27, A-15 and V-09 are unchanged. Everything else through PR 42 is merged.
+**Branch work that is not on `dev` (checked 2026-11-12 at `61c697f`, `git branch -r --no-merged origin/dev`):**
+`feature/art-direction-options` and `-options-2` (styles D and E, V-03, waiting for Kaden's pick),
+`feature/hill-puzzles-fix-1` (superseded: C-22 landed from `hill-puzzles-audit-1` via PR 49) and
+`feature/hill-audio-2` (superseded by audio-3, PR 43). Everything else through PR 57 is merged.
 
 ID prefixes: C core loop, W underground world, T Hillville, B buildings, R residents,
 H vehicles, P players, S systems/camera/tech, M menus, V visuals, A audio, K kid-design,
@@ -224,7 +224,7 @@ X out of scope, Q open questions, F build phases.
 | --- | --- | --- | --- | --- | --- |
 | V-01 | S1 / S2 D45 | Palette A "Sandbox" is the baseline | built | art/direction/palettes.md; .scratch/shots/lineup/t008.0s.png | |
 | V-02 | S1 / S2 D45 | Day/night cycle as a palette shift (day, dusk, night); lights come on | built | tests/test_time_of_day.gd::test_phases; .scratch/shots/night/t008.0s.png | |
-| V-03 | S2 D45 | Round-2 art direction: two distinct styles, one Terraria-leaning, before final art | partial | art/prompts/styles-d-e.md | D (Terraria) and E (picture book) are mocked on `feature/art-direction-options-2`, still not merged to dev (checked at a6e6bd9); waiting for Kaden's pick |
+| V-03 | S2 D45 | Round-2 art direction: two distinct styles, one Terraria-leaning, before final art | partial | art/prompts/styles-d-e.md | D (Terraria) and E (picture book) are mocked on `feature/art-direction-options-2`, still not merged to dev (checked at 61c697f); waiting for Kaden's pick |
 | V-04 | S1 Art | 16 px tiles, 32 px characters, nearest-neighbour, whole-pixel zoom | built | art/direction/pixel-rules.md; tests/test_art_sprites.gd::test_sheet_frames_come_from_the_manifest | |
 | V-05 | S1 Art | Distinct block colours: dirt brown, clay orange, stone grey-blue, ice pale blue, crystal purple | built | .scratch/shots/crystal/t005.0s.png, rescue/t005.0s.png | |
 | V-06 | S1 Art | Treasures sparkle through the dirt from two tiles away | built | .scratch/shots/rescue/t005.0s.png (car and chest sparkle) | |
@@ -260,7 +260,7 @@ and `assets/audio/music/` (seeded synth SFX from `assets/audio/tools/make_cues.p
 | A-16 | S1 Topsoil (W-03) | Worms that wave: a friendly "boop/giggle" | built | assets/audio/sfx/worm_boop_1-2.ogg; scripts/gameplay/depth_life.gd (`DepthLife._physics_process`); tests/test_audio_depth.gd::test_every_new_cue_resolves_to_its_files; tests/test_audio_depth_life.gd::test_a_worm_popping_out_to_wave_boops; handoff/cue-log.txt (`cue-log: worm pops out at (92, 11) -> worm_boop`, git-excluded); assets/audio/sfx/worm_boop_1-2.ogg; scripts/gameplay/depth_life.gd (`Audio.play("worm_boop")` when a worm pops out); tests/test_depth_life.gd::test_a_worm_waves_only_when_the_player_is_close_then_ducks_back (asserts the boop); tests/test_audio_depth.gd::test_every_new_cue_resolves_to_its_files | Audio-3: the cue is in (round rising boop + three-chirp giggle, capped 0.25 s / 2 voices). Audio-rows-1 (2026-11-11): wired. The worm popping out of its dirt wall now plays `Audio.play("worm_boop")` in place of the generic `pop` (one line in `DepthLife._physics_process`; the audio lane owns the cue names). Proven in a real HillGame: P1 beside the Topsoil landing-room wall, the worm comes out and `worm_boop` is sounding, `pop` is not; red on the old wiring; Audio-3 (on dev, PR 43) made the cue (round rising boop + three-chirp giggle, capped 0.25 s / 2 voices). Gap-close-4: `DepthLife` plays it instead of `pop` when a Topsoil worm pops out to wave (the wave and the dirt puff are the visual) |
 | A-17 | S1 Ice (W-11) | Frozen fish: a flip-flop when dug out, an ice crack when it swims off | built | assets/audio/sfx/fish_flop_1-2.ogg, fish_free.ogg; scripts/audio/hill_audio.gd (`_on_tile_dug`); scripts/gameplay/depth_life.gd (`DepthLife.free_fish`); tests/test_audio_depth.gd::test_digging_a_frozen_fish_out_flops, ::test_a_fish_dug_by_jeff_flops_without_a_rock_name; tests/test_audio_depth_life.gd::test_a_dug_fish_flops_and_a_later_one_cracks_free; handoff/cue-log.txt (`first fish dug -> dig_ice, fish_flop, treasure_big, treasure_reveal`; `later fish dug -> dig_ice, fish_flop, fish_free`, git-excluded); assets/audio/sfx/fish_flop_1-2.ogg, fish_free.ogg; tests/test_audio_depth.gd::test_digging_a_frozen_fish_out_flops, ::test_a_fish_dug_by_jeff_flops_without_a_rock_name; tests/test_depth_life.gd::test_the_frozen_fish_is_a_treasure_once (asserts `fish_free` when the second fish swims off) | Audio-3: `fish_flop` plays from HillAudio on `Events.tile_dug` at a `HillGenerator.fish_at` cell. Reconcile 2026-11-11: a fish cell skips Jeff's `rock_name` bark (HillBarks checks `HillAudio.is_fish`), so one dig gives one voice. Audio-rows-1 (2026-11-11): wired. A later fish that wiggles free and swims off now plays `fish_free` (ice crack, splash, bubbles) in place of `splash` (one line in `DepthLife.free_fish`). Proven in a real HillGame with a real dig: the first fish (the treasure) flops with no crack; the second flops and cracks free, no `splash`; red on the old wiring; Audio-3: `fish_flop` plays from HillAudio on `Events.tile_dug` at a `HillGenerator.fish_at` cell; a fish cell skips Jeff's `rock_name` bark, so one dig gives one sound. Gap-close-4: `DepthLife.free_fish` plays `fish_free` (crack, splash, bubbles) instead of `splash` as the fish swims off (with its ice-blue burst) |
 | A-18 | Depth-life report (W-03 sand) | Optional `dig_sand` (sand uses `dig_dirt`) | partial | assets/audio/sfx/dig_sand_1-3.ogg; handoff/audio3_preview.ogg (audio-3 hand-off) | Audio-3: three soft bright "shff" variants, made but not switched on. No speakers on the producer box, so the listen check was a spectral one only (brighter than dirt, no thump, -20 LUFS active, nothing harsh). Gary: listen to the preview; if it is right, set `data/blocks/sand.tres` `dig_sound = &"dig_sand"` (Content). Audio-rows-1 (2026-11-11): still partial, on purpose. The files resolve (3 variants) and the play path is ready: `DigFeel` plays `BlockData.dig_sound`, so the switch is one data line in `data/blocks/sand.tres` (Content lane). Not switched: it waits on Gary's listen check of handoff/audio3_preview.ogg, which this lane cannot do (no speakers); Audio-3 (on dev, PR 43): three soft bright "shff" variants, made but not switched on. No speakers on the producer box, so the listen check was a spectral one only (brighter than dirt, no thump, -20 LUFS active, nothing harsh). Gary: listen to the preview; if it is right, set `data/blocks/sand.tres` `dig_sound = &"dig_sand"` (Content). Reason it stays partial: Gary's ear |
-| A-19 | S1 Two depths (C-22) | Gurgle while the drain puzzle's water runs, under barks, stops when still | partial | assets/audio/sfx/drain_gurgle.wav; tests/test_audio_depth.gd::test_gurgle_runs_only_while_the_drain_water_moves, ::test_water_that_only_loads_in_or_jumps_once_is_not_running, ::test_gurgle_ducks_under_a_bark, ::test_the_gurgle_stops_when_the_audio_director_leaves | Audio-3 (on dev, PR 43): HillAudio watches each `generator.puzzles` drain (kind `&"drain"`) every 0.2 s; two moving checks in a row start the 2 s loop at -8 dB (-17 dB under a bark), 0.6 s of still water stops it. Tested against fakes. Dormant in game: dev has no `generator.puzzles` yet (the drain puzzle is C-22, owned by the underground lane). Goes live when C-22 lands; nothing to change here |
+| A-19 | S1 Two depths (C-22) | Gurgle while the drain puzzle's water runs, under barks, stops when still | built | assets/audio/sfx/drain_gurgle.wav; tests/test_audio_depth.gd::test_gurgle_runs_only_while_the_drain_water_moves, ::test_water_that_only_loads_in_or_jumps_once_is_not_running, ::test_gurgle_ducks_under_a_bark, ::test_the_gurgle_stops_when_the_audio_director_leaves; tests/test_audio_depth.gd::test_a_water_pocket_running_out_into_the_tunnel_gurgles, ::test_drain_regions_cover_drain_puzzles_and_grown_pockets_only, ::test_the_real_clay_pocket_is_quiet_until_it_is_breached; handoff/shots/a19_float/t004.0s.png + beat_audio.log (`--demo --demo-beat=float --audio-log`: gush at 1.03 s, `gurgle on` 3.0 s, `gurgle off` 5.4 s) | Audio-3 (on dev, PR 43): HillAudio watches each `generator.puzzles` drain (kind `&"drain"`) every 0.2 s; two moving checks in a row start the 2 s loop at -8 dB (-17 dB under a bark), 0.6 s of still water stops it. Tested against fakes. Gap-close-5 sync (dev at 61c697f): still dormant in game. C-22 landed (PR 49) with only `boulder_wall` and `vehicle_block` puzzles (data/puzzles/); its draining is the water pockets (`generator.pockets`) and the Water Towers, and HillGenerator has no `puzzles` list, so nothing ever starts the gurgle. Gap-close-5 (2026-11-12): live. `HillAudio.drain_regions` watches every water pocket (`generator.pockets`, the big Clay pocket first, each grown by `POCKET_MARGIN` = 3 cells so water running into the tunnel counts) as well as any drain-kind puzzle; a breach or a Water Tower draining near a player starts the gurgle, still water keeps it off (real generated pocket, test). `--audio-log` prints `gurgle on/off` |
 
 ## Kid-design checks (S1, on top of docs/kid-design.md)
 
@@ -310,10 +310,10 @@ and `assets/audio/music/` (seeded synth SFX from `assets/audio/tools/make_cues.p
 | F-0 | S1 | Design sprint: GAME.md, palette, bibles, repo from template | partial | GAME.md; art/direction/palettes.md | Needs Kaden's bible approval (Q-02) |
 | F-1 | S1 | Risk prototypes: chunked grid + edit saves + falling boulders; two SubViewports split (`v0.0.1-dev.1`) | built | tests/test_proto.gd; tests/test_tileworld.gd; tests/test_split.gd | |
 | F-2 | S1 | Grey-box: capsules, Loader box, dig, elevator, one barn, beeps | built | tests/test_hill_game.gd; tests/test_hill_build.gd | |
-| F-3 | S1 | Parallel build (layers, treasures, hazards, book, vehicles, crew, dragon; art; content; audio; HUD) | partial | rows above | Every finished lane through PR 42 is on dev. Open: depth gates (C-27), voice packs (A-15), final art (V-09); Every finished lane through PR 48 is on dev (dig-1, audio-3, barks-personality, gap-close-3, depth-life). Open: underground engineering (C-22, its own lane), the bottom-time pick (C-27), final art (V-09) |
+| F-3 | S1 | Parallel build (layers, treasures, hazards, book, vehicles, crew, dragon; art; content; audio; HUD) | partial | rows above | Gap-close-5 sync (dev at 61c697f): every finished lane through PR 57 is on dev, including C-22 underground (PR 49), gnome/cow art (PR 54, V-09) and balance re-check 2 (PR 56). Open: the bottom-time pick (C-27, Gary), the sand dig cue (A-18, Gary's ear), the style pick (V-03, Kaden) |
 | F-4 | S1 | First playable `v0.1.0`: dig to Clay, find the car, Barn + Garage, Excavator, split, saves, sound + visual; **Kaden and his son play it** | built | git tag v0.1.0 (aaefdc3, on dev); playtests/2026-11-10.md; tests/test_hill_demo.gd::test_demo_finds_the_car_builds_and_unlocks_the_excavator | Tagged and played: the 2026-11-10 playtest report is of v0.1.0, played by Kaden and family; its changes are the PT10 rows |
 | F-5 | S1 | Extract the engine into `openjar-addons` (addons `v0.2.0`) | built | openjar-addons tags `v0.2.0` (tileworld, split_screen, cutscene, picto_bubble) and `v0.2.1` (theme); CHANGELOG.md in that repo | Gap-close-4 sync: see S-14 |
-| F-6 | S1 | Polish: final art, all vehicles, all buildings, Dragon, music, store art, tuning | partial | V-09, A-14, V-08 | |
+| F-6 | S1 | Polish: final art, all vehicles, all buildings, Dragon, music, store art, tuning | partial | V-09, A-14, V-08 | Gap-close-5 sync: final art (V-09, PR 54), vehicles, buildings, Dragon, music (A-14) and store art (V-08) are built. Open: tuning (C-27, Gary's pick on the bottom target) and the art style pick (V-03) |
 | F-7 | S1 | Release `v1.0.0` on the TV main tile | later | | |
 
 ## Playtest 2026-11-10 (GAME.md "Playtest 2026-11-10 changes")
@@ -330,11 +330,27 @@ IDs `PT10-<n>` match the numbered list in GAME.md. Rows added by the lane that b
 
 ## Totals
 
-Counted from the Status column on `feature/hill-audio-rows-1` (off `dev` at `a6e6bd9`, 2026-11-11, audio rows 1), 209 rows. A-16 and A-17 moved to built; A-18 and A-19 stay partial:
+Counted by script from the Status column on `feature/hill-gap-close-5` (dev at `61c697f`, 2026-11-12, gap-close-5), 209 rows. A-19 moved to built:
 
 | built | partial | missing | superseded | dropped | later | total |
 | --- | --- | --- | --- | --- | --- | --- |
-| 188 | 10 | 2 | 1 | 4 | 4 | 209 |
+| 189 | 9 | 2 | 1 | 4 | 4 | 209 |
+
+## Gap-close-5 2026-11-12
+
+To built: **A-19** (the drain gurgle now runs on the real water pockets: dig into the Clay pocket and it
+gurgles while the water runs out, then stops). Nothing else left is code: every other partial or missing
+row waits on Gary, Kaden or the TV (see the sync below).
+
+## Gap-close-5 sync 2026-11-12
+
+Every partial and missing row was checked against `origin/dev` at `61c697f` (code, tests, data). No row
+had the proof to move. Stay partial for people, not code: C-27 (Gary's pick on the bottom target), A-18
+(Gary's listen), V-03 (Kaden's style pick), W-27, S-07, S-13 (weekend TV check), F-0 (Q-02); F-3 and F-6
+are roll-ups (notes rewritten: C-22, V-09, the balance re-check are merged). Missing: S-17 (the producer's
+spend log), Q-02 (Kaden). A-19's note was wrong about the future: C-22 merged (PR 49) without a drain-kind
+puzzle, so the gurgle stays dormant until it watches the water pockets (the gap-close below). V-03's
+branch check and the "branch work not on dev" list were redone at `61c697f`.
 
 ## Gap-close-3 audit 2026-11-11
 
@@ -387,7 +403,7 @@ M = one lane session, L = several sessions or a new system.
 2. ~~**Merge the underground puzzles** (C-22)~~: done in hill-c22-underground-1 (puzzles-audit-1 merged in, boulder rule in data/blocks). Close `feature/hill-puzzles-1` / `-fix-1` unmerged. **S**
 3. ~~**Slower digging and depth gates** (C-27)~~: gates on dev (PR 48); floors car 128 s, Excavator 196 s, bottom 399 s (re-check 2). Left: Gary's pick on the bottom target (BALANCE.md "Gary's pick needed") and a timed playtest. **S**
 4. **Real voices for the barks** (A-15, P-06): waits only on openjar-characters packs, then one `sync_characters.sh`. **S** once packs exist
-5. **Final art: crew sheet, approved cow; Kaden picks style D or E** (V-09, V-03, F-6). **L**
+5. **Kaden picks style D or E** (V-03, F-6); the crew sheet and cow landed (V-09, PR 54). **S** (Kaden's time), then **L** if he picks the other style
 6. **Kaden approves the four resident bibles** (Q-02, F-0). **S** (Kaden's time)
 7. **Engine extraction, `PictoBubble` move, spend log** (S-14, F-5, S-15, S-17): not seen in play. **L** / **M** / **S**
 

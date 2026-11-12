@@ -12,7 +12,8 @@
 ##   the Dragon waking, the Foreman inspecting a new building). Audio.bark() rate-caps them all.
 ## - Resident arcs: arrival, light-on and each payoff from the Events signals.
 ## - Frozen fish (W-11): digging a fish out of its ice plays `fish_flop` (a wet flip-flop).
-## - Drain puzzle (C-22): while its water runs (the wet cells in a drain puzzle move or drain away),
+## - Running water (A-19, C-22): while a water pocket's water runs (its wet cells move or drain away,
+##   the big Clay pocket breached by a dig or drained by a Water Tower) or a drain puzzle's does,
 ##   the looped `drain_gurgle` plays, ducked under barks; GURGLE_HOLD s of still water stops it.
 ##   Water that only appears (a chunk loading) or one jump (a chunk freeing) is not running.
 ##
@@ -36,6 +37,8 @@ const GURGLE_BARK_DB := -9.0
 const GURGLE_POLL := 0.2
 const GURGLE_HOLD := 0.6
 const DRAIN_RECTS: Array[String] = ["rect", "pocket", "nook", "wall", "plug", "chute", "sump"]
+## Cells around a water pocket that still count as its water (the tunnel it runs out into).
+const POCKET_MARGIN := 3
 ## Treasure layer -> cue (bigger for rarer: deeper is rarer).
 const TREASURE_TIER := {&"topsoil": "treasure_small", &"clay": "treasure", &"stone": "treasure_big",
 	&"ice": "treasure_big", &"crystal": "treasure_huge", &"bottom": "treasure_huge"}
@@ -52,7 +55,7 @@ var barks: HillBarks
 var _dragon_awake := false
 var _t := 0.0
 var gurgling := false
-var _drain_sig := {}       # drain puzzle index -> [wet count, hash of the wet cells]
+var _drain_sig := {}       # drain_regions index -> [wet count, hash of the wet cells]
 var _gurgle_poll := 0.0
 var _gurgle_still := 0.0
 var _moving := 0           # drain checks in a row that saw the water move
@@ -283,26 +286,46 @@ static func is_fish(g: Node, cell: Vector2i) -> bool:
 	return gen != null and gen.has_method("fish_at") and int(gen.fish_at(cell)) >= 0
 
 
-## True when any drain puzzle's water moved (or drained away) since the last check.
+## The water the gurgle watches: one entry (an Array of Rect2i) per drain puzzle
+## (`generator.puzzles`, kind `&"drain"`) and per water pocket (`generator.pockets`, the big Clay
+## pocket first), each pocket grown by POCKET_MARGIN so water running out into the tunnel counts.
+static func drain_regions(gen: Object) -> Array:
+	var out: Array = []
+	if gen == null:
+		return out
+	var pzs = gen.get("puzzles")
+	if pzs is Array:
+		for pz in pzs:
+			if not (pz is Dictionary) or pz.get("kind") != &"drain":
+				continue
+			var rs: Array = []
+			for key in DRAIN_RECTS:
+				if pz.get(key) is Rect2i:
+					rs.append(pz.get(key))
+			out.append(rs)
+	var pockets = gen.get("pockets")
+	if pockets is Array:
+		for r in pockets:
+			if r is Rect2i and r.size != Vector2i.ZERO:
+				out.append([(r as Rect2i).grow(POCKET_MARGIN)])
+	return out
+
+
+## True when the water of any drain puzzle or water pocket moved (or drained away) since the last
+## check.
 func _drain_moved() -> bool:
 	var u = game.get("underground") if game != null else null
 	var gen = u.get("generator") if u != null else null
 	var world = u.get("world") if u != null else null
-	var pzs = gen.get("puzzles") if gen != null else null
-	if world == null or not (pzs is Array):
+	if world == null:
 		return false
+	var regions := drain_regions(gen)
 	var moved := false
-	for i in pzs.size():
-		var pz: Dictionary = pzs[i]
-		if pz.get("kind") != &"drain":
-			continue
+	for i in regions.size():
 		var seen := {}
 		var count := 0
 		var h := 0
-		for key in DRAIN_RECTS:
-			var r = pz.get(key)
-			if not (r is Rect2i):
-				continue
+		for r: Rect2i in regions[i]:
 			for y in range(r.position.y, r.end.y):
 				for x in range(r.position.x, r.end.x):
 					var c := Vector2i(x, y)
@@ -332,6 +355,8 @@ func _gurgle(delta: float) -> void:
 			if not gurgling and _moving >= 2:
 				gurgling = true
 				Audio.engine(GURGLE_KEY, GURGLE_KEY)
+				if _log_every > 0.0:
+					print("audio: t=%.1f gurgle on" % _t)
 		else:
 			_moving = 0
 		if gurgling and _moving == 0:
@@ -343,6 +368,8 @@ func _gurgle(delta: float) -> void:
 
 
 func _gurgle_off() -> void:
+	if gurgling and _log_every > 0.0:
+		print("audio: t=%.1f gurgle off" % _t)
 	gurgling = false
 	_gurgle_still = 0.0
 	Audio.engine_stop(GURGLE_KEY)
