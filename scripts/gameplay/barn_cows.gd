@@ -120,7 +120,8 @@ func _process(delta: float) -> void:
 		if near and not c.get("touched", false):
 			c.hop = 0.45
 			c.heart = 1.4
-			# TODO(audio): `cow_moo` is not in assets/audio/CUES.md yet (PLAN-STATUS B-02).
+			# Sound with the hop and heart (`cow_moo` is a stand-in alias in Audio until Audio makes it).
+			Audio.play("cow_moo")
 		c["touched"] = near
 	queue_redraw()
 

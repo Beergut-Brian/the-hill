@@ -163,6 +163,28 @@ func test_building_a_lighthouse_flares_its_lamp() -> void:
 	assert_bool(b.beam.flaring()).is_true()
 
 
+func test_the_lighthouse_flare_is_heard_as_it_lights() -> void:
+	_make()
+	_join()
+	await _physics(2)
+	Progress.vehicles.append(&"crane")
+	Inventory.add(&"stone", 20)
+	Inventory.add(&"crystal", 5)
+	_game.place_player(P1, HillGame.HILLVILLE, Vector2(34 * 48 + 10, 0))
+	_game.player_node(P1).facing = 1
+	await _physics(2)
+	_game.build._pick(P1, &"lighthouse")
+	await _physics(2)
+	Audio.reset_caps()
+	_game.build._drop(P1)
+	await _physics(40)
+	var b := _game.build.building_node(0)
+	assert_bool(b.beam.flaring()).is_true()
+	var cue := Audio.resolve_name("lighthouse_on")
+	assert_bool(Audio.has_cue(cue)).override_failure_message("lighthouse_on resolves to a real file").is_true()
+	assert_bool(Audio._last_start.has(cue)).override_failure_message("the flare plays lighthouse_on (B-07)").is_true()
+
+
 # --- B-02: cows from barns ---------------------------------------------------------------------
 
 func test_every_barn_has_a_cow_in_its_yard_and_a_new_one_trots_out() -> void:
@@ -218,6 +240,27 @@ func test_walking_into_a_cow_makes_her_hop() -> void:
 		if float(_game.cows.cows[0].heart) > 0.0:
 			break
 	assert_float(float(_game.cows.cows[0].heart)).is_greater(0.0)
+
+
+func test_bumping_a_cow_is_heard_with_her_hop() -> void:
+	_make()
+	_join()
+	await _physics(2)
+	Progress.add_building(&"barn", Vector2i(35, 0))
+	await _physics(2)
+	var c: Dictionary = _game.cows.cows[0]
+	c.heart = 0.0
+	var cue := Audio.resolve_name("cow_moo")
+	assert_bool(Audio.has_cue(cue)).override_failure_message("cow_moo resolves to a real file").is_true()
+	Audio.reset_caps()
+	assert_bool(Audio._last_start.has(cue)).is_false()
+	_game.place_player(P1, HillGame.HILLVILLE, Vector2(float(c.x), 0))
+	for i in 30:
+		await _physics(1)
+		if float(_game.cows.cows[0].heart) > 0.0:
+			break
+	assert_float(float(_game.cows.cows[0].hop)).is_greater(0.0)
+	assert_bool(Audio._last_start.has(cue)).override_failure_message("a bumped cow is heard (B-02)").is_true()
 
 
 # --- C-13 / S-09: the gnome crew's stamp ---------------------------------------------------------
