@@ -382,7 +382,7 @@ On top of the template checklist in `docs/kid-design.md`.
 **Open questions for Kaden**
 
 - [ ] Palette: pick one of three.
-- [ ] Approve or edit the Mole, Gnome Foreman, Caveman and Dragon bibles, each with its redemption arc (Hermes drafts them in `openjar-characters`).
+- [x] (D46 a, 2026-11-09) Approve or edit the Mole, Gnome Foreman, Caveman and Dragon bibles, each with its redemption arc (Hermes drafts them in `openjar-characters`).
 - [ ] Real places: no. Landmarks are generic (a water tower, a shop, a house), nothing tied to any real place. Decided 2026-11-09.
 - [ ] The hill keeps going below the Dragon: a strange, unbreakable set of layers sits at the very bottom in v1, for a later update. Left and right edges are a plain, obviously-the-edge bedrock block, also unbreakable in v1, removable later to expand outward. Decided 2026-11-09; see World borders.
 - [ ] Vehicle wish list from Kaden: Bulldozer, Cement Mixer, Steamroller, Paver, Tunneler. Queued as the v1.1 vehicle pack; see Vehicles. Decided 2026-11-09.

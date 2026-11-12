@@ -291,7 +291,7 @@ and `assets/audio/music/` (seeded synth SFX from `assets/audio/tools/make_cues.p
 | X-05 | S1 | A second hill | later | GAME.md Out of scope ("natural later update") | |
 | X-06 | S1 | Strange layers below Strangestone; Edgestone removable to expand | later | data/blocks/strangestone.tres, edgestone.tres (`breakable_from_version = "2.0.0"`) | |
 | Q-01 | S1 | Palette: pick one of three | built | S2 D45: palette A baseline | Still unticked in GAME.md |
-| Q-02 | S1 | Kaden approves or edits the four resident bibles | missing | none (unticked in GAME.md; no recorded approval) | Needs Kaden's approval. The art was made before approval was recorded |
+| Q-02 | S1 | Kaden approves or edits the four resident bibles | built | Docket D46, option a (approve), Kaden 2026-11-09 23:57; D49 (3D forms) applied | Approved on Docket; the row was never updated (Gary, 2026-11-12) |
 | Q-03 | S1 | Real places: no | built | V-10 | |
 
 ## Playtest 2026-11-10 (PT10, GAME.md "Playtest 2026-11-10 changes")
@@ -307,7 +307,7 @@ and `assets/audio/music/` (seeded synth SFX from `assets/audio/tools/make_cues.p
 
 | ID | Source | Item | Status | Proof | Notes |
 | --- | --- | --- | --- | --- | --- |
-| F-0 | S1 | Design sprint: GAME.md, palette, bibles, repo from template | partial | GAME.md; art/direction/palettes.md | Needs Kaden's bible approval (Q-02) |
+| F-0 | S1 | Design sprint: GAME.md, palette, bibles, repo from template | built | GAME.md; art/direction/palettes.md; Docket D45, D46, D47 | Bibles approved (D46), so the sprint is done (Gary, 2026-11-12) |
 | F-1 | S1 | Risk prototypes: chunked grid + edit saves + falling boulders; two SubViewports split (`v0.0.1-dev.1`) | built | tests/test_proto.gd; tests/test_tileworld.gd; tests/test_split.gd | |
 | F-2 | S1 | Grey-box: capsules, Loader box, dig, elevator, one barn, beeps | built | tests/test_hill_game.gd; tests/test_hill_build.gd | |
 | F-3 | S1 | Parallel build (layers, treasures, hazards, book, vehicles, crew, dragon; art; content; audio; HUD) | partial | rows above | Gap-close-5 sync (dev at 61c697f): every finished lane through PR 57 is on dev, including C-22 underground (PR 49), gnome/cow art (PR 54, V-09) and balance re-check 2 (PR 56). Open: the bottom-time pick (C-27, Gary), the sand dig cue (A-18, Gary's ear), the style pick (V-03, Kaden) |
@@ -334,7 +334,7 @@ Counted by script from the Status column on `feature/hill-gap-close-5` (dev at `
 
 | built | partial | missing | superseded | dropped | later | total |
 | --- | --- | --- | --- | --- | --- | --- |
-| 189 | 9 | 2 | 1 | 4 | 4 | 209 |
+| 191 | 8 | 1 | 1 | 4 | 4 | 209 |
 
 ## Gap-close-5 2026-11-12
 
