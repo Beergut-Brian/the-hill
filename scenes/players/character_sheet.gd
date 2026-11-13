@@ -67,7 +67,7 @@ static func file_of(id: String) -> String:
 static func register(id: String, src: Image) -> String:
 	var file := "roster/%s.png" % id
 	var sheet := build(src)
-	SheetSprite.add_virtual(file, ImageTexture.create_from_image(sheet), entry(file))
+	SheetSprite.add_virtual(file, ImageTexture.create_from_image(sheet), entry(file, body_of(src).get_width()))
 	SpriteArt.forget(file)
 	_built[id] = file
 	return file
@@ -86,9 +86,12 @@ static func is_built(id: String) -> bool:
 
 
 ## The manifest entry of a built sheet: same row names, frames and fps as the game's own sheets.
-static func entry(file: String) -> Dictionary:
+## PT1112-1: `_put` centres an odd-width body on the pivot's pixel column and an even-width one on
+## the pivot line; "mirror" tells SpriteArt which to flip about, so either turns exactly in place.
+static func entry(file: String, body_w := 1) -> Dictionary:
 	return {
 		"file": file, "frame": [FRAME.x, FRAME.y], "pivot": [PIVOT.x, PIVOT.y], "hand": [PIVOT.x + 15, 22],
+		"mirror": "line" if body_w % 2 == 0 else "column",
 		"facing": "right", "note": "built at runtime from the Roster pixel form (CharacterSheet)",
 		"rows": {
 			"idle": {"row": 0, "frames": 2, "fps": 2},
@@ -102,8 +105,8 @@ static func entry(file: String) -> Dictionary:
 	}
 
 
-## The whole sheet (4 columns x 7 rows of FRAME) from a front-view pixel form.
-static func build(src: Image) -> Image:
+## The front view cropped to its pixels and shrunk to fit a frame: the body every row is made from.
+static func body_of(src: Image) -> Image:
 	var s := src.duplicate() as Image
 	if s.is_compressed():
 		s.decompress()
@@ -114,6 +117,12 @@ static func build(src: Image) -> Image:
 	var b := s.get_region(bb)
 	if b.get_height() > FRAME.y:
 		b.resize(maxi(1, b.get_width() * FRAME.y / b.get_height()), FRAME.y, Image.INTERPOLATE_NEAREST)
+	return b
+
+
+## The whole sheet (4 columns x 7 rows of FRAME) from a front-view pixel form.
+static func build(src: Image) -> Image:
+	var b := body_of(src)
 	var w := b.get_width()
 	var h := b.get_height()
 	var hand_y := -int(h * 0.38)   # hand height above the feet

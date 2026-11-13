@@ -36,9 +36,9 @@ const HOP_REACH := 24.0
 ## PT10-6: the stick must be this far sideways (and clearly more sideways than up / down) to turn,
 ## so aiming down with a wobbly stick never flips the character back and forth.
 const TURN_X := 0.35
-## PT1112-1: standing still on foot, a push the other way first only turns the character in place
-## for this long (s); a tap shorter than this is a pure turn, holding on walks. Walking and
-## reversing turns at once (no hold), so the walk never stalls.
+## PT1112-1: standing still on foot with the stick centred, a push the other way first only turns
+## the character in place for this long (s); a tap shorter than this is a pure turn, holding on
+## walks. Walking and reversing, or swinging the stick across without letting go, turns at once.
 const TURN_HOLD := 0.1
 ## PT10-6: the aim keeps its axis until the other axis is clearly stronger (stick wobble).
 const AIM_KEEP := 0.7
@@ -64,6 +64,7 @@ var has_shovel := true
 ## The stick this physics frame (zero while locked); the camera lead reads it (S-06).
 var move_intent := Vector2.ZERO
 var _turn_hold := 0.0
+var _prev_move_x := 0.0
 var intent_source := Callable()
 var facing := 1
 var ride_offset := 0.0
@@ -345,13 +346,15 @@ func _physics_process(delta: float) -> void:
 	if absf(move.x) > TURN_X and absf(move.x) > absf(move.y) * AIM_KEEP:
 		var want := 1 if move.x > 0.0 else -1
 		if ability == null or ability.allow_turn(want, delta):
-			if want != facing and vehicle == null and is_on_floor() and absf(velocity.dot(side)) < 10.0:
+			if want != facing and vehicle == null and is_on_floor() and absf(velocity.dot(side)) < 10.0 \
+					and absf(_prev_move_x) <= TURN_X:
 				_turn_hold = TURN_HOLD
 			facing = want
 	aim = aim_of(move, aim)
 	_aim = float(aim.y)
 	var speed := vehicle.speed * (ability.speed_scale() if ability != null else 1.0) * drive_scale() if vehicle != null else WALK
 	var walk := move.x
+	_prev_move_x = move.x
 	if _turn_hold > 0.0:
 		_turn_hold -= delta
 		if vehicle == null and signf(move.x) == float(facing):
@@ -914,8 +917,9 @@ func _pose() -> Array:
 func _draw_body(c: Color) -> void:
 	# Backpack on the back, rounder when full (drawn first: behind the character).
 	var full := is_full() and backpack_count() > 0
-	# Mirrored like the sprite (x -> 1 - x, SpriteArt.dest_rect) so it stays on the back.
-	var bag := Rect2(-11.0 if facing > 0 else 6.0, -22, 6, 10)
+	# Mirrored like the sprite (SpriteArt.dest_rect) so it stays on the back.
+	var bag := bag_rect()
+	bag.position.y -= ride_offset
 	draw_rect(bag.grow(1), DARK)
 	draw_rect(bag, Color("a47148").lightened(0.2 if full else 0.0))
 	var pose := _pose()
@@ -934,7 +938,7 @@ func body_box() -> Rect2:
 
 ## The backpack (drawn on the back, behind the body), local px.
 func bag_rect() -> Rect2:
-	return Rect2(-11.0 if facing > 0 else 6.0, -22 + ride_offset, 6, 10)
+	return Rect2(-11.0 if facing > 0 else 5.0 + SpriteArt.flip_shift(SpriteArt.char_file(player)), -22 + ride_offset, 6, 10)
 
 
 ## PT10-9: the A glyph over the head while standing in the elevator: blinking when it is ready to

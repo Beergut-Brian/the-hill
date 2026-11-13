@@ -71,7 +71,14 @@ static func draw(ci: CanvasItem, file: String, col: int, row_i: int, at: Vector2
 	var fs := frame_size(file)
 	var pv := pivot(file) if anchor.x < 0.0 else anchor
 	var src := Rect2(col * fs.x, row_i * fs.y, fs.x, fs.y)
-	ci.draw_texture_rect_region(tex, dest_rect(fs, pv, at, flip), src, mod)
+	ci.draw_texture_rect_region(tex, dest_rect(fs, pv, at, flip, flip_shift(file)), src, mod)
+
+
+## 1 when sheet `file` mirrors about the centre of its pivot's pixel column (the default: a body
+## drawn centred on that column, odd width), 0 about the pivot line itself (manifest
+## "mirror": "line", an even-width body centred on the line). See dest_rect.
+static func flip_shift(file: String) -> float:
+	return 0.0 if String(SheetSprite.entry(file).get("mirror", "column")) == "line" else 1.0
 
 
 ## The rect handed to draw_texture_rect_region for a frame of size `fs` with pivot `pv` drawn at
@@ -79,14 +86,14 @@ static func draw(ci: CanvasItem, file: String, col: int, row_i: int, at: Vector2
 ## painted area is [x, x + |w|]), so the mirrored frame must start at pivot + pv.x - fs.x. Before
 ## this, a flipped character or vehicle was painted one whole frame width to the right of where it
 ## stands: every turn left jumped the body sideways (Kaden's "teleport" in PT10-6 and PT1112-1).
-## The mirror is about the centre of the pivot's pixel column (canvas x -> 1 - x around `at`), so a
-## body drawn centred on that column (odd width, like Jeff and the built roster sheets) turns
-## exactly in place. Parts drawn at a mirrored point (`point * Vector2(-1, 1)`) through this same
-## function land consistently with the body.
-static func dest_rect(fs: Vector2, pv: Vector2, at: Vector2, flip: bool) -> Rect2:
+## With `shift` 1 the mirror is about the centre of the pivot's pixel column (canvas x -> 1 - x
+## around `at`), so a body drawn centred on that column (odd width, like Jeff) turns exactly in
+## place; with 0 it is about the pivot line (x -> -x), for an even-width body. Parts drawn at a
+## mirrored point (`point * Vector2(-1, 1)`) with the same shift land consistently with the body.
+static func dest_rect(fs: Vector2, pv: Vector2, at: Vector2, flip: bool, shift := 1.0) -> Rect2:
 	var p := at.round()
 	if flip:
-		return Rect2(p.x + pv.x + 1.0 - fs.x, p.y - pv.y, -fs.x, fs.y)
+		return Rect2(p.x + pv.x + shift - fs.x, p.y - pv.y, -fs.x, fs.y)
 	return Rect2(p.x - pv.x, p.y - pv.y, fs.x, fs.y)
 
 
@@ -96,7 +103,7 @@ static func dest_rect(fs: Vector2, pv: Vector2, at: Vector2, flip: bool) -> Rect
 static func body_box(file: String, col: int, row_i: int, at: Vector2, flip: bool) -> Rect2:
 	var fs := frame_size(file)
 	var pv := pivot(file)
-	var painted := painted_rect(fs, pv, at, flip)
+	var painted := painted_rect(fs, pv, at, flip, flip_shift(file))
 	var tex := texture(file)
 	var img: Image = tex.get_image() if tex != null else null
 	if img == null or img.is_empty():
@@ -111,8 +118,8 @@ static func body_box(file: String, col: int, row_i: int, at: Vector2, flip: bool
 
 
 ## The area dest_rect actually paints (Godot's rule above: position kept, size made positive).
-static func painted_rect(fs: Vector2, pv: Vector2, at: Vector2, flip: bool) -> Rect2:
-	var r := dest_rect(fs, pv, at, flip)
+static func painted_rect(fs: Vector2, pv: Vector2, at: Vector2, flip: bool, shift := 1.0) -> Rect2:
+	var r := dest_rect(fs, pv, at, flip, shift)
 	return Rect2(r.position, r.size.abs())
 
 
