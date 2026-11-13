@@ -98,21 +98,37 @@ func test_turning_on_foot_never_swings_the_view() -> void:
 	_room(P1, Rect2i(60, 14, 8, 2), 63)
 	await _physics(2)
 	var cam := _game.director.camera_of(P1)
-	var lo := INF
-	var hi := -INF
+	var st := {"lo": INF, "hi": -INF}
+	# PT1112-1: sample after the director has placed the camera this frame (a node processed late);
+	# reading at process_frame saw the previous frame's camera and measured the test's own lag.
+	var probe := _LateProbe.new()
+	probe.fn = func() -> void:
+		var sx := (node.global_position.x - cam.get_screen_center_position().x) * cam.zoom.x
+		st.lo = minf(float(st.lo), sx)
+		st.hi = maxf(float(st.hi), sx)
+	_game.add_child(probe)
 	for k in 8:
 		it.move = Vector2(1 if k % 2 == 0 else -1, 0)
 		it.dig = true
 		for f in 20:
 			await get_tree().physics_frame
-			await get_tree().process_frame
-			var sx := (node.global_position.x - cam.get_screen_center_position().x) * cam.zoom.x
-			lo = minf(lo, sx)
-			hi = maxf(hi, sx)
-	# The character stays put on their screen while turning; what is left is the follow easing
-	# while walking (before PT10-6 the lead swung ~190 px of a 960 px half-screen each turn).
-	assert_float(hi - lo).is_less(80.0)
+	await get_tree().process_frame
+	await get_tree().process_frame
+	# The character stays put on their screen while turning and digging (before PT10-6 the lead
+	# swung ~190 px of a 960 px half-screen each turn). test_turn_jump checks the painted body.
+	assert_float(float(st.hi) - float(st.lo)).is_less(4.0)
 	assert_float(absf(_game.camera.lead_of(P1).x)).is_less(1.0)
+
+
+class _LateProbe:
+	extends Node
+	var fn: Callable
+
+	func _ready() -> void:
+		process_priority = 100
+
+	func _process(_d: float) -> void:
+		fn.call()
 
 
 func test_side_dig_takes_the_tile_next_to_the_body() -> void:
