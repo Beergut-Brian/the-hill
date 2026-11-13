@@ -1,6 +1,6 @@
 ## -- --ui=<state>: boots straight into a menu state, frozen, for screenshots (scripts/tools/shots.sh).
 ## lobby, lobby-joined, lobby-ready, lobby-hold, lobby-settings, lobby-confirm,
-## pause, pause-settings, pause-confirm, and the Showtime motion strip lobby-go1..lobby-go6
+## pause, pause-settings, pause-confirm, pause-door (the door icon focused), and the Showtime motion strip lobby-go1..lobby-go6
 ## (SETTINGS focused, up to PLAY, A: flash + jump, wipe, round card, into the game; each is one
 ## posed moment, frozen ~1 s after boot), the chooser: lobby-pick (P1 choosing, arrows; P2 ready)
 ## and lobby-swap (P1's podium posed mid-swap, with the poof). Add --ui-pixel for a pixel_art skin
@@ -45,6 +45,9 @@ static func run(lobby: Control) -> void:
 			pm.get_node("Settings").move_focus(1)
 		elif s == "pause-confirm":
 			pm.press(pm.Choice.DOOR)
+		elif s == "pause-door":
+			for i in 4:
+				pm.move_focus(1)
 		return
 	if s.begins_with("lobby-go"):
 		_go(lobby, int(s.trim_prefix("lobby-go")))
