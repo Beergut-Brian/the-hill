@@ -62,7 +62,7 @@ static func frame_at(file: String, anim: String, t: float) -> int:
 
 
 ## Draws frame `col` of sheet row `row_i` with its pivot at `at` (pixel-snapped), mirrored about the
-## pivot when `flip`. `anchor` overrides the pivot (e.g. a ride frame placed on a vehicle's head).
+## pivot's pixel column when `flip` (see dest_rect). `anchor` overrides the pivot (e.g. a ride frame placed on a vehicle's head).
 static func draw(ci: CanvasItem, file: String, col: int, row_i: int, at: Vector2, flip := false,
 		mod := Color.WHITE, anchor := Vector2(-1, -1)) -> void:
 	var tex := texture(file)
@@ -71,11 +71,49 @@ static func draw(ci: CanvasItem, file: String, col: int, row_i: int, at: Vector2
 	var fs := frame_size(file)
 	var pv := pivot(file) if anchor.x < 0.0 else anchor
 	var src := Rect2(col * fs.x, row_i * fs.y, fs.x, fs.y)
+	ci.draw_texture_rect_region(tex, dest_rect(fs, pv, at, flip), src, mod)
+
+
+## The rect handed to draw_texture_rect_region for a frame of size `fs` with pivot `pv` drawn at
+## `at`. PT1112-1: Godot flips a negative-width rect but keeps its left edge where it is (the
+## painted area is [x, x + |w|]), so the mirrored frame must start at pivot + pv.x - fs.x. Before
+## this, a flipped character or vehicle was painted one whole frame width to the right of where it
+## stands: every turn left jumped the body sideways (Kaden's "teleport" in PT10-6 and PT1112-1).
+## The mirror is about the centre of the pivot's pixel column (canvas x -> 1 - x around `at`), so a
+## body drawn centred on that column (odd width, like Jeff and the built roster sheets) turns
+## exactly in place. Parts drawn at a mirrored point (`point * Vector2(-1, 1)`) through this same
+## function land consistently with the body.
+static func dest_rect(fs: Vector2, pv: Vector2, at: Vector2, flip: bool) -> Rect2:
 	var p := at.round()
 	if flip:
-		ci.draw_texture_rect_region(tex, Rect2(p.x + pv.x, p.y - pv.y, -fs.x, fs.y), src, mod)
-	else:
-		ci.draw_texture_rect_region(tex, Rect2(p.x - pv.x, p.y - pv.y, fs.x, fs.y), src, mod)
+		return Rect2(p.x + pv.x + 1.0 - fs.x, p.y - pv.y, -fs.x, fs.y)
+	return Rect2(p.x - pv.x, p.y - pv.y, fs.x, fs.y)
+
+
+## The opaque pixels of frame (col, row_i) as painted at `at` (canvas units of the drawing node),
+## mirrored like the draw. Tests use it to check where a body really shows on screen. Falls back to
+## the whole painted frame when the sheet's image can't be read.
+static func body_box(file: String, col: int, row_i: int, at: Vector2, flip: bool) -> Rect2:
+	var fs := frame_size(file)
+	var pv := pivot(file)
+	var painted := painted_rect(fs, pv, at, flip)
+	var tex := texture(file)
+	var img: Image = tex.get_image() if tex != null else null
+	if img == null or img.is_empty():
+		return painted
+	if img.is_compressed():
+		img.decompress()
+	var used := img.get_region(Rect2i(col * int(fs.x), row_i * int(fs.y), int(fs.x), int(fs.y))).get_used_rect()
+	var x := float(used.position.x)
+	if flip:
+		x = fs.x - used.end.x
+	return Rect2(painted.position + Vector2(x, used.position.y), Vector2(used.size))
+
+
+## The area dest_rect actually paints (Godot's rule above: position kept, size made positive).
+static func painted_rect(fs: Vector2, pv: Vector2, at: Vector2, flip: bool) -> Rect2:
+	var r := dest_rect(fs, pv, at, flip)
+	return Rect2(r.position, r.size.abs())
 
 
 ## A character-sheet draw by Roster id (or sheet file) and animation name ("jeff", "walk", t). Any roster character:

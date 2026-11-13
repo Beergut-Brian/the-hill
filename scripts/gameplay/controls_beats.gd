@@ -9,13 +9,15 @@
 ##   climb  P1 deep in Topsoil holds up-right and A: the shovel carves a step, P1 climbs it, again
 ##          and again (a staircase). Then a ladder (the Gnome crew's hook, placeholder rails) that
 ##          P1 climbs with up.
+##   turn-surface  PT1112-1: P1 up top beside the parked Loader taps left / right in place, then
+##          walks left and back; logs "tscr:" (body, camera, Loader in screen px) every frame.
 ##   hints  The hint panels in each context: P1 on foot underground (A dig, B jump), up top
 ##          beside the Front Loader (B get in, X book), driving it (A scoop, B get out), in the
 ##          cage (A ride); P2 up top on foot the whole time (B jump, X book).
 class_name ControlsBeats
 extends CameraBeats
 
-const CONTROLS_BEATS := ["turn", "lift", "hints", "climb"]
+const CONTROLS_BEATS := ["turn", "lift", "hints", "climb", "turn-surface"]
 
 
 func _physics_process(delta: float) -> void:
@@ -27,6 +29,7 @@ func _physics_process(delta: float) -> void:
 		"lift": _lift()
 		"hints": _hints()
 		"climb": _climb()
+		"turn-surface": _turn_surface()
 
 
 ## Where player p's feet are on their own screen (px from the left of their view).
@@ -187,4 +190,56 @@ func _climb() -> void:
 		5:
 			if _since() > 1.0:
 				game.ladders.clear()
+				_next("done")
+
+
+## PT1112-1: Kaden's video (2026-11-12). P1 on foot up top just left of the parked Front Loader
+## taps left / right six times (0.08 s of stick each: a turn in place), then walks left and back
+## right. Each frame, after the director and CameraLead (process_priority 100), logs "tscr:" with
+## where the painted body, the camera and the Loader are on P1's screen (the view's canvas
+## transform applied), so a turn that moves anything shows up as a number.
+func _process(_delta: float) -> void:
+	if beat != "turn-surface" or _stage < 1 or game.player_node(P1) == null:
+		return
+	var n: HillPlayer = game.player_node(P1)
+	var cam: Camera2D = game.director.camera_of(P1)
+	var xf := cam.get_viewport().get_canvas_transform()
+	var v: Node2D = game.vehicles.get(HillGame.LOADER)
+	var vx: float = (xf * v.global_position).x if v != null and v.is_inside_tree() else -1.0
+	var box: Rect2 = xf * n.global_transform * n.body_box()
+	print("tscr: f=%d t=%.3f facing=%d feet_x=%.2f cam_x=%.2f body_scr_cx=%.2f body_scr_w=%.0f loader_scr_x=%.2f" % [
+		Engine.get_process_frames(), t, n.facing, n.global_position.x, cam.position.x,
+		box.get_center().x, box.size.x, vx])
+
+
+func _turn_surface() -> void:
+	match _stage:
+		0:
+			process_priority = 100
+			var lx: float = game.loader_position().pos.x
+			game.place_player(P1, HillGame.HILLVILLE, Vector2(lx - 140.0, 0))
+			game.player_node(P1).facing = 1
+			if game.player_node(P2) != null:
+				_yard(P2, Hillville.SHAFT_X - 300)
+			_next("stage: P1 on foot up top, left of the Front Loader")
+		1:
+			if _since() > 1.0:
+				_next("taps start")
+		2:
+			var k := int(_since() / 0.5)
+			var dir := -1 if k % 2 == 0 else 1
+			_hold(P1, Vector2(dir, 0) if fmod(_since(), 0.5) < 0.08 else Vector2.ZERO)
+			if k >= 6:
+				_next("walk left")
+		3:
+			_hold(P1, Vector2(-1, 0))
+			if _since() > 0.6:
+				_next("walk right")
+		4:
+			_hold(P1, Vector2(1, 0))
+			if _since() > 0.6:
+				_next("stand")
+		5:
+			_hold(P1, Vector2.ZERO)
+			if _since() > 1.0:
 				_next("done")
