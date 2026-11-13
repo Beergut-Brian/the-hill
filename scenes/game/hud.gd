@@ -10,6 +10,9 @@ const STRIP_W := 22.0
 const STRIP_H := 260.0
 const BAG := Vector2(46, 52)
 const DARK := Color(0.07, 0.06, 0.09)
+## While a cutscene plays the HUD fades out (the letterbox bars would cut the strips in half), and
+## fades back in with the bars going: this many seconds each way.
+const FADE := 0.25
 
 ## HillGame (untyped so this script stands alone).
 var game: Node
@@ -25,12 +28,23 @@ func _ready() -> void:
 
 func _process(delta: float) -> void:
 	_t += delta
+	modulate.a = move_toward(modulate.a, 0.0 if in_scene() else 1.0, delta / FADE)
 	for p in _pop.keys():
 		_pop[p] = move_toward(_pop[p], 0.0, delta * 4.0)
 	queue_redraw()
 
 
+## A story cutscene is playing (HillStory), so the HUD steps out of the way.
+func in_scene() -> bool:
+	if game == null:
+		return false
+	var hs: Variant = game.get("story_scenes")
+	return hs != null and is_instance_valid(hs) and hs.is_playing()
+
+
 func _draw() -> void:
+	if modulate.a <= 0.0:
+		return
 	if game == null or game.players.is_empty():
 		return
 	for p: int in game.players:

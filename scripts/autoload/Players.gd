@@ -15,6 +15,15 @@ const VIRTUAL := -2
 const SOLO_HOLD := 2.0
 const SOLO_BUTTONS := [JOY_BUTTON_BACK, JOY_BUTTON_START]
 const SoloMarker := preload("res://scripts/autoload/solo_marker.gd")
+## No stick-only requirement (kid-design): the D-pad moves, aims, climbs, drives and steers menus
+## exactly like the left stick. project.godot's move actions hold the stick and keys; add_dpad()
+## puts the four D-pad buttons beside them at boot, and _rebind keeps each pad on its own player.
+const DPAD := {
+	"move_left": JOY_BUTTON_DPAD_LEFT,
+	"move_right": JOY_BUTTON_DPAD_RIGHT,
+	"move_up": JOY_BUTTON_DPAD_UP,
+	"move_down": JOY_BUTTON_DPAD_DOWN,
+}
 
 signal player_joined(player: int, device: int)
 signal player_left(player: int)
@@ -34,6 +43,7 @@ var _marker: CanvasLayer
 
 
 func _ready() -> void:
+	add_dpad()
 	Input.joy_connection_changed.connect(_on_joy_connection_changed)
 	process_mode = Node.PROCESS_MODE_ALWAYS
 	_marker = SoloMarker.new()
@@ -92,6 +102,27 @@ func active_players() -> Array[int]:
 
 func action(player: int, action_name: String) -> String:
 	return PREFIX[player] + action_name
+
+
+## Gives every player's move actions the D-pad (once; safe to call again). The events follow the
+## player's pad like the stick's do (device -1 until _rebind points them at a joined pad).
+func add_dpad() -> void:
+	for p in [P1, P2]:
+		var dev: int = maxi(-1, int(_device_of[p]))
+		for a: String in DPAD:
+			var name := action(p, a)
+			if not InputMap.has_action(name):
+				continue
+			var have := false
+			for ev in InputMap.action_get_events(name):
+				if ev is InputEventJoypadButton and (ev as InputEventJoypadButton).button_index == DPAD[a]:
+					have = true
+			if have:
+				continue
+			var b := InputEventJoypadButton.new()
+			b.button_index = DPAD[a]
+			b.device = dev
+			InputMap.action_add_event(name, b)
 
 
 func move_vector(player: int) -> Vector2:
