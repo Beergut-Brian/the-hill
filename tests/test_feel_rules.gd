@@ -169,3 +169,31 @@ func test_select_with_start_held_is_the_solo_hold_not_a_switch() -> void:
 	assert_int(Players.solo_focus).is_equal(P1)
 	Game._set_state(Game.State.PLAYING)
 	get_tree().paused = false
+
+
+## Rule 4: solo shows its small icon (top-left heads) while on, and none when off.
+func test_solo_shows_its_icon_only_while_on() -> void:
+	var icon: Control = Players._marker._icon
+	assert_bool(icon.visible).is_false()
+	Players.set_solo(true)
+	assert_bool(icon.visible).is_true()
+	Players.set_solo(false)
+	var n := 0
+	while icon.visible and n < 180:   # the fade-out tween ends hidden
+		await get_tree().process_frame
+		n += 1
+	assert_bool(icon.visible).is_false()
+
+
+## Rule 3: closing the window is a normal quit (saves, then quits; never a hang that needs a
+## force-close). quit_exits is off here so the test run itself stays up.
+func test_window_close_saves_and_quits() -> void:
+	var quits := [0]
+	var on_quit := func() -> void: quits[0] += 1
+	Game.quit_requested.connect(on_quit)
+	Save.set_value("feel_rules_close", 1)
+	Game.propagate_notification(Node.NOTIFICATION_WM_CLOSE_REQUEST)
+	Game.quit_requested.disconnect(on_quit)
+	assert_int(quits[0]).is_equal(1)
+	assert_bool(Save._dirty).is_false()
+	assert_bool(get_tree().auto_accept_quit).is_false()   # Game owns the close: it saves first
