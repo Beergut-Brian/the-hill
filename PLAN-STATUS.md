@@ -1,6 +1,6 @@
 # Plan status: The Hill
 
-True on `dev` at `b04811e` (2026-11-12, gap-close-6 sync). Lanes: update your rows in the same commit as the work
+True on `dev` at `9c5baa8` (2026-11-12, gap-close-7 sync). Lanes: update your rows in the same commit as the work
 (format: `~/openjar/lanes/plan-status-format.md`). Gary: add rows when a new brief arrives; never
 delete rows, supersede them.
 
@@ -23,10 +23,11 @@ one was looked at. To remake one, run
 `scripts/tools/shots.sh "" 4,8 $PWD/.scratch/shots/<beat> --demo --demo-beat=<beat>`; for `demo`, use
 `--demo` with times 6,12,18; for `lobby`, use `--ui=lobby-ready`.
 
-**Branch work that is not on `dev` (checked 2026-11-12 at `b04811e`, `git branch -r --no-merged origin/dev`):**
+**Branch work that is not on `dev` (checked 2026-11-12 at `9c5baa8`, `git branch -r --no-merged origin/dev`):**
 `feature/art-direction-options` and `-options-2` (styles D and E, V-03, waiting for Kaden's pick),
+`feature/hill-balance-bottom-1` (C-27: Crystal hit points for the 3 h bottom, `cc61f27`, no PR merged yet),
 `feature/hill-puzzles-fix-1` (superseded: C-22 landed from `hill-puzzles-audit-1` via PR 49) and
-`feature/hill-audio-2` (superseded by audio-3, PR 43). Everything else through PR 59 is merged.
+`feature/hill-audio-2` (superseded by audio-3, PR 43). Everything else through PR 62 is merged.
 
 ID prefixes: C core loop, W underground world, T Hillville, B buildings, R residents,
 H vehicles, P players, S systems/camera/tech, M menus, V visuals, A audio, K kid-design,
@@ -62,7 +63,7 @@ X out of scope, Q open questions, F build phases.
 | C-24 | S1 Two depths | Collection: the Museum shows treasures left per layer; the Mole's glow finds them; Strangestone is a curious wall | built | tests/test_vehicles_treasures.gd::test_a_pickup_pops_up_flies_into_the_bag_and_lands_on_the_shelf; tests/test_resident_arcs.gd::test_museum_takes_the_treasure_shelf_and_the_caveman_polishes; tests/test_resident_arcs_underground.gd::test_a_lost_and_found_visit_glows_unfound_treasure_and_gives_blocks | Shelf silhouettes per layer move into the Museum; the Mole's visit glows unfound treasure; Strangestone is W-24 |
 | C-25 | S1 Guardrails | No text, numbers or tooltips for the adult layer | built | scenes/game/hud.gd ("no numbers and no text"); .scratch/shots/book/t008.0s.png | |
 | C-26 | S1 Guardrails | Tuning lives in data: adjacency, `BuildingData.needs_blocks`, `LayerData.hazards` | built | data/adjacency.tres; data/hazards/*.tres; data/buildings/*.tres `cost`; tests/test_adjacency.gd::test_adjacency_data_row_loads_with_pairs_and_a_radius | Hazards became a `HazardData` row type (S6). Block needs are the `cost` dictionary. Adjacency is `AdjacencyData` (`data/adjacency.tres`: pairs, `radius_plots`, hearts, flower and sparkle counts) |
-| C-27 | S1 Data | `data/BALANCE.md`: Buried Car in 5 min, Excavator by 15 min, bottom in 3–4 h | partial | data/BALANCE.md; tests/test_balance.gd::test_the_sheet_prints_what_the_data_gives; tests/test_balance.gd::test_buried_car_is_reachable_in_five_minutes; tests/test_balance.gd::test_excavator_is_reachable_by_fifteen_minutes; tests/test_balance.gd::test_every_band_opens_with_something_reachable; tests/test_balance.gd::test_the_bottom_needs_the_drill_rig; tests/test_balance.gd::test_bottom_known_miss_is_still_what_the_sheet_says | Balance re-check lane (on dev since PR 48, feature/hill-dig-1): floors re-derived with the depth gates and hit points: car 128 s (meets; Workshop first, the Clay band), Excavator 196 s (meets), bottom 399 s via the Drill Rig (misses the 3 h target by ~2 h 53 min; ~1/27 of it). Every band opens for something reachable above it. Gap and one suggested data change (`5_bottom` egg-only, +16 s) under "Gary's pick needed" in BALANCE.md; no data changed. Real-play times need a timed playtest. Re-check 2 (hill-balance-recheck-2, dev at 39a2212, after C-22 PR 49): every floor unchanged; the C-22 puzzles (boulder wall, Front Loader block in Clay) are counted against the routes over 200 seeds (car tunnel 6, Clay shaft 13; the game's seed `DEFAULT_SEED` clear), new lines in BALANCE.md, recomputed by `test_the_sheet_prints_what_the_data_gives`. Reason it stays partial: Gary's pick on the bottom target |
+| C-27 | S1 Data | `data/BALANCE.md`: Buried Car in 5 min, Excavator by 15 min, bottom in 3–4 h | partial | data/BALANCE.md; tests/test_balance.gd::test_the_sheet_prints_what_the_data_gives; tests/test_balance.gd::test_buried_car_is_reachable_in_five_minutes; tests/test_balance.gd::test_excavator_is_reachable_by_fifteen_minutes; tests/test_balance.gd::test_every_band_opens_with_something_reachable; tests/test_balance.gd::test_the_bottom_needs_the_drill_rig; tests/test_balance.gd::test_bottom_known_miss_is_still_what_the_sheet_says | Balance re-check lane (on dev since PR 48, feature/hill-dig-1): floors re-derived with the depth gates and hit points: car 128 s (meets; Workshop first, the Clay band), Excavator 196 s (meets), bottom 399 s via the Drill Rig (misses the 3 h target by ~2 h 53 min; ~1/27 of it). Every band opens for something reachable above it. Gap and one suggested data change (`5_bottom` egg-only, +16 s) under "Gary's pick needed" in BALANCE.md; no data changed. Real-play times need a timed playtest. Re-check 2 (hill-balance-recheck-2, dev at 39a2212, after C-22 PR 49): every floor unchanged; the C-22 puzzles (boulder wall, Front Loader block in Clay) are counted against the routes over 200 seeds (car tunnel 6, Clay shaft 13; the game's seed `DEFAULT_SEED` clear), new lines in BALANCE.md, recomputed by `test_the_sheet_prints_what_the_data_gives`. Reason it stays partial: Gary's pick on the bottom target. Gap-close-7 sync (dev at 9c5baa8): the pick's data change is on `feature/hill-balance-bottom-1` (`cc61f27`, Crystal hit points) and not merged; dev's `data/blocks/crystal.tres` is still `toughness = 6` and BALANCE.md still says `bottom_floor_s = 399`. Moves to built when that branch lands |
 
 ## Underground
 
@@ -242,7 +243,7 @@ and `assets/audio/music/` (seeded synth SFX from `assets/audio/tools/make_cues.p
 
 | ID | Source | Item | Status | Proof | Notes |
 | --- | --- | --- | --- | --- | --- |
-| A-01 | CLAUDE.md | Sound on every action | built | tests/test_audio.gd::test_every_cue_resolves_to_a_file; tests/test_proto.gd::test_audio_synth_beep_for_missing_cues | On dev since PR 12: every cue in assets/audio/CUES.md has a file (seeded synth from make_cues.py). Still not in CUES.md: `cow_moo` (B-02), `lighthouse_on` (B-07). Gap-close-1 stand-ins (Audio.ALIASES): `workshop_hammer` -> `elevator_clank`, `tool_upgrade` -> `treasure_pickup`; real files wanted. Audio-3 added `worm_boop`, `fish_flop`, `fish_free`, `dig_sand`, `drain_gurgle` (A-16 to A-19) |
+| A-01 | CLAUDE.md | Sound on every action | built | tests/test_audio.gd::test_every_cue_resolves_to_a_file; tests/test_proto.gd::test_audio_synth_beep_for_missing_cues; tests/test_dig_progression.gd::test_a_dig_at_open_air_is_heard_as_a_swing | On dev since PR 12: every cue in assets/audio/CUES.md has a file (seeded synth from make_cues.py). Still not in CUES.md: `cow_moo` (B-02), `lighthouse_on` (B-07). Gap-close-1 stand-ins (Audio.ALIASES): `workshop_hammer` -> `elevator_clank`, `tool_upgrade` -> `treasure_pickup`; real files wanted. Audio-3 added `worm_boop`, `fish_flop`, `fish_free`, `dig_sand`, `drain_gurgle` (A-16 to A-19) |
 | A-02 | S1 Audio | `dig_<block>`: crumble, squelch, crack, crunch, chime | built | assets/audio/sfx/dig_*.ogg; tests/test_audio.gd::test_variants_rotate_without_repeats | Three variants per block, rotated (PR 12) |
 | A-03 | S1 Audio | `scoop`, `tip`: hydraulic whine, rattle | built | assets/audio/sfx/scoop_1-2, bucket_tip, dump_truck_tip; assets/audio/CUES.md | `tip` is an alias of `dump_truck_tip` (PR 12) |
 | A-04 | S1 Audio | `engine_<vehicle>`: looped, pitched by speed, one per vehicle | built | assets/audio/sfx/*_engine.wav; tests/test_audio.gd::test_engine_pitch_follows_speed, ::test_driving_in_the_game_runs_that_vehicles_engine | Looped per vehicle, pitched by speed (PR 12) |
@@ -310,10 +311,10 @@ and `assets/audio/music/` (seeded synth SFX from `assets/audio/tools/make_cues.p
 | F-0 | S1 | Design sprint: GAME.md, palette, bibles, repo from template | built | GAME.md; art/direction/palettes.md; Docket D45, D46, D47 | Bibles approved (D46), so the sprint is done (Gary, 2026-11-12) |
 | F-1 | S1 | Risk prototypes: chunked grid + edit saves + falling boulders; two SubViewports split (`v0.0.1-dev.1`) | built | tests/test_proto.gd; tests/test_tileworld.gd; tests/test_split.gd | |
 | F-2 | S1 | Grey-box: capsules, Loader box, dig, elevator, one barn, beeps | built | tests/test_hill_game.gd; tests/test_hill_build.gd | |
-| F-3 | S1 | Parallel build (layers, treasures, hazards, book, vehicles, crew, dragon; art; content; audio; HUD) | partial | rows above | Gap-close-6 sync (dev at b04811e): every finished lane through PR 59 is on dev, including C-22 underground (PR 49), gnome/cow art (PR 54, V-09), balance re-check 2 (PR 56), A-19 (PR 58) and the bibles (Q-02, F-0, PR 59). Open: the bottom-time pick (C-27, Gary), the sand dig cue (A-18, Gary's ear), the style pick (V-03, Kaden) |
+| F-3 | S1 | Parallel build (layers, treasures, hazards, book, vehicles, crew, dragon; art; content; audio; HUD) | partial | rows above | Gap-close-7 sync (dev at 9c5baa8): every finished lane through PR 62 is on dev (PR 60 cow and lighthouse sounds, PR 62 the honk test), including C-22 underground (PR 49), gnome/cow art (PR 54, V-09), balance re-check 2 (PR 56), A-19 (PR 58) and the bibles (Q-02, F-0, PR 59). Open: the bottom-time data change (C-27, on the unmerged `feature/hill-balance-bottom-1`), the sand dig cue (A-18, Gary's ear), the style pick (V-03, Kaden) |
 | F-4 | S1 | First playable `v0.1.0`: dig to Clay, find the car, Barn + Garage, Excavator, split, saves, sound + visual; **Kaden and his son play it** | built | git tag v0.1.0 (aaefdc3, on dev); playtests/2026-11-10.md; tests/test_hill_demo.gd::test_demo_finds_the_car_builds_and_unlocks_the_excavator | Tagged and played: the 2026-11-10 playtest report is of v0.1.0, played by Kaden and family; its changes are the PT10 rows |
 | F-5 | S1 | Extract the engine into `openjar-addons` (addons `v0.2.0`) | built | openjar-addons tags `v0.2.0` (tileworld, split_screen, cutscene, picto_bubble) and `v0.2.1` (theme); CHANGELOG.md in that repo | Gap-close-4 sync: see S-14 |
-| F-6 | S1 | Polish: final art, all vehicles, all buildings, Dragon, music, store art, tuning | partial | V-09, A-14, V-08 | Gap-close-6 sync (dev at b04811e): final art (V-09, PR 54), vehicles, buildings, Dragon, music (A-14) and store art (V-08) are built. Open: tuning (C-27, Gary's pick on the bottom target) and the art style pick (V-03) |
+| F-6 | S1 | Polish: final art, all vehicles, all buildings, Dragon, music, store art, tuning | partial | V-09, A-14, V-08 | Gap-close-7 sync (dev at 9c5baa8): final art (V-09, PR 54), vehicles, buildings, Dragon, music (A-14) and store art (V-08) are built. Open: tuning (C-27, the bottom-time change waits on `feature/hill-balance-bottom-1` merging) and the art style pick (V-03) |
 | F-7 | S1 | Release `v1.0.0` on the TV main tile | later | | |
 
 ## Playtest 2026-11-10 (GAME.md "Playtest 2026-11-10 changes")
@@ -330,11 +331,33 @@ IDs `PT10-<n>` match the numbered list in GAME.md. Rows added by the lane that b
 
 ## Totals
 
-Counted by script (awk over the Status column) on `feature/hill-gap-close-6` (dev at `b04811e`, 2026-11-12, gap-close-6 sync), 209 rows. No row moved in this sync; the count matches PR 59's (Q-02, F-0 to built):
+Counted by script (awk over the Status column) on `feature/hill-gap-close-7` (dev at `9c5baa8`, 2026-11-12, gap-close-7 sync), 209 rows. No row moved in this sync or in gap-close-6; the count matches PR 59's (Q-02, F-0 to built):
 
 | built | partial | missing | superseded | dropped | later | total |
 | --- | --- | --- | --- | --- | --- | --- |
 | 191 | 8 | 1 | 1 | 4 | 4 | 209 |
+
+## Gap-close-7 2026-11-12
+
+No partial row is code (see the sync below), so this round closed a silent action on a built row (A-01,
+CLAUDE.md rule 7) with an existing sound: underground, A at open air (nothing solid in reach, nothing in the
+way) swung the shovel with no sound, while up top the same empty swing plays `swing` (CUES.md: "a dig that hits
+nothing"). `HillPlayer.dig_now` now plays `swing` there; a bonk at rock keeps its own `dig_blocked`. Test:
+tests/test_dig_progression.gd::test_a_dig_at_open_air_is_heard_as_a_swing (fails with the play call taken out).
+No status changed. Checked and already heard: hop in / out, the build book's open, close, steer, pick, locked
+hint and can't-afford shake (with a honk), ghost drop, pick-up and cancel, jump, splash, ladder steps.
+
+## Gap-close-7 sync 2026-11-12
+
+Every partial and missing row was checked against `origin/dev` at `9c5baa8` (PR 60 and 62 since the last
+sync: the cow and lighthouse sounds, the Mole honk test). No row had the proof to move; each still waits on a
+person, not code. C-27: the bottom pick now exists as data on `feature/hill-balance-bottom-1` (`cc61f27`), but
+it is not on dev (crystal `toughness = 6`, BALANCE.md `bottom_floor_s = 399`), so the row stays partial and its
+note says so. A-18 (`data/blocks/sand.tres` still `dig_sound = &"dig_dirt"`: Gary's listen), V-03
+(`feature/art-direction-options-2` unmerged: Kaden's pick), W-27, S-07, S-13 (no TV playtest after
+`playtests/2026-11-10.md`), S-17 (GAME.md "Premium model budget" has the slice plan but no spend log: the
+producer's). F-3 and F-6 are roll-ups (notes now name PR 62 and the bottom-1 branch). The header and the branch
+list were redone at `9c5baa8` (one new unmerged branch, `feature/hill-balance-bottom-1`).
 
 ## Gap-close-6 2026-11-12
 
@@ -423,7 +446,7 @@ M = one lane session, L = several sessions or a new system.
 
 1. **Weekend TV check** (S-07 zoom, W-27 darkness, S-13 frame rate). **S**
 2. ~~**Merge the underground puzzles** (C-22)~~: done in hill-c22-underground-1 (puzzles-audit-1 merged in, boulder rule in data/blocks). Close `feature/hill-puzzles-1` / `-fix-1` unmerged. **S**
-3. ~~**Slower digging and depth gates** (C-27)~~: gates on dev (PR 48); floors car 128 s, Excavator 196 s, bottom 399 s (re-check 2). Left: Gary's pick on the bottom target (BALANCE.md "Gary's pick needed") and a timed playtest. **S**
+3. ~~**Slower digging and depth gates** (C-27)~~: gates on dev (PR 48); floors car 128 s, Excavator 196 s, bottom 399 s (re-check 2). Left: merge `feature/hill-balance-bottom-1` (the bottom pick, Crystal hit points) and a timed playtest. **S**
 4. **Real voices for the barks** (A-15, P-06): Jeff and Chuck speak from their v0.5.3 packs (library lines); the Mole, Gnome Foreman and Dragon wait on openjar-characters packs, then one `sync_characters.sh`. **S** once packs exist
 5. **Kaden picks style D or E** (V-03, F-6); the crew sheet and cow landed (V-09, PR 54). **S** (Kaden's time), then **L** if he picks the other style
 6. ~~**Kaden approves the four resident bibles** (Q-02, F-0)~~: approved on Docket D46 a (PR 59).

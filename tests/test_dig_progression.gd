@@ -241,6 +241,25 @@ func test_a_shovel_hit_cracks_and_the_third_pops_the_dirt() -> void:
 	assert_int(pl.backpack_count()).is_greater_equal(1)
 
 
+func test_a_dig_at_open_air_is_heard_as_a_swing() -> void:
+	_make()
+	await _physics(2)
+	var it := _intent()
+	_join(P1, it)
+	var pl := _room(P1, Rect2i(56, 12, 14, 3), 58)
+	await _physics(10)
+	var cue := Audio.resolve_name("swing")
+	assert_bool(Audio.has_cue(cue)).override_failure_message("swing resolves to a real file").is_true()
+	Audio.reset_caps()
+	assert_bool(Audio._last_start.has(cue)).is_false()
+	# Stick right in a wide room: nothing solid in reach, so A swings at air.
+	it.move = Vector2(1, 0)
+	it.dig = true
+	await _physics(3)
+	assert_bool(pl.dig_targets(pl.aim_of(Vector2(1, 0))).is_empty()).override_failure_message("staged: air in reach").is_true()
+	assert_bool(Audio._last_start.has(cue)).override_failure_message("a dig at open air is heard (A-01)").is_true()
+
+
 func test_a_closed_band_bonks_and_shows_what_opens_it_then_opens() -> void:
 	_make()
 	await _physics(2)

@@ -735,6 +735,8 @@ func dig_now(move: Vector2) -> bool:
 		var blocked := dig_blocked_cells(a)
 		if not blocked.is_empty():
 			feel.bonk(self, blocked[0])
+		else:
+			Audio.play("swing")   # A-01: a dig at open air is heard, as up top (CUES.md "swing")
 		swung.emit(targets[0] if not targets.is_empty() else Vector2i.ZERO)
 		return false
 	if vehicle != null and vehicle.sounds.has(&"dig"):
