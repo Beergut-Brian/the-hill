@@ -243,7 +243,7 @@ and `assets/audio/music/` (seeded synth SFX from `assets/audio/tools/make_cues.p
 
 | ID | Source | Item | Status | Proof | Notes |
 | --- | --- | --- | --- | --- | --- |
-| A-01 | CLAUDE.md | Sound on every action | built | tests/test_audio.gd::test_every_cue_resolves_to_a_file; tests/test_proto.gd::test_audio_synth_beep_for_missing_cues | On dev since PR 12: every cue in assets/audio/CUES.md has a file (seeded synth from make_cues.py). Still not in CUES.md: `cow_moo` (B-02), `lighthouse_on` (B-07). Gap-close-1 stand-ins (Audio.ALIASES): `workshop_hammer` -> `elevator_clank`, `tool_upgrade` -> `treasure_pickup`; real files wanted. Audio-3 added `worm_boop`, `fish_flop`, `fish_free`, `dig_sand`, `drain_gurgle` (A-16 to A-19) |
+| A-01 | CLAUDE.md | Sound on every action | built | tests/test_audio.gd::test_every_cue_resolves_to_a_file; tests/test_proto.gd::test_audio_synth_beep_for_missing_cues; tests/test_dig_progression.gd::test_a_dig_at_open_air_is_heard_as_a_swing | On dev since PR 12: every cue in assets/audio/CUES.md has a file (seeded synth from make_cues.py). Still not in CUES.md: `cow_moo` (B-02), `lighthouse_on` (B-07). Gap-close-1 stand-ins (Audio.ALIASES): `workshop_hammer` -> `elevator_clank`, `tool_upgrade` -> `treasure_pickup`; real files wanted. Audio-3 added `worm_boop`, `fish_flop`, `fish_free`, `dig_sand`, `drain_gurgle` (A-16 to A-19) |
 | A-02 | S1 Audio | `dig_<block>`: crumble, squelch, crack, crunch, chime | built | assets/audio/sfx/dig_*.ogg; tests/test_audio.gd::test_variants_rotate_without_repeats | Three variants per block, rotated (PR 12) |
 | A-03 | S1 Audio | `scoop`, `tip`: hydraulic whine, rattle | built | assets/audio/sfx/scoop_1-2, bucket_tip, dump_truck_tip; assets/audio/CUES.md | `tip` is an alias of `dump_truck_tip` (PR 12) |
 | A-04 | S1 Audio | `engine_<vehicle>`: looped, pitched by speed, one per vehicle | built | assets/audio/sfx/*_engine.wav; tests/test_audio.gd::test_engine_pitch_follows_speed, ::test_driving_in_the_game_runs_that_vehicles_engine | Looped per vehicle, pitched by speed (PR 12) |
@@ -336,6 +336,16 @@ Counted by script (awk over the Status column) on `feature/hill-gap-close-7` (de
 | built | partial | missing | superseded | dropped | later | total |
 | --- | --- | --- | --- | --- | --- | --- |
 | 191 | 8 | 1 | 1 | 4 | 4 | 209 |
+
+## Gap-close-7 2026-11-12
+
+No partial row is code (see the sync below), so this round closed a silent action on a built row (A-01,
+CLAUDE.md rule 7) with an existing sound: underground, A at open air (nothing solid in reach, nothing in the
+way) swung the shovel with no sound, while up top the same empty swing plays `swing` (CUES.md: "a dig that hits
+nothing"). `HillPlayer.dig_now` now plays `swing` there; a bonk at rock keeps its own `dig_blocked`. Test:
+tests/test_dig_progression.gd::test_a_dig_at_open_air_is_heard_as_a_swing (fails with the play call taken out).
+No status changed. Checked and already heard: hop in / out, the build book's open, close, steer, pick, locked
+hint and can't-afford shake (with a honk), ghost drop, pick-up and cancel, jump, splash, ladder steps.
 
 ## Gap-close-7 sync 2026-11-12
 
