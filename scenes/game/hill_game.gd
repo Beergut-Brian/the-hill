@@ -249,6 +249,72 @@ func _exit_tree() -> void:
 		Game.quit_requested.disconnect(autosave)
 
 
+## Pad buttons no action uses in play (shoulders, stick clicks): a press still says "no".
+const UNUSED_BUTTONS := [JOY_BUTTON_LEFT_SHOULDER, JOY_BUTTON_RIGHT_SHOULDER, JOY_BUTTON_LEFT_STICK,
+		JOY_BUTTON_RIGHT_STICK]
+const TRIGGER_PRESS := 0.6
+var _trigger_down := {}   # [device, axis] -> held past TRIGGER_PRESS
+
+
+## Standing feel rules (2026-11-13 audit). Every press in play answers:
+## - Select (`restart`, R on the keys) in solo moves the one pad to the other player, as in the
+##   lobby; out of solo it does nothing here, so it refuses (before this it played Game.restart's
+##   confirm and round-start sounds and changed nothing).
+## - A shoulder, trigger or stick click (no action uses them) refuses.
+func _unhandled_input(event: InputEvent) -> void:
+	if Game.state != Game.State.PLAYING:
+		return
+	if event.is_action_pressed("restart") and not event.is_echo():
+		var dev := event.device if event is InputEventJoypadButton else Players.VIRTUAL
+		if event is InputEventJoypadButton and Input.is_joy_button_pressed(dev, JOY_BUTTON_START):
+			get_viewport().set_input_as_handled()   # Select + Start: Players' solo hold
+			return
+		get_viewport().set_input_as_handled()
+		if Players.solo:
+			solo_switch()
+		else:
+			refuse_press(_player_of_device(dev), "select")
+		return
+	if event is InputEventJoypadButton and event.pressed and event.button_index in UNUSED_BUTTONS:
+		refuse_press(_player_of_device(event.device), "unused")
+	elif event is InputEventJoypadMotion and event.axis in [JOY_AXIS_TRIGGER_LEFT, JOY_AXIS_TRIGGER_RIGHT]:
+		var key := [event.device, event.axis]
+		var down: bool = event.axis_value > TRIGGER_PRESS
+		if down and not _trigger_down.get(key, false):
+			refuse_press(_player_of_device(event.device), "unused")
+		_trigger_down[key] = down if down else event.axis_value > TRIGGER_PRESS * 0.5
+
+
+## Solo in play: the one pad now plays the other player (P2 tips out of the bucket on the switch).
+func solo_switch() -> void:
+	if not Players.solo:
+		return
+	Players.set_solo_focus(Players.P2 if Players.solo_focus == Players.P1 else Players.P1)
+	UiSound.play("ui_move", 1.12 if Players.solo_focus == Players.P1 else 0.89)
+	var node := player_node(Players.solo_focus)
+	if node != null:
+		node.bump()
+
+
+## The player a pad (or the keyboard, VIRTUAL) plays now; -1 if none.
+func _player_of_device(dev: int) -> int:
+	if Players.solo:
+		return Players.solo_focus
+	for p in [Players.P1, Players.P2]:
+		if Players.device_of(p) == dev:
+			return p
+	return Players.P1 if dev == Players.VIRTUAL else -1
+
+
+## A press that does nothing: the player's refusal (sound + wobble), or the sound alone.
+func refuse_press(p: int, button: String) -> void:
+	var node := player_node(p) if p >= 0 else null
+	if node != null and not node.locked:
+		node.refuse(button)
+	elif node == null:
+		Audio.play("honk")
+
+
 ## A driven vehicle's parked node is out of the tree: free it with the game (no orphan on restart).
 func _notification(what: int) -> void:
 	if what == NOTIFICATION_PREDELETE:

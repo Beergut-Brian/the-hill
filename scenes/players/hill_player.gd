@@ -15,6 +15,7 @@ signal swung(cell: Vector2i)       # a dig that found nothing to remove
 ## A dig press with no shovel (the Mole has it): HillStory shows the empty-hands bubble.
 signal no_shovel()
 signal honked()
+signal refused(button: String)   # a press that did nothing (it still answers: refuse())
 
 const WIDTH := 12.0
 const HEIGHT := 28.0
@@ -222,6 +223,14 @@ func honk() -> void:
 	honked.emit()
 
 
+## Standing rule (2026-11-13 audit): a press that does nothing still says so. The soft "can't"
+## bwah (`honk`, the can't-afford cue) and a small wobble; refused tells tests and hints.
+func refuse(button: String) -> void:
+	Audio.play("honk")
+	_squash = maxf(_squash, 0.35)
+	refused.emit(button)
+
+
 func bump() -> void:
 	_squash = 1.0
 
@@ -338,6 +347,8 @@ func _physics_process(delta: float) -> void:
 		build.book_pressed(player)
 		_fall_only(delta)
 		return
+	if x_press:
+		refuse("x")   # the build book is up top only: underground X says no
 	if b_press:
 		_b_used = _on_b(build)
 	var g := gravity()
