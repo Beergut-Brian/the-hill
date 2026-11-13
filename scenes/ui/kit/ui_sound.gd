@@ -8,7 +8,9 @@
 ## automatically. Pitch (pitch_scale) only applies to the synth; callers vary it per player.
 ##
 ## Cues: ui_move, ui_back, ui_confirm, ui_tick, ui_toggle, player_ready,
-## player_unready, player_join, count_tick, ui_go, ui_wipe, ui_card, ui_pause.
+## player_unready, player_join, count_tick, ui_go, ui_wipe, ui_card, ui_pause, char_swap, honk.
+## honk is the games' soft refusal ("that does nothing here"): a game's own honk.ogg plays when it has
+## one; the synth here is only the template's stand-in (MenuInput.refuse()).
 class_name UiSound
 extends RefCounted
 
@@ -32,16 +34,20 @@ const CUES := {
 	"ui_card": "cymbal swell then quick tail, ~0.7 s",
 	"ui_pause": "record-scratch pitch dip then soft low pad, ~0.6 s",
 	"char_swap": "chooser swap: soft puff plus a rising cartoon pop, ~200 ms",
+	"honk": "soft refusal: a low clown bwah that sags, ~180 ms (stand-in for the games' honk.ogg)",
 }
 
 static var _cache: Dictionary = {}
 static var _warned: Dictionary = {}
 static var _pool_node: Node = null
 static var _next := 0
+## How many times each cue was asked for (tests read it; never reset by the kit).
+static var plays: Dictionary = {}
 
 
 ## Play a cue: real file through Audio if present, else the synth on a small pool.
 static func play(cue: String, pitch := 1.0) -> void:
+	plays[cue] = plays.get(cue, 0) + 1
 	if has_file(cue):
 		var audio := _audio()
 		if audio:
@@ -259,6 +265,10 @@ static func _build(cue: String) -> PackedFloat32Array:
 		"ui_card":
 			b = _blank(0.7)
 			_noise(b, rng, 0.0, 0.7, 0.9, 2, 0.1, 1.0)
+		"honk":
+			b = _blank(0.18)
+			_tone(b, 0.0, 0.18, 196.0, 150.0, 2, 0.6, 2.5, 0.75, 0.1)
+			_tone(b, 0.0, 0.18, 247.0, 188.0, 1, 0.25, 2.5, 0.8, 0.1)
 		"ui_pause":
 			b = _blank(0.6)
 			_tone(b, 0.0, 0.2, 900.0, 120.0, 2, 0.5, 2.0, 0.6, 0.02)

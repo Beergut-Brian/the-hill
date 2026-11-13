@@ -1,5 +1,5 @@
 ## A big round icon button for menus, drawn in code, no text. The menu that owns it moves the
-## focus and presses it; this only draws (and pops when pressed).
+## focus and presses it; this only draws (pops when pressed, wobbles when a press is refused).
 ## Art lane: swap `texture` in for the drawn icon, keep the node.
 ## It can sit in a MenuItem focus list (MenuItem.step / slam_all): it has `disabled` and slam_in().
 @tool
@@ -31,6 +31,10 @@ var focused := false:
 		queue_redraw()
 
 var _t := 0.0
+var _wob := 0.0   # refusal wobble, 1 .. 0
+var _tw_wob: Tween
+## How many times this icon wobbled (tests read it).
+var wobbles := 0
 var _home_x := NAN   # where slam_in() settles; taken the first time
 var _tw_in: Tween
 
@@ -41,9 +45,36 @@ func _ready() -> void:
 
 
 func _process(delta: float) -> void:
-	if focused and not Engine.is_editor_hint():
+	if Engine.is_editor_hint() or not (focused or _wob > 0.0):
+		return
+	if focused:
 		_t += delta
-		rotation = sin(_t * 4.0) * 0.04
+	rotation = (sin(_t * 4.0) * 0.04 if focused else 0.0) + sin((1.0 - _wob) * TAU * 3.0) * 0.22 * _wob
+
+
+## The refusal (MenuInput.refuse()): rocks side to side, fading out (as MenuItem.wobble()).
+func wobble() -> void:
+	wobbles += 1
+	if not is_inside_tree():
+		return
+	if _tw_wob:
+		_tw_wob.kill()
+	_tw_wob = create_tween()
+	_tw_wob.tween_method(func(v: float) -> void: _wob = v, 1.0, 0.0, MenuItem.WOBBLE_TIME)
+	_tw_wob.tween_callback(func() -> void:
+		if not focused:
+			rotation = 0.0)
+
+
+## Screenshots: hold the wobble at `v` (1 just refused .. 0 still).
+func pose_wobble(v: float) -> void:
+	if _tw_wob:
+		_tw_wob.kill()
+	_wob = v
+
+
+func is_wobbling() -> bool:
+	return _wob > 0.0
 
 
 func press() -> void:

@@ -2,7 +2,8 @@
 ## card as the leave question (ConfirmDialog), plus a picture of the hill and its summary chips
 ## (HillSummary). Two bars, "Keep" focused first; the other bar only goes off after A is *held*
 ## HOLD_TIME s, with a ring filling round the A glyph and ticks rising. Let go early: it drains.
-## B (or A on Keep) cancels. Never a one-press wipe. Built in code; owners call handle() per frame.
+## B (or A on Keep) cancels. Any other button refuses (the honk and a wobble on the focused bar),
+## except Start while paused (Game's resume). Never a one-press wipe. Built in code; owners call handle() per frame.
 class_name HoldConfirm
 extends Control
 
@@ -177,6 +178,8 @@ func handle(input: Dictionary, delta := -1.0) -> void:
 		move_focus(dir)
 	if input.a != -1:
 		press_a()
+	elif input.get("other", -1) != -1 and not MenuInput.owned_elsewhere(input):
+		MenuInput.refuse(_buttons[focus], input.button)   # every press answers (docs/press-answers.md)
 	if freeze:
 		return
 	hold_step(any_a_down(), delta if delta >= 0.0 else get_process_delta_time())

@@ -1,5 +1,6 @@
 ## "Leave the game?" Two buttons, Stay focused first so a stray double press never quits.
 ## Left/right (or up/down) moves, A chooses, B is Stay. Emits chosen(true) for Leave.
+## Any other button refuses (the honk and a wobble on the focused one), except Start while paused.
 class_name ConfirmDialog
 extends Control
 
@@ -55,6 +56,8 @@ func handle(input: Dictionary) -> void:
 		move_focus(dir)
 	if input.a != -1:
 		choose(focus == Choice.CONFIRM)
+	elif input.get("other", -1) != -1 and not MenuInput.owned_elsewhere(input):
+		MenuInput.refuse(_buttons[focus], input.button)
 
 
 func move_focus(dir: int) -> void:

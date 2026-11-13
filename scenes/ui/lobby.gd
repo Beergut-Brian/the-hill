@@ -13,6 +13,9 @@
 ## Chooser voice (docs/ui.md): SAY_SETTLE s after the last step (or a join), the character now on
 ## the podium says its catchphrase once, on that player's own voice (Roster.catchphrase).
 ## Solo: Select picks which podium the pad drives.
+## Every press answers (docs/press-answers.md): X, Y, shoulders, triggers, stick clicks, Start, and
+## Select out of solo refuse (the soft honk and a wobble on the focused bar), as do B when there is
+## nothing to back out of and left / right on a locked podium.
 ## Games customise it with a MenuSkin (UiStyle.use_skin, or res://data/menu_skin.tres), in code.
 ## title_texture / title_text here still work and win over the skin. Keep the node names.
 extends Control
@@ -66,6 +69,8 @@ var _tw: Tween
 var _wipe: ShowtimeWipe
 var _dpad := { P1: 0, P2: 0 }
 var _select_down := false
+## The frame each player joined on: the join press is the join, never also a refusal.
+var _joined_frame := { P1: -1, P2: -1 }
 ## Chooser voice: seconds until this player's catchphrase; < 0 nothing pending.
 var _say_in := { P1: -1.0, P2: -1.0 }
 
@@ -195,7 +200,8 @@ func _process(delta: float) -> void:
 	if _settings.active:
 		_settings.handle(MenuInput.read())
 		return
-	var move: int = MenuInput.read().move.y
+	var input := MenuInput.read()
+	var move: int = input.move.y
 	if move != 0:
 		move_focus(move)
 	for p in Players.active_players():
@@ -206,7 +212,9 @@ func _process(delta: float) -> void:
 		else:
 			var dir := _left_right(p)
 			if dir != 0:
-				choose(p, dir)
+				side(p, dir)
+	if input.other != -1 and not (input.button == "select" and Players.solo):
+		refuse(input.button)
 	_solo_select()
 	if freeze or in_submenu():
 		return
@@ -255,6 +263,22 @@ func solo_switch() -> void:
 	UiSound.play("ui_move", 1.12 if Players.solo_focus == P1 else 0.89)
 	_spots[Players.solo_focus].name_pop()
 	_update_choosers()
+
+
+## Left / right on the podium: choose, or refuse when the podium is locked (ready, counting down).
+func side(player: int, dir: int) -> void:
+	if can_choose(player):
+		choose(player, dir)
+	elif Players.is_active(player) and (not Players.solo or player == Players.solo_focus):
+		refuse("left" if dir < 0 else "right")
+
+
+## A press that does nothing here: the honk and a wobble on the focused bar. Not once the wipe
+## has started (the screen is covered, the round is on its way).
+func refuse(button := "") -> void:
+	if _launched or not _live():
+		return
+	MenuInput.refuse(_buttons[focus], button)
 
 
 ## Can this player change character right now? Joined, not ready, nothing else going on.
@@ -414,6 +438,8 @@ func press_b(player: int) -> void:
 	elif focus != Choice.PLAY:
 		UiSound.play("ui_back")
 		_set_focus(Choice.PLAY, false)
+	elif _joined_frame[player] != Engine.get_process_frames():
+		refuse("b")   # not ready, already on Play: nothing to back out of
 
 
 func set_ready(player: int, on: bool, quiet := false) -> void:
@@ -616,6 +642,7 @@ func _apply_title() -> void:
 
 
 func _on_player_joined(player: int, device: int) -> void:
+	_joined_frame[player] = Engine.get_process_frames()
 	if not _live():
 		return
 	_set_joined(player, true)

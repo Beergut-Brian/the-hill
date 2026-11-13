@@ -3,7 +3,7 @@
 #   scripts/tools/shots.sh [scene.tscn] [times] [out_dir] [game args...]
 #   scripts/tools/shots.sh res://scenes/levels/field.tscn 1,3,6 /tmp/shots
 # Menus: pass --ui=<state> (lobby, lobby-joined, lobby-ready, lobby-hold, lobby-settings,
-# lobby-confirm, pause, pause-settings, pause-confirm; scenes/ui/kit/ui_preview.gd):
+# lobby-confirm, lobby-refuse, pause, pause-settings, pause-confirm, pause-door, pause-refuse; scenes/ui/kit/ui_preview.gd):
 #   scripts/tools/shots.sh "" 1.5 /tmp/shots --ui=pause-settings
 # Uses `godot-render` (virtual X display + Mesa software Vulkan, Forward+) when it exists, else a real
 # display if $DISPLAY/$WAYLAND_DISPLAY is set. Headless Godot has no renderer, so it can't take real shots.
