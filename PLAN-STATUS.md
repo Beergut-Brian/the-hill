@@ -13,6 +13,7 @@ Sources (newest last):
 - S6 GAME.md decisions, 2026-11-10 Gameplay lane: residents and hazards
 - S7 GAME.md decisions, 2026-11-10 Gameplay lane: vehicles and treasures
 - S8 Kaden 2026-11-10 (via Gary, chooser-catchphrase brief): "when a character is up on the screen, I'd like it to say it's catchphrase once"
+- S9 Kaden 2026-11-12 (via Gary, new-game brief), GAME.md "Playtest 2026-11-12 changes": "There's no way I could find to start a new game."
 
 There are no "Playtest ... changes" sections yet (`playtests/` holds only the template).
 
@@ -329,13 +330,19 @@ IDs `PT10-<n>` match the numbered list in GAME.md. Rows added by the lane that b
 | PT10-4 | Playtest 2026-11-10 | "Digging is way too fast, and you can dig straight down to the bottom right from the start. There should be unlock zones for each, digging should be much slower at the start" + "make digging more fun as we progress. Give us a reason to want to take vehicles down" | built | tests/test_dig_progression.gd::test_the_start_is_slow_and_every_upgrade_is_a_felt_jump, ::test_a_shovel_hit_cracks_and_the_third_pops_the_dirt, ::test_a_band_of_gate_rock_spans_the_hill_over_every_layer_but_the_first, ::test_what_opens_each_band, ::test_a_closed_band_bonks_and_shows_what_opens_it_then_opens, ::test_a_step_up_into_a_closed_band_bonks_too, ::test_hard_rock_bonks_on_foot_and_is_a_big_haul_for_a_vehicle, ::test_no_hard_rock_just_under_a_band; handoff/frames/pt10-4_*.png (`--demo-beat=slow|gate|gate2|hard`) | Dig lane (hill-dig-1). Hit points (`BlockData.toughness`) and `data/dig.tres`: dirt 3 hits / 0.9 s at the start (was 0.14 s), halved or better per Workshop, vehicles per tier. Gate table `data/gates/` (`DepthGate`): Clay = 1 Workshop, Stone = a vehicle (Excavator), Ice = Gnome crew or Crane, Crystal = Drill Rig, Bottom = Dragon Egg or Drill Rig; signs show the picture, a bonk pops it over the head and on the hint panel's A. Hard Rock: vehicle-only, 4 stone a tile. Targets in data/BALANCE.md. The scripted `--demo` keeps the old rules (`DigFeel.demo_open`) until it is re-scripted. Balance re-check 2026-11-11: BALANCE.md floors now include the bands and hit points (car 128 s, Excavator 196 s, bottom 399 s); re-check 2 on dev at 39a2212: unchanged, every band opens for something reachable above it |
 | PT10-5 | Playtest 2026-11-10 | "I'd rather not be able to tear down any of the environment, you have to use the front loader for that" | built | tests/test_dig_progression.gd::test_scrub_by_hand_bonks_and_stays_the_loader_clears_it; handoff/frames/pt10-5_*.png (`--demo-beat=scrub`) | Dig lane. On foot A at a tree, stump or rock: `bonk`, the scrub shakes, a Front Loader picture over the head and on A; nothing clears. Vehicles clear as before. The scripted `--demo`'s P2 still scoops by hand (`HillPlayer.hand_clear`, demo only). Balance re-check 2026-11-11: the sheet counts surface rocks as the only stone before the Excavator (Workshop 15 + Garage 10; the test checks the layout has 25); re-check 2 on dev at 39a2212: unchanged |
 
+## Playtest 2026-11-12 (PT12, GAME.md "Playtest 2026-11-12 changes")
+
+| ID | Source | Item | Status | Proof | Notes |
+| --- | --- | --- | --- | --- | --- |
+| PT12-1 | Kaden 2026-11-12 | Start a new game from the menu; Kaden 2026-11-12: "There's no way I could find to start a new game." | built | tests/test_new_game.gd::test_first_run_shows_only_play, ::test_menu_shows_continue_and_new_hill_with_a_save, ::test_new_hill_without_the_hold_does_nothing, ::test_hold_backs_up_and_the_next_game_has_no_edits, ::test_restore_swaps_the_last_hill_back, ::test_restore_in_settings_shows_only_with_a_backup_and_needs_the_hold, ::test_restore_from_the_pause_menu_goes_back_to_the_lobby_first, ::test_pause_menu_has_back_to_menu, ::test_backups_capped_at_three_newest_kept; handoff/shots/new_game_*.png (`--ui=lobby-saved|lobby-newhill|lobby-fresh|lobby-restore|newhill-play`) | Systems lane (hill-new-game-1). With a save the menu reads Continue (focused) / New Hill / Settings / Back to Open Jar; a first run shows Play. New Hill asks first (`HoldConfirm`: a live picture of the hill, buildings / deepest layer / treasures chips, "Your current hill is kept as a backup."), Keep focused, the New hill bar needs A held 1 s (ring round the A glyph, rising ticks), B cancels. Confirming renames the save to `<profile>.backup-<YYYYMMDD-HHMM>.json` (newest 3 kept) and the ready-up goes on as a first run (same `DEFAULT_SEED` world). Settings shows Restore last hill only while a backup exists (same hold); restoring keeps the replaced hill as a backup. The pause menu's Restart bar is now labelled Back to menu |
+
 ## Totals
 
-Counted by script (awk over the Status column) on `feature/hill-gap-close-7` (dev at `9c5baa8`, 2026-11-12, gap-close-7 sync), 209 rows. No row moved in this sync or in gap-close-6; the count matches PR 59's (Q-02, F-0 to built):
+Counted by script (awk over the Status column) on `feature/hill-gap-close-7` (dev at `9c5baa8`, 2026-11-12, gap-close-7 sync), 209 rows. No row moved in this sync or in gap-close-6; the count matches PR 59's (Q-02, F-0 to built). hill-new-game-1 (2026-11-12) added PT12-1 (built): 210 rows:
 
 | built | partial | missing | superseded | dropped | later | total |
 | --- | --- | --- | --- | --- | --- | --- |
-| 191 | 8 | 1 | 1 | 4 | 4 | 209 |
+| 192 | 8 | 1 | 1 | 4 | 4 | 210 |
 
 ## Gap-close-7 2026-11-12
 

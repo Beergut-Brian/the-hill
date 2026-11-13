@@ -402,6 +402,10 @@ Full notes, quoted: `playtests/2026-11-10.md`. Lanes follow this section where i
 8. **Context control hints on screen.** A small hint panel shows the buttons that matter right now and changes with the situation: on foot B = jump, next to a vehicle B = get in, in a vehicle B = get out, A = dig / scoop, and so on. Controller glyphs, big and clear.
 9. **The mineshaft elevator reworked.** A new button to ride it (Gary's pick: **A** on the elevator, not walking into it). Standing on it shows the button above your character, blinking when it's ready to go down or up. A second player within a set radius gets pulled along for the ride.
 
+## Playtest 2026-11-12 changes (Kaden; these supersede the sections above)
+
+1. **Start a new game from the menu** (Kaden, after trying the build: "There's no way I could find to start a new game."). With a saved hill the main menu reads **Continue** (focused) and **New Hill**; a first run just shows Play. New Hill asks first with a picture of the current hill and "Start a new hill? Your current hill is kept as a backup.", and only goes ahead when A is **held for 1 s** (B cancels). Nothing is deleted: the old hill becomes a backup (the newest 3 are kept) and **Restore last hill** in Settings swaps it back. The pause menu's **Back to menu** gets you there mid-game. Plan row PT12-1.
+
 ## Decisions made without Kaden
 
 - 2026-11-10 (Gary, from the foundation director's questions): water stays conserved (keeps "drain or redirect water" honest) but pockets are big and **gush for a couple of seconds** when breached, so a tunnel floods and floats you up, as the plan wants. The **elevator door waits about 1 s** so both players can hop in and ride together. Camera zoom (now 2.0, a player is ~56 px on a 1080p TV) gets checked on the TV/desktop at the first playtest; likely 3.0.
