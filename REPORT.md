@@ -1,77 +1,66 @@
-# Report: hill-balance-recheck-2 (C-27 balance re-check)
+# Report: hill-rules-audit-1 (standing feel rules, 2026-11-13)
 
-Branch `feature/hill-balance-recheck-2`, based on `origin/dev` at `39a2212` (nothing merged in). Not pushed.
+Branch `fix/hill-rules-audit-1`, based on `origin/dev` at `7f7c3af` (`git merge origin/dev`: already up to
+date). Not pushed. PLAN-STATUS: new source S10 and rows FR-1 to FR-8 ("Standing feel rules" section), K-14's
+proof extended, totals recounted (226 rows).
 
-## Starting point
+## Rules table
 
-The brief said `data/BALANCE.md` still had the old miss (about 2 h 58 min, no depth gates). That was out
-of date: re-check 1 (`hill-balance-recheck-1`) re-derived the sheet on `feature/hill-dig-1`, and that
-sheet came to dev with PR 48. On dev at `39a2212`, `tests/test_balance.gd` was green (7/7), and every
-`name = value` line already matched the data, including the Gate Rock bands.
+| # | Rule | Before (dev `7f7c3af`) | Now | Where |
+| --- | --- | --- | --- | --- |
+| 1 | D-pad everywhere | Already passing. gap-close-8 put the D-pad on every `p*_move_*` action at boot (`Players.add_dpad()`), so play (`HillPlayer.intent()` → `Players.move_vector`), vehicles, the build book, and every menu (`MenuInput.read()`: pause, settings, lobby, New Hill / Restore question) read it. What was missing was a test that the body really moves | **built**. New `tests/test_dpad_moves.gd`: pad 1's D-pad walks P1 both ways; pad 2's walks P2 and never P1; the D-pad drives the Front Loader; the D-pad moves the pause cursor. No end card exists (no round ever ends: `Game.end_round` has no caller) | `scripts/autoload/Players.gd` (`DPAD`, `add_dpad`), `tests/test_dpad_moves.gd`, `tests/test_dpad.gd` |
+| 2 | Start fresh | Already passing (PT12-1). Save: `user://saves/<profile>.json` (town, progress, inventory, time of day). With a save the menu shows Continue / New Hill; New Hill asks with a 1 s hold-A, renames the save to a backup (newest 3 kept, never deleted); Settings shows Restore while a backup exists; pause → Back to menu / Settings reaches both | **built** (no change) | `tests/test_new_game.gd` (9 cases) |
+| 3 | Pause and back out | Quit path clean: window close (`Game._notification` WM_CLOSE, `auto_accept_quit = false`) and the door both run `Game.quit()`: save, then `get_tree().quit()`. **But** the door is a text bar ("BACK TO OPEN JAR") with no icon | **partial**. Added `test_window_close_saves_and_quits`. The icon is template kit code (see Template gaps) | `scripts/autoload/Game.gd:25-31,93-97`; `tests/test_feel_rules.gd`; `tests/test_lobby.gd::test_pause_door_asks_then_quits`; frame `handoff/frames/rule3_pause_door_is_text_only_no_icon.png` |
+| 4 | Solo mode | `--solo`, Select + Start held 2 s (real time), the two-heads icon top-left, off by default, a saved solo never restored at boot, tests on their own settings file: all passing. **But** in play the one pad could never reach P2: only the lobby's Select tap moves the focus, and HillGame keeps P2 asleep until the focus moves | **built**. In play, Select (R on the keys) in solo moves the pad to the other player (the lobby's sound, a bump; P2 tips out of the bucket on the first switch). Select with Start held is left to the solo hold | `scenes/game/hill_game.gd` (`_unhandled_input`, `solo_switch`); `tests/test_feel_rules.gd::test_select_in_solo_play_moves_the_pad_to_the_other_player`, `::test_select_with_start_held_is_the_solo_hold_not_a_switch`, `::test_solo_shows_its_icon_only_while_on`; `tests/test_lobby.gd` (flag, hold, boot); frame `handoff/frames/rule4_solo_icon_top_left_rule7_hint_panel_glyphs.png` |
+| 5 | Every action beeps | In play: A (dig / swing / bonk / scoop / ride), B (jump, hop in / out, cancel), Y (horn) always sound. **Silent:** X underground (the book is up top only), LB / RB / LT / RT / stick clicks. **Wrong:** Select in play ran `Game.restart()`: the confirm and round-start sounds, `round_started`, and nothing else (HillGame ignores it once a game exists). Menus: X, Y, the shoulders and left / right on the pause list are silent | **partial**. In play every press now answers: the no-op ones give `HillPlayer.refuse()` (the existing `honk` cue, "can't afford it", and a wobble). Select out of solo refuses instead of the fanfare. Menus unchanged (template kit) | `scenes/players/hill_player.gd` (`refuse`, `refused`, X underground); `scenes/game/hill_game.gd` (`UNUSED_BUTTONS`, triggers, Select); `tests/test_feel_rules.gd` (3 cases) |
+| 6 | No forced movement | Passing. The elevator rides on A (`walk_in` is false outside scripted runners), ladders do not snap x, the dig marker never moves the body, hop-in snaps to the vehicle only on B. Cutscenes move locked players (scripted, not in walkable play) | **built** (no change). One question for Kaden below | `scenes/game/elevator.gd:48`; `scenes/players/hill_player.gd` |
+| 7 | Show the buttons that matter | Passing: `HillHintLayer` per player, bottom outer corner, A / B / X glyph rows that change with context the same frame (on foot, beside a vehicle, driving, in the cage, book open, a bonk's "needs") | **built** (no change) | `scripts/gameplay/hill_hint_layer.gd`; `tests/test_controls.gd::test_hints_follow_the_context_the_same_frame`; same frame as rule 4 |
+| 8 | Every cause shown | Passing. Effects that change play: the Mole's shovel theft (cutscene, then you can't dig), closed bands (bonk + picture of what opens them), boulder bonk, cave-in trap, a bonked scrub (picture of the Loader), the workshop's tool level (shovel pops over each player). Merged since 2026-11-12 (new game, turn jump, balance bottom, launch-ready): nothing new that changes play without a cause | **built** (no change) | `tests/test_story_cutscenes.gd`, `tests/test_dig_progression.gd`, `tests/test_hazards_residents.gd`, `tests/test_gap_close.gd` |
 
-What dev gained after that re-check: PR 49 (C-22 underground engineering: a boulder wall with a Hard
-Rock slab and unbreakable side columns, plus a 2×2 block only the Front Loader can clear, both in Clay;
-`boulder_breaks` on Hard Rock), and PRs 50 to 53 (audio, barks, gap-close-4, roster). None of them
-touches dig hit points, gates, vehicles, building costs or treasures, so **no floor moved**.
+## What changed (code)
 
-## What the sheet now says
-
-| Target | Floor | Status |
-| --- | --- | --- |
-| Buried Car about 5 min | `car_floor_s = 128` (Workshop first, Sturdy Shovel through the Clay band) | meets, 2 min 52 s early |
-| Excavator by 15 min | `excavator_floor_s = 196` | meets, 11 min 44 s early |
-| Bottom 3 to 4 h | `bottom_floor_s = 399` (Workshop, car, 4 Garages, Giant Tooth, Drill Rig) | **misses by 2 h 53 min** (10 800 − 399 = 10 401 s; about 1/27 of the target) |
-
-Depth gates (the band table, computed): Clay band at row 28 (`gate_clay_foot_s = 70` on foot), Stone
-band at row 68 (`gate_stone_foot_s = 134`, Workshop first), Ice at 128, Crystal at 188, Bottom at 258.
-You can't reach Ice or anything deeper on foot (`-1`). Each vehicle-only band opens for a vehicle the
-player can already have when they get there: the Excavator, built from the Buried Car above the Stone
-band; the Crane or the Gnome crew for Ice; the Drill Rig for Crystal and the Bottom, which needs the
-Giant Tooth, in Stone above the Crystal band. No band is out of reach.
-
-**New in this pass (computed by the test):** the C-22 puzzles are now checked against the floors'
-straight-line routes over seeds 0 to 199. A puzzle sits in the car tunnel on `puzzle_car_seeds = 6`
-seeds and in the Clay shaft on `puzzle_shaft_seeds = 13` seeds. The game's own seed is clear
-(`Underground.DEFAULT_SEED`, which every new game uses): `puzzle_default_seed_clear = true`. So the
-floors hold for the hill people actually play. On other seeds the floors leave out a short detour.
-
-## The gap (Gary's pick needed; no data changed)
-
-Unchanged from re-check 1, and still in BALANCE.md under "Gary's pick needed". Closing the bottom gap
-with dig rates alone would take every tile about 27 times as long. The one change I'd make is
-`data/gates/5_bottom.tres` `vehicle_tier = 3` → `0`: then only the Dragon Egg opens the Bottom. That
-makes the end a story beat. It adds `egg_detour_s = 16` (bottom floor about 415 s). The car and
-Excavator floors stay the same, and it does not close the time gap. The hours have to come from play
-and need a timed playtest. Nothing contradicts GAME.md's own text, so no data was changed as a bug.
-
-## Files
-
-- `tests/test_balance.gd`: `floors()` also plans `PUZZLE_SEEDS = 200` seeds and counts C-22 puzzle
-  cells (wall slab, wall sides, vehicle block) in the car tunnel and the Clay shaft, plus the default
-  seed. Then it re-plans the default seed. These are four new `name = value` lines, all recomputed
-  from data, with no hard-coded copy.
-- `data/BALANCE.md`: provenance line for re-check 2, the new "C-22 puzzles on the routes" section,
-  and "What changed in data" updated.
-- `PLAN-STATUS.md`: rows updated, Next-up item 3 struck (gates are on dev; only the pick is left).
-
-## Moved PLAN-STATUS IDs
-
-None changed status. Notes updated: **C-27** (stays partial: Gary's pick on the bottom target, then
-a timed playtest), **PT10-4** (stays built), **PT10-5** (stays built).
+- `scenes/players/hill_player.gd`: `refuse(button)` (sound `honk`, a small squash, signal `refused`). X
+  underground calls it. B in the air was **not** made a refusal: jump reads *held* B, so B pressed in the air
+  jumps on landing; it is not a no-op.
+- `scenes/game/hill_game.gd`: `_unhandled_input` in PLAYING. Select / R: in solo `solo_switch()`, else refuse
+  (consumed, so `Game.restart()` no longer fires in play). LB, RB, stick clicks and a trigger pull past 0.6
+  (one per pull) refuse. `_player_of_device` maps a pad to its player (the focus in solo, P1 for the keys).
+- No change to `project.godot`, `scenes/ui/*`, tuning, art, audio or data.
 
 ## Tests
 
-`tests/test_balance.gd`: 7/7 pass. It has the same 7 test cases as before; four more sheet lines
-are checked in `test_the_sheet_prints_what_the_data_gives`.
+- New: `tests/test_dpad_moves.gd` (4), `tests/test_feel_rules.gd` (7). Staging: each player waits (bounded)
+  until it stands on the ground; a walk is judged by direction and 24 px, held until reached (cap 240 frames),
+  never by a frame count. The Loader case tries right, then left.
+- Full suite (clean import first): `Overall Summary: 533 test cases | 0 errors | 0 failures | 0 flaky | 0 skipped | 0 orphans | (exit code 0; on `528db5b` + this report)`
 
-**On `origin/dev` at `39a2212` the full command fails before any test runs, and the cause is not this
-branch.** After a clean import,
-`godot --headless --path . -s addons/gdUnit4/bin/GdUnitCmdTool.gd -a tests --ignoreHeadlessMode --continue`
-stops at test discovery with "Abnormal exit with 105". The parse error is in
-`tests/test_hill_barks_freed.gd` (audio, PR 50, `e08213d`). It uses `BarkBubble`, a class that
-`cf0c2a8` (gap-close-4, PR 51, barks moved onto PictoBubble) deleted. `-i` doesn't skip it, because
-discovery still parses the file. So I passed the other 53 suites by name (`-a res://tests/<file>`
-for each). Result: **53/53 suites, 477/477 test cases, 0 errors, 0 failures, 0 orphans.** That file
-belongs to the audio and barks lanes and I left it alone. **Needs the audio lane:** port
-`test_hill_barks_freed.gd` to whatever replaced `BarkBubble`, or delete it if PR 52's lambda fix
-already covers it.
+## Template gaps (openjar-template; not changed here)
+
+1. **Pause door has no icon.** `scenes/ui/pause_menu.tscn` / `kit/menu_item.gd` draw text-only bars; the rule
+   wants a big icon back to the launcher (a 5-year-old can't read "BACK TO OPEN JAR"). Same for the lobby's door.
+2. **Silent presses in the kit menus.** `MenuInput.read()` reads only up / down / left / right, A and B. In the
+   pause list, Settings, the lobby and the confirm questions, X, Y, the shoulders and triggers say nothing,
+   and left / right on the pause list say nothing. The kit needs a refusal cue (`UiSound`) for those.
+3. **Pause hint strip is clipped.** In the 1920x1080 frame the strip's last glyph ("B Resume") runs off the
+   right edge (`handoff/frames/rule3_pause_door_is_text_only_no_icon.png`).
+4. **`Game.gd` `restart` on Select** in PLAYING plays a confirm and the round-start sound in any game that has no
+   rounds. The Hill now consumes it in play; the template's default may want the same thought.
+5. **No D-pad in `project.godot`.** Unchanged: The Hill adds it in code (`Players.add_dpad()`).
+
+## Needs a gameplay decision (not decided here)
+
+1. **Vehicles hop up one-tile steps on the stick** (`HillPlayer._step_up`): pushing a vehicle into a one-tile
+   step lifts it onto the step. It moves only the way the stick points, but it is a hop the player didn't press
+   for. Keep (vehicles "drive over anything"), or make it a button?
+2. **The refusal sound.** No-op presses use the existing `honk` ("can't afford it", soft clown bwah). Keep it,
+   or ask the Audio lane for a separate "nope"?
+3. **Solo focus marker.** The solo icon shows both heads; it does not say which player the pad drives now
+   (the switch bumps that player and plays a high / low tick). Does Kaden want the focused head bigger?
+4. **Presses while locked** (cutscene, elevator ride, a boulder's stun) are silent by design (the lock is shown);
+   say if those should refuse too.
+
+## Frames
+
+- `handoff/frames/rule3_pause_door_is_text_only_no_icon.png` (`--ui=pause`, before and now: unchanged).
+- `handoff/frames/rule4_solo_icon_top_left_rule7_hint_panel_glyphs.png` (`--demo --solo`, t = 8 s: the
+  two-heads solo icon top-left, P1's hint panel bottom-left with A dig / B get out).
