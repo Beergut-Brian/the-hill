@@ -311,7 +311,8 @@ func voice_step(delta: float) -> void:
 		if not Players.is_active(p) or id == "":
 			continue
 		var ok := Roster.catchphrase(id, p)
-		print("Chooser voice: P%d %s %s (t=%.2f s)" % [p + 1, id,
+		if OS.is_debug_build():   # a dev log line; release exports stay quiet
+			print("Chooser voice: P%d %s %s (t=%.2f s)" % [p + 1, id,
 				Roster.last_said.get(p, "") if ok else "(no voice)", Time.get_ticks_msec() / 1000.0])
 
 

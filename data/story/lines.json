@@ -1,5 +1,5 @@
 {
-	"note": "Every spoken story line. Gary voices each id to res://assets/story/voice/<id>.ogg. 'any' = whichever character the player picked (no file: their library bark). fallback = bark:<cue> (the speaker's library line) or sfx:<cue> (an Audio cue) until the file exists.",
+	"note": "Every spoken story line. Each id is voiced to res://assets/story/voice/<id>.ogg. 'any' = whichever character the player picked (no file: their library bark). fallback = bark:<cue> (the speaker's library line) or sfx:<cue> (an Audio cue) until the file exists.",
 	"lines": [
 		{
 			"id": "intro_pip_hello",
