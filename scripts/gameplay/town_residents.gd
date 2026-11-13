@@ -18,6 +18,8 @@ extends Node2D
 
 signal cheered()
 signal marched(building: StringName)
+## The Mole honks a parked vehicle's horn (twice per gag); played: Audio took the cue (tests).
+signal honked(vehicle: Vehicle, played: bool)
 
 const FOREMAN_FILE := "characters/foreman.png"
 ## The crew's own sheet (V-09): traced from the Foreman's 3D master, no clipboard.
@@ -651,7 +653,7 @@ func _tick_mole(st: Story, delta: float) -> void:
 				for at in [0.55, 1.2]:
 					if t >= at and t - delta < at:
 						var d: VehicleData = (v as Vehicle).data
-						Audio.play(String(d.sounds.get(&"horn", "honk")) if d != null and d.sounds.has(&"horn") else "honk")
+						honked.emit(v, Audio.play(String(d.sounds.get(&"horn", "honk")) if d != null and d.sounds.has(&"horn") else "honk"))
 						_hop[Story.MOLE] = 0.4
 			else:
 				_mole_to(_mole_rest_mode(), _mole_rest(), true)

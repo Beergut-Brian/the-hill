@@ -235,7 +235,8 @@ func test_lobby_menu_has_text_labels() -> void:
 	_boot()
 	var labels := []
 	for item in _lobby().get_node("Buttons").get_children():
-		labels.append(item.text)
+		if item.visible:   # New Hill shows only with a saved hill (tests/test_new_game.gd)
+			labels.append(item.text)
 	assert_array(labels).is_equal(["Play", "Settings", "Back to Open Jar"])
 	assert_str(_lobby().get_node("TitleArt/TitleLabel").text).is_not_empty()
 	assert_array(UiStyle.PLAYER_COLORS).is_equal([Players.COLOR[P1], Players.COLOR[P2]])

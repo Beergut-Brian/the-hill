@@ -62,13 +62,20 @@ func after_test() -> void:
 	Game._set_state(Game.State.LOBBY)
 
 
+## Frame counts in this suite are 60 Hz frames (1 s = 60): scaled to the physics tick rate, so a
+## budget is the same physics time at 30 or 120 Hz.
+func _ticks(n60: int) -> int:
+	return int(ceil(n60 * Engine.physics_ticks_per_second / 60.0))
+
+
 func _physics(n: int) -> void:
-	for i in n:
+	for i in _ticks(n):
 		await get_tree().physics_frame
 
 
 func _until(cond: Callable, max_frames: int) -> int:
 	var n := 0
+	max_frames = _ticks(max_frames)
 	while not cond.call() and n < max_frames:
 		await get_tree().physics_frame
 		n += 1
@@ -123,24 +130,34 @@ func _horn_cue(v: Vehicle) -> String:
 
 func test_the_mole_honks_an_empty_parked_vehicle_near_a_player_and_sits_in_it() -> void:
 	var v := await _setup()
+	# Count every honk through the Mole's own signal, hooked up before the cooldown is cleared so
+	# none can slip past: each emit is one horn press, and played says Audio took the cue.
+	# Audio caps a horn to one voice, and voices run on the audio thread's real-time clock, not
+	# physics time: a stalled CI box can still be sounding the first horn at the second press, so
+	# Audio drops it (honks = 1 on v0.2.0-dev.1). That drop is Audio's cap, not the gag, so each
+	# press records whether a horn voice was still sounding when Audio refused it.
+	var horn := _horn_cue(v)
+	var honks: Array[Vehicle] = []
+	var played: Array[bool] = []
+	var held: Array[bool] = []   # refused while the cap's voice was still playing
+	var at_frame: Array[int] = []
+	var on_honk := func(at: Vehicle, ok: bool) -> void:
+		honks.append(at)
+		played.append(ok)
+		held.append(not ok and Audio.playing_count(horn) >= int(Audio.cap_of(horn)[1]))
+		at_frame.append(Engine.get_physics_frames())
+	_game.town.honked.connect(on_honk)
 	_game.town._mole.cd_honk = 0.0
 	var waited := await _until(func() -> bool: return _game.town.mole_mode() == &"honk", 60)
-	assert_int(waited).is_less(60)
+	assert_int(waited).is_less(_ticks(60))
 	assert_object(_game.town._mole.get("vehicle")).is_same(v)
 	# Ride the gag through: he sits on the seat and the horn sounds twice.
-	var horn := _horn_cue(v)
-	var last = Audio._last_start.get(horn, -1.0)
-	var honks := 0
 	var sat := false
 	var frames := 0
 	var shot := OS.get_environment("PROOF_FRAME_DIR")   # set by the Proof lane under godot-render
-	while _game.town.mole_mode() != &"wait" and frames < 400:
+	while _game.town.mole_mode() != &"wait" and frames < _ticks(400):
 		await get_tree().physics_frame
 		frames += 1
-		var now = Audio._last_start.get(horn, -1.0)
-		if now != last:
-			honks += 1
-			last = now
 		if _game.town.mole_mode() == &"honk" and _game.town.mole.visible \
 				and _game.town.mole.position.distance_to(v.position + Vector2(-4, -30)) < 4.0:
 			if not sat and shot != "" and DisplayServer.get_name() != "headless":
@@ -148,8 +165,22 @@ func test_the_mole_honks_an_empty_parked_vehicle_near_a_player_and_sits_in_it() 
 				await RenderingServer.frame_post_draw
 				get_viewport().get_texture().get_image().save_png(shot.path_join("mole_honk.png"))
 			sat = true
+	_game.town.honked.disconnect(on_honk)
 	assert_bool(sat).override_failure_message("the Mole never sat on the vehicle's seat").is_true()
-	assert_int(honks).is_equal(2)
+	assert_int(honks.size()).override_failure_message("honks: %d, want 2" % honks.size()).is_equal(2)
+	for at in honks:
+		assert_object(at).is_same(v)
+	if honks.size() != 2:
+		return
+	assert_bool(played[0]).override_failure_message("the first honk was not heard").is_true()
+	# In real time the first horn has ended by the second press, so play hears both; here the
+	# second may only be refused while that first voice is still sounding on the audio clock.
+	var gap := float(at_frame[1] - at_frame[0]) / Engine.physics_ticks_per_second
+	var horn_len := Audio.stream_for(horn).get_length() / 0.96   # slowest pitch Audio.play picks
+	assert_float(horn_len).override_failure_message(
+		"the horn (%.2f s) outlasts the gap between honks (%.2f s)" % [horn_len, gap]).is_less(gap)
+	assert_bool(played[1] or held[1]).override_failure_message(
+		"the second honk was refused with no horn voice still sounding").is_true()
 	assert_str(String(_game.town.mole_mode())).is_equal("wait")
 
 

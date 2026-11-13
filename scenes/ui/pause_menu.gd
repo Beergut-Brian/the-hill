@@ -1,6 +1,7 @@
 ## Pause menu, Showtime style: the game stays visible, softened and tinted, and a dark wedge slides
 ## in from the left edged in the pauser's colour, with a big PAUSED, a "PLAYER 2 PAUSED" tag and
-## slanted bars: Resume, Restart (back to the lobby), Settings, Story (the intro scene again, via
+## slanted bars: Resume, Back to menu (Choice.RESTART: saves, back to the lobby, where Continue /
+## New Hill wait), Settings, Story (the intro scene again, via
 ## the "hill_story" group), Back to Open Jar (asks first).
 ## Either pad moves the cursor, A presses, B resumes or backs out of Settings / the question.
 ## Start is Game's (it resumes from anywhere). Shown while Game.state == PAUSED.
@@ -99,6 +100,8 @@ func press(choice: Choice = focus) -> void:
 func back() -> void:
 	if _confirm.active:
 		_confirm.choose(false)
+	elif _settings.active and _settings.asking():
+		_settings.restore.choose(false)
 	elif _settings.active:
 		_settings.close()
 	else:
