@@ -211,7 +211,7 @@ Five construction vehicles. Each works both up top and underground, so every unl
 
 | Input | On foot | In a vehicle |
 | --- | --- | --- |
-| Left stick | Walk, aim dig direction | Drive; up/down aims the arm or bucket |
+| Left stick or D-pad | Walk, aim dig direction | Drive; up/down aims the arm or bucket |
 | A (Action) | Dig / scoop in the aimed direction (hold to keep digging) | Dig / scoop / tip |
 | B (Jump) | Jump; also hop in or out of a vehicle when next to one | Hop out |
 | X | Open the build book (up top) | Same |
@@ -506,3 +506,4 @@ Full notes, quoted: `playtests/2026-11-10.md`. Lanes follow this section where i
   - **Every other cow carries a pail** (chosen in the draw call from the per-cow random already stored; no logic change). A pail cow stands holding it while the others put their heads down to graze.
   - **Cows are drawn at true scale** (29 px tall, Jeff 32 px), a little bigger than the old 20 px placeholder.
 - 2026-11-12 (Gary, Bottom-layer balance lane, C-27): **lever: Crystal's hit points** (`data/blocks/crystal.tres` `toughness` 6 → 9000; it supersedes "crystal 6" in the 2026-11-11 dig entry); bottom floor **399 s → 11 108 s (3 h 5 min)**, car 128 s and Excavator 196 s unchanged; why: one value below the Drill Rig's band, bored by its auto-drill (no held button, every hit cracks and sounds), while Gate Rock, Stone and Ice can't move without breaking the car floor, the first long session or the Gnome crew's walk-in Ice (details in `data/BALANCE.md`, "The bottom: decided").
+- 2026-11-13 (gap-close-8 lane, K-14): **the D-pad does everything the left stick does** (walk, aim, climb, drive, menu focus), from the standing rule "no stick-only requirement". The buttons are added to the move actions at boot by `Players.add_dpad()`; project.godot is unchanged. During a story cutscene the HUD (depth strips, backpacks) fades out under the letterbox bars and back in after.

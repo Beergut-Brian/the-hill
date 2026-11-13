@@ -189,7 +189,8 @@ func is_active(player: int) -> bool
 func device_of(player: int) -> int
 func active_players() -> Array[int]
 func action(player: int, action: String) -> String   # "p1_move_left" etc. for Input.*
-func move_vector(player: int) -> Vector2
+func move_vector(player: int) -> Vector2   # left stick, D-pad or keys
+func add_dpad() -> void                    # at boot: D-pad buttons on every move action (no stick-only)
 func join_virtual(player: int) -> void
 func set_solo(on: bool, device: int = VIRTUAL) -> void
 func set_solo_focus(player: int) -> void   # the game calls this when the other player's turn comes
