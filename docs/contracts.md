@@ -33,7 +33,7 @@ func quit(code: int = 0) -> void            # Save.flush(), then exit; the launc
 ```
 
 Start (`pause`) toggles `PLAYING` <-> `PAUSED`. The pause menu (`scenes/ui/pause_menu.tscn`) is a
-text menu over the blurred game: Resume, Restart (`to_lobby()`), Settings, Back to Open Jar
+text menu over the blurred game: Resume, Back to menu (`Choice.RESTART`, `to_lobby()`), Settings, Back to Open Jar
 ("Leave the game?" Stay / Leave, then `quit()`). It shows who paused (`paused_by`). Either pad
 moves the cursor; A selects; B backs out of Settings / the question, else resumes; Start resumes.
 Window close also goes through `quit()`. Menus are for the grown-up: see `docs/ui.md`.
@@ -217,6 +217,17 @@ func get_value(key: String, default = null)
 func set_value(key: String, value) -> void   # marks dirty
 func flush() -> void                         # writes if dirty; Game.end_round() calls this
 func wipe() -> void
+
+# New Hill / Restore last hill (PT12-1). Nothing is deleted except backups past the newest 3.
+signal slot_changed()                        # start_new() / restore_last() changed the world held
+const BACKUPS_KEPT := 3
+var saves_dir: String                        # "user://saves"; tests point it at a scratch folder
+func has_save() -> bool                      # the profile holds a world (menu: Continue + New Hill)
+func backups() -> PackedStringArray          # <saves_dir>/<profile>.backup-<YYYYMMDD-HHMM>[b..].json, newest first
+func has_backup() -> bool
+func read_save(path := "") -> Dictionary     # a backup's contents ("" = the current save's)
+func start_new() -> String                   # save -> newest backup, profile empty; returns the backup path
+func restore_last() -> bool                  # newest backup -> save; the replaced save -> a backup
 
 # Per install, not per profile: user://settings.json, written on every set_setting().
 var settings_path: String                    # tests point this elsewhere; scripted runs boot on user://scratch_settings.json

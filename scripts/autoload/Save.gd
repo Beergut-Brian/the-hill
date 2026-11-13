@@ -1,13 +1,23 @@
 ## JSON save under user://saves/<profile>.json. Autoload: Save.
 ## The launcher passes --profile=<id>; default "p1".
+## New Hill (start_new) never deletes: the current save is renamed to
+## <profile>.backup-<YYYYMMDD-HHMM>.json beside it (the newest BACKUPS_KEPT are kept) and play starts
+## from an empty save. restore_last() swaps the newest backup back in (the save it replaces becomes
+## a backup in turn, so a restore can be undone the same way).
 ## Settings (volumes, screen shake, solo playtest) are per install, not per profile:
 ## user://settings.json, written on every change.
 extends Node
 
 signal saved()
 signal loaded()
+## start_new() or restore_last() changed which world the save holds (menus refresh on it).
+signal slot_changed()
+
+const BACKUPS_KEPT := 3
 
 var profile: String = "p1"
+## Tests point this at a scratch folder so they never touch a real profile's save or backups.
+var saves_dir := "user://saves"
 var _data: Dictionary = {}
 var _dirty := false
 ## Tests point this somewhere else so they never touch the real settings. A test or scripted run
@@ -66,7 +76,7 @@ func set_value(key: String, value) -> void:
 func flush() -> void:
 	if not _dirty:
 		return
-	DirAccess.make_dir_recursive_absolute("user://saves")
+	DirAccess.make_dir_recursive_absolute(saves_dir)
 	var f := FileAccess.open(_path(), FileAccess.WRITE)
 	if f == null:
 		push_warning("Save: could not open %s" % _path())
@@ -119,7 +129,102 @@ func wipe() -> void:
 
 
 func _path() -> String:
-	return "user://saves/%s.json" % profile
+	return "%s/%s.json" % [saves_dir, profile]
+
+
+## The profile holds a world (an empty or missing save is a first run).
+func has_save() -> bool:
+	return not _data.is_empty()
+
+
+## This profile's backups, newest first (full paths).
+func backups() -> PackedStringArray:
+	var out := PackedStringArray()
+	var prefix := profile + ".backup-"
+	if not DirAccess.dir_exists_absolute(saves_dir):
+		return out
+	for f in DirAccess.get_files_at(saves_dir):
+		if f.begins_with(prefix) and f.ends_with(".json"):
+			out.append("%s/%s" % [saves_dir, f])
+	out.sort()
+	out.reverse()
+	return out
+
+
+func has_backup() -> bool:
+	return not backups().is_empty()
+
+
+## A backup's contents (or the save's own with path ""), {} when unreadable.
+func read_save(path := "") -> Dictionary:
+	if path == "":
+		return _data.duplicate()
+	if not FileAccess.file_exists(path):
+		return {}
+	var parsed = JSON.parse_string(FileAccess.get_file_as_string(path))
+	return parsed if parsed is Dictionary else {}
+
+
+## New Hill: the current save becomes a backup, the profile starts empty (the next game builds a
+## fresh world). Returns the backup's path, "" when there was nothing to keep.
+func start_new() -> String:
+	flush()
+	var kept := ""
+	if has_save() and FileAccess.file_exists(_path()):
+		kept = _backup_current()
+	_data = {}
+	_dirty = false
+	_trim_backups()
+	slot_changed.emit()
+	return kept
+
+
+## Restore last hill: the newest backup becomes the save again; the save it replaces (if it holds a
+## world) becomes the newest backup. False when there is no backup.
+func restore_last() -> bool:
+	var list := backups()
+	if list.is_empty():
+		return false
+	flush()
+	var newest := list[0]
+	var holding := "%s/%s.restoring.json" % [saves_dir, profile]
+	if DirAccess.rename_absolute(newest, holding) != OK:
+		push_warning("Save: could not move %s" % newest)
+		return false
+	if has_save() and FileAccess.file_exists(_path()):
+		_backup_current()
+	DirAccess.rename_absolute(holding, _path())
+	_load()
+	_dirty = false
+	_trim_backups()
+	slot_changed.emit()
+	return true
+
+
+## Renames the save file to the next backup name. More in one minute get b, c, ... (sorts newer).
+func _backup_current() -> String:
+	var d := Time.get_datetime_dict_from_system()
+	var stamp := "%04d%02d%02d-%02d%02d" % [d.year, d.month, d.day, d.hour, d.minute]
+	var base := "%s/%s.backup-%s" % [saves_dir, profile, stamp]
+	# After the newest backup of the same minute (not the first free name: a trimmed one's name
+	# would sort as the oldest).
+	var n := -1
+	for b in backups():
+		var rest := b.get_basename().trim_prefix(base)
+		if b.begins_with(base) and rest.length() <= 1:
+			n = maxi(n, 0 if rest == "" else rest.unicode_at(0) - 97)
+	var path := base + ".json" if n < 0 else "%s%s.json" % [base, char(97 + n + 1)]   # ...-1944b.json
+	if DirAccess.rename_absolute(_path(), path) != OK:
+		push_warning("Save: could not back up %s" % _path())
+		return ""
+	return path
+
+
+## Only the newest BACKUPS_KEPT backups stay.
+func _trim_backups() -> void:
+	var list := backups()
+	for i in range(BACKUPS_KEPT, list.size()):
+		DirAccess.remove_absolute(list[i])
 
 
 func _load() -> void:

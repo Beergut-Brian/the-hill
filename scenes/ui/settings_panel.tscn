@@ -2,6 +2,7 @@
 
 [ext_resource type="Script" path="res://scenes/ui/settings_panel.gd" id="1_panel"]
 [ext_resource type="Script" path="res://scenes/ui/kit/setting_row.gd" id="2_row"]
+[ext_resource type="Script" path="res://scenes/ui/action_row.gd" id="9_action"]
 [ext_resource type="Script" path="res://scenes/ui/kit/hint_line.gd" id="3_hint"]
 [ext_resource type="Theme" path="res://assets/ui/theme.tres" id="4_theme"]
 [ext_resource type="Script" path="res://scenes/ui/kit/wedge.gd" id="5_wedge"]
@@ -105,6 +106,16 @@ script = ExtResource("2_row")
 kind = 1
 detail = "One controller plays both players"
 text = "Solo playtest"
+
+[node name="Restore" type="Control" parent="Card/Rows"]
+visible = false
+layout_mode = 2
+mouse_filter = 2
+script = ExtResource("9_action")
+kind = 1
+detail = "Swap back the hill from before New Hill"
+text = "Restore last hill"
+disabled = true
 
 [node name="Hint" type="Control" parent="Card"]
 layout_mode = 0

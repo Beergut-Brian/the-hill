@@ -2,6 +2,9 @@
 ## Per install, saved through Save.set_setting the moment a value changes. Up/down picks a row,
 ## left/right (or A) changes it, B goes back. The lobby and the pause menu each hold one.
 ## Games read screen shake with SettingsPanel.screen_shake() before shaking the camera.
+## Restore last hill (shown only while Save has a backup): A asks first (HoldConfirm, hold A 1 s),
+## then the newest backup swaps back in (Save.restore_last). From the pause menu the running game
+## saves and goes back to the lobby first, so the restored hill loads on Continue.
 class_name SettingsPanel
 extends Control
 
@@ -13,7 +16,7 @@ const SHAKE := "screen_shake"
 const SOLO := "solo_playtest"
 const DEFAULTS := { MUSIC: 0.8, SOUND: 1.0, SHAKE: true, SOLO: false }
 
-enum Row { MUSIC, SOUND, SHAKE, SOLO }
+enum Row { MUSIC, SOUND, SHAKE, SOLO, RESTORE }
 
 var active := false
 var focus := Row.MUSIC
@@ -22,7 +25,9 @@ var _tw: Tween
 
 @onready var _card: Control = $Card
 @onready var _wedge: Control = $Wedge
-@onready var _rows: Array = [$Card/Rows/Music, $Card/Rows/Sound, $Card/Rows/Shake, $Card/Rows/Solo]
+@onready var _rows: Array = [$Card/Rows/Music, $Card/Rows/Sound, $Card/Rows/Shake, $Card/Rows/Solo, $Card/Rows/Restore]
+## Restore's question (built in code).
+var restore: HoldConfirm
 
 
 static func screen_shake() -> bool:
@@ -39,6 +44,10 @@ func _ready() -> void:
 	add_to_group("openjar_skinned")
 	apply_skin()
 	Players.solo_changed.connect(_on_solo_changed)
+	restore = HoldConfirm.new()
+	add_child(restore)
+	restore.chosen.connect(_on_restore_chosen)
+	Save.slot_changed.connect(_refresh)
 
 
 func apply_skin() -> void:
@@ -69,10 +78,20 @@ func close() -> void:
 func dismiss() -> void:
 	active = false
 	visible = false
+	if restore:
+		restore.dismiss()
+
+
+## Restore's question is up over Settings.
+func asking() -> bool:
+	return restore != null and restore.active
 
 
 ## One frame of MenuInput.read(). B backs out.
 func handle(input: Dictionary) -> void:
+	if asking():
+		restore.handle(input)
+		return
 	if input.b != -1:
 		close()
 		return
@@ -90,6 +109,13 @@ func move_focus(dir: int) -> void:
 
 ## Slider rows step by 0.1; toggles flip (A) or go on/off (right/left).
 func adjust(dir: int, pressed := false) -> void:
+	if focus == Row.RESTORE:
+		if pressed:
+			_rows[focus].press()
+			open_restore()
+		else:
+			UiSound.play("ui_move", 0.8)   # left / right on an action row: a bump
+		return
 	var row: SettingRow = _rows[focus]
 	if pressed:
 		row.press()
@@ -122,7 +148,33 @@ func _apply(row: Row, v) -> void:
 	_refresh()
 
 
+## Restore's question, with the backup's summary (no picture: that hill is not running).
+func open_restore() -> void:
+	var list := Save.backups()
+	if list.is_empty():
+		return
+	restore.heading = "RESTORE LAST HILL?"
+	restore.body = "The hill you have now is kept as a backup too."
+	restore.hint = "[lr] Choose    Hold [a] to restore    [b] Back"
+	restore.set_texts("Not now", "Restore")
+	restore.open(HillSummary.of(Save.read_save(list[0])))
+
+
+func _on_restore_chosen(yes: bool) -> void:
+	if not yes:
+		return
+	if Game.state != Game.State.LOBBY:
+		Game.to_lobby()   # the running game saves first; the restored hill loads on Continue
+	Save.restore_last()
+
+
 func _refresh() -> void:
+	var back := Save.has_backup()
+	_rows[Row.RESTORE].visible = back
+	_rows[Row.RESTORE].disabled = not back
+	$Card/Rows.add_theme_constant_override("separation", 14 if back else 30)
+	if not back and focus == Row.RESTORE:
+		_set_focus(Row.SOLO, false)
 	_rows[Row.MUSIC].value = value_of(MUSIC)
 	_rows[Row.SOUND].value = value_of(SOUND)
 	_rows[Row.SHAKE].value = 1.0 if value_of(SHAKE) else 0.0
