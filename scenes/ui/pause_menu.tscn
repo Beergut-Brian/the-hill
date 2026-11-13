@@ -8,6 +8,7 @@
 [ext_resource type="PackedScene" path="res://scenes/ui/settings_panel.tscn" id="6_settings"]
 [ext_resource type="PackedScene" path="res://scenes/ui/confirm_dialog.tscn" id="7_confirm"]
 [ext_resource type="Script" path="res://scenes/ui/kit/wedge.gd" id="8_wedge"]
+[ext_resource type="Script" path="res://scenes/ui/icon_button.gd" id="9_icon"]
 
 [sub_resource type="ShaderMaterial" id="blur_mat"]
 shader = ExtResource("4_blur")
@@ -79,11 +80,11 @@ mouse_filter = 2
 [node name="Buttons" type="VBoxContainer" parent="Card"]
 layout_mode = 0
 offset_left = 60.0
-offset_top = 400.0
+offset_top = 380.0
 offset_right = 860.0
-offset_bottom = 1000.0
+offset_bottom = 844.0
 mouse_filter = 2
-theme_override_constants/separation = 16
+theme_override_constants/separation = 12
 
 [node name="Resume" type="Control" parent="Card/Buttons"]
 layout_mode = 2
@@ -129,16 +130,34 @@ height_focused = 140.0
 text_size = 62
 text_size_focused = 108
 
-[node name="Door" type="Control" parent="Card/Buttons"]
-layout_mode = 2
+[node name="Door" type="Control" parent="Card"]
+layout_mode = 0
+offset_left = 110.0
+offset_top = 856.0
+offset_right = 530.0
+offset_bottom = 1060.0
 mouse_filter = 2
-script = ExtResource("2_item")
+
+[node name="Icon" type="Control" parent="Card/Door"]
+layout_mode = 0
+offset_left = 146.0
+offset_right = 274.0
+offset_bottom = 128.0
+mouse_filter = 2
+script = ExtResource("9_icon")
+icon = 2
+focus_scale = 1.09375
+
+[node name="Label" type="Label" parent="Card/Door"]
+layout_mode = 0
+offset_left = 0.0
+offset_top = 138.0
+offset_right = 420.0
+offset_bottom = 198.0
 text = "Back to Open Jar"
-bleed = 1
-height = 96.0
-height_focused = 140.0
-text_size = 62
-text_size_focused = 108
+horizontal_alignment = 1
+uppercase = true
+vertical_alignment = 1
 
 [node name="Hint" type="Control" parent="Card"]
 layout_mode = 0
