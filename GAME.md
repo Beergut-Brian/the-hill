@@ -336,6 +336,14 @@ Kaden has about $50 of premium-model usage (Fable 5.2, per Kaden; the maker prof
 - Wiring: the Systems lane doc (Phase 1 only) and the Art lane doc (palette and characters only) carry a `model:` line naming the premium model. The maker profile logs spend per slice in `GAME.md` and switches a slice to the default model when its share is used, with the premium output as the spec.
 - Not premium: all Phase 3 lane work, every `.tres` content row, Reviewer passes, playtest transcription, polish, CI.
 
+### Premium spend log (producer, 2026-11-13)
+
+Only figures I can source are here. The Max-plan premium slices (1 to 5) have no per-slice record: Claude Code's estimates run at about half the real cost, and I didn't keep them per slice. Check the Claude Code usage page before planning the next premium run.
+
+| Date | Slice | Job | Spend | Source |
+| --- | --- | --- | --- | --- |
+| 2026-11-10 | Fable API key (not the Max plan) | Resident-arc review, `feature/hill-arc-review-1` (ended partial) | $2.81 watchdog; console figure not yet checked | `~/openjar/ledger/fable-api-budget.md` |
+
 ## Build phases
 
 | Phase | Lanes | Output | Tag |
