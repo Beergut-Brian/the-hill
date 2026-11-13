@@ -10,7 +10,8 @@
 ##          and again (a staircase). Then a ladder (the Gnome crew's hook, placeholder rails) that
 ##          P1 climbs with up.
 ##   turn-surface  PT1112-1: P1 up top beside the parked Loader taps left / right in place, then
-##          walks left and back; logs "tscr:" (body, camera, Loader in screen px) every frame.
+##          walks left and back, then drives the Loader left and right; logs "tscr:" (body,
+##          camera, Loader in screen px) every frame.
 ##   hints  The hint panels in each context: P1 on foot underground (A dig, B jump), up top
 ##          beside the Front Loader (B get in, X book), driving it (A scoop, B get out), in the
 ##          cage (A ride); P2 up top on foot the whole time (B jump, X book).
@@ -242,4 +243,16 @@ func _turn_surface() -> void:
 		5:
 			_hold(P1, Vector2.ZERO)
 			if _since() > 1.0:
+				var lx: float = game.loader_position().pos.x
+				game.place_player(P1, HillGame.HILLVILLE, Vector2(lx - 30.0, 0))
+				game.hop_in(game.player_node(P1))
+				_next("P1 in the Front Loader: %s" % (game.player_node(P1).vehicle != null))
+		6:
+			# A flipped vehicle and its bucket mirror in place too (same SpriteArt draw).
+			_hold(P1, Vector2(-1, 0) if _since() < 0.5 else Vector2.ZERO)
+			if _since() > 1.2:
+				_next("drive right")
+		7:
+			_hold(P1, Vector2(1, 0) if _since() < 0.5 else Vector2.ZERO)
+			if _since() > 1.2:
 				_next("done")
