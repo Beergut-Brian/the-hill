@@ -343,7 +343,7 @@ Counted by script (awk over the Status column) on `feature/hill-gap-close-7` (de
 
 | built | partial | missing | superseded | dropped | later | total |
 | --- | --- | --- | --- | --- | --- | --- |
-| 195 | 7 | 1 | 1 | 4 | 4 | 212 |
+| 201 | 7 | 1 | 1 | 4 | 4 | 218 |
 
 ## Gap-close-8 2026-11-13
 
@@ -481,3 +481,10 @@ M = one lane session, L = several sessions or a new system.
 7. **Spend log** (S-17): not seen in play. **S**. (Engine extraction and the `PictoBubble` move, S-14, F-5, S-15, are built.)
 
 F-3 and F-6 are roll-ups: they close when the items above do.
+
+| LR-01 | Launch-readiness brief 2026-11-13 (Gary) | The whole session flow works with pads: ready-up (both press A, or hold A alone), main menu, pause, the way back to the launcher, solo (`--solo` and Select + Start for 2 s), drop-in and drop-out, quit from the menu without a force-close | built | tests/fixtures/session_flow.tscn (`--flow=two`, `alone`, `solo`: each ends by itself, exit 0); tests/test_lobby.gd::test_lobby_door_asks_then_quits, ::test_pause_door_asks_then_quits, ::test_select_start_hold_toggles_solo, ::test_solo_flag_parsing; frames handoff/frames/two_01..15, alone_01..07, solo_01..09 (lane worktree) | The fixture drives scenes/main.tscn with synthetic pad events (Input.parse_input_event). Select + Start: Players only polls pads that are really connected, so the fixture makes the same Players.hold_step() call that Players._process makes. The way back to the launcher is the "Back to Open Jar" bar (GAME.md 2026-11-10: no icon) |
+| LR-02 | Launch-readiness brief 2026-11-13 (Gary) | 30-minute soak with zero script errors | built | tests/fixtures/soak.tscn (`--demo --soak-secs=1800`); handoff/soak.log (lane worktree) | 2026-11-13 run: 1802 s, 12 cycles (demo, pause and resume, Back to menu, New Hill every third cycle, Play again), 11 demo runs to the end. 0 SCRIPT ERROR, 0 ERROR, 0 WARNING; Game.quit() exit 0. Static memory flat at about 225 to 250 MB from cycle 2 on |
+| LR-03 | Launch-readiness brief 2026-11-13 (Gary); Q-03 | No personal details in what ships | built | tests/test_launch_ready.gd::test_no_design_notes_ship_in_the_export, ::test_shipped_data_names_no_real_people | export_presets.cfg packed GAME.md (producer and family notes) into every release; it no longer does (launchers never read it). data/story/lines.json's note named the producer. The second test fails on dev's lines.json. Exported binary: "Kaden" 0 hits |
+| LR-04 | Launch-readiness brief 2026-11-13 (Gary) | No debug prints or dev switches a player can reach | built | scenes/ui/lobby.gd (the chooser-voice log line only in debug builds); audit in handoff/REPORT.md | Every other print is behind a flag the launcher never passes (`--demo`, `--demo-beat=`, `--bark-log`, `--audio-log`, `--shots=`). F3 and F12 stay: the TV check needs F3, and both need a keyboard |
+| LR-05 | Launch-readiness brief 2026-11-13 (Gary) | The title, hub and pause text reads as finished | built | tests/test_launch_ready.gd::test_the_ready_stamp_steps_aside_while_a_is_held_to_start_alone; handoff/frames/alone_02_holding_a_alone.png, export_lobby-hold_t002.5s.png | Every menu frame was looked at. One fix: the READY! stamp sat on top of the "STARTING SOLO" tag while A was held on Play. The top-right label reads "dev" until CI stamps data/build.json with the tag |
+| LR-06 | Launch-readiness brief 2026-11-13 (Gary) | Launch checklist: each standing rule yes / no with proof, the TV checks left, the load steps | built | docs/launch-checklist.md | One rule is **no** on dev: no stick-only requirement. Its fix is on feature/hill-gap-close-8 (PR 66, K-14), which is not merged |

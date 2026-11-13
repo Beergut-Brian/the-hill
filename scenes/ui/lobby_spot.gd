@@ -182,8 +182,14 @@ func _draw() -> void:
 	elif joined and not readied:
 		var tag_text := "[lr] Pick   [a] Ready up" if can_change else "[a] Ready up"
 		_tag(Vector2(plate.end.x - UiStyle.rich_width(tag_text, UiStyle.Role.HINT, 28) - 50, PLATE_Y - 40), tag_text)
-	if readied:
+	if shows_stamp():
 		_draw_stamp(Vector2(plate.end.x - 50, PLATE_Y - 14))
+
+
+## The READY! stamp steps aside while A is held to start alone: it sat on top of the
+## "STARTING SOLO" tag; the plate filling up already shows the hold.
+func shows_stamp() -> bool:
+	return readied and hold <= 0.0
 
 
 ## A small dark tag above the plate.
