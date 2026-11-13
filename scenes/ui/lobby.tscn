@@ -123,6 +123,14 @@ mouse_filter = 2
 script = ExtResource("4_item")
 text = "Play"
 
+[node name="NewHill" type="Control" parent="Buttons"]
+visible = false
+layout_mode = 2
+mouse_filter = 2
+script = ExtResource("4_item")
+text = "New Hill"
+disabled = true
+
 [node name="Settings" type="Control" parent="Buttons"]
 layout_mode = 2
 mouse_filter = 2

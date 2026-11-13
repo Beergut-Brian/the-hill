@@ -1,6 +1,9 @@
 ## Start screen and main menu in one, Showtime style (docs/ui.md): the game's slanted title over a
 ## turning sunburst (and the game's own world, blurred, if the skin asks), Jeff and Chuck on spotlit
 ## podiums left, a dark wedge with slanted menu bars right (Play, Settings, Back to Open Jar).
+## With a saved hill: Continue (Play renamed, focused) and New Hill, which asks first (HoldConfirm:
+## a picture of the hill, hold A 1 s); confirming backs the save up (Save.start_new) and the
+## ready-up goes on as a first run.
 ## A on any pad joins and readies that player, B un-readies. Both ready: a 3-step countdown; on its
 ## last beat the stamps flip to GO!, both characters jump, and the three-stripe wipe covers the
 ## screen as Game.finish_lobby() starts round 1 (with the skin's "ROUND 1" card). A ready player
@@ -20,7 +23,7 @@ signal countdown_cancelled()
 ## The countdown's last beat: the wipe is starting.
 signal launching()
 
-enum Choice { PLAY, SETTINGS, DOOR }
+enum Choice { PLAY, NEW, SETTINGS, DOOR }
 
 const HOLD_TO_START := 1.5
 const COUNT_STEP := 0.7
@@ -67,12 +70,16 @@ var _select_down := false
 var _say_in := { P1: -1.0, P2: -1.0 }
 
 @onready var _spots := { P1: $Spots/P1, P2: $Spots/P2 }
-@onready var _buttons := { Choice.PLAY: $Buttons/Play, Choice.SETTINGS: $Buttons/Settings, Choice.DOOR: $Buttons/Door }
-@onready var _items: Array = [$Buttons/Play, $Buttons/Settings, $Buttons/Door]
+@onready var _buttons := { Choice.PLAY: $Buttons/Play, Choice.NEW: $Buttons/NewHill, Choice.SETTINGS: $Buttons/Settings, Choice.DOOR: $Buttons/Door }
+@onready var _items: Array = [$Buttons/Play, $Buttons/NewHill, $Buttons/Settings, $Buttons/Door]
 @onready var _countdown: Control = $Countdown
 @onready var _settings: SettingsPanel = $Settings
 @onready var _confirm: ConfirmDialog = $Confirm
 @onready var _title_y: float = $TitleArt.position.y
+## New Hill's question (built in code).
+var new_hill: HoldConfirm
+## Seconds left of the "BRAND NEW HILL!" headline after a New Hill.
+var _fresh_t := 0.0
 
 
 func _ready() -> void:
@@ -90,10 +97,15 @@ func _ready() -> void:
 	Game.state_changed.connect(_on_state_changed)
 	_settings.closed.connect(_on_settings_closed)
 	_confirm.chosen.connect(_on_confirm_chosen)
+	new_hill = HoldConfirm.new()
+	add_child(new_hill)
+	new_hill.chosen.connect(_on_new_hill_chosen)
+	Save.slot_changed.connect(_on_slot_changed)
 	visible = Game.state == Game.State.LOBBY
 	# Solo is playtest-only and never on at boot (Kaden's rule), so a saved solo is not restored.
 	open()
 	UiPreview.run.call_deferred(self)
+	NewHillPreview.run.call_deferred(self)
 
 
 ## Fresh lobby: nobody ready, Play focused. Joined pads keep their panels; solo readies both.
@@ -103,6 +115,8 @@ func open() -> void:
 	_dots_lit = 0
 	_settings.dismiss()
 	_confirm.dismiss()
+	new_hill.dismiss()
+	refresh_save_state()
 	$Buttons.visible = true
 	_countdown.visible = true
 	$TitleArt.scale = Vector2.ONE
@@ -144,14 +158,34 @@ func _live() -> bool:
 
 ## Settings or the leave question is open over the menu.
 func in_submenu() -> bool:
-	return _settings.active or _confirm.active
+	return _settings.active or _confirm.active or new_hill.active
+
+
+## Continue + New Hill with a saved hill; just Play on a first run.
+func refresh_save_state() -> void:
+	var has := Save.has_save()
+	_buttons[Choice.PLAY].text = "Continue" if has else "Play"
+	_buttons[Choice.NEW].visible = has
+	_buttons[Choice.NEW].disabled = not has
+	# Four bars: a little tighter and higher, so the status lines below stay clear.
+	$Buttons.offset_top = 300.0 if has else 360.0
+	$Buttons.add_theme_constant_override("separation", 14 if has else 28)
+	for item: MenuItem in _items:
+		item.height = 92.0 if has else 104.0
+		item.update_minimum_size()
+	if not has and focus == Choice.NEW:
+		_set_focus(Choice.PLAY, false)
 
 
 func _process(delta: float) -> void:
 	if not _live():
 		return
 	voice_step(delta)
+	_fresh_t = maxf(_fresh_t - delta, 0.0)
 	_countdown.queue_redraw()
+	if new_hill.active:
+		new_hill.handle(MenuInput.read(), delta)
+		return
 	if _confirm.active:
 		_confirm.handle(MenuInput.read())
 		return
@@ -308,6 +342,8 @@ func press_a(player: int) -> void:
 		Choice.PLAY:
 			if not readied[player]:
 				set_ready(player, true)
+		Choice.NEW:
+			open_new_hill()
 		Choice.SETTINGS:
 			_settings.open()
 			_settings_stage(true)
@@ -315,11 +351,53 @@ func press_a(player: int) -> void:
 			_confirm.open()
 
 
+## New Hill's question: the hill as it is (the live backdrop, unblurred) and its summary.
+func open_new_hill() -> void:
+	if not Save.has_save():
+		return
+	new_hill.heading = "START A NEW HILL?"
+	new_hill.body = "Your current hill is kept as a backup."
+	new_hill.hint = "[lr] Choose    Hold [a] to start    [b] Back"
+	new_hill.set_texts("Keep this hill", "New hill")
+	var pic: Texture2D = null
+	var world: Node = $Backdrop.world
+	if world != null and world.get_viewport() != get_viewport():
+		pic = world.get_viewport().get_texture()
+	new_hill.open(HillSummary.of(Save.read_save()), pic)
+
+
+func _on_new_hill_chosen(yes: bool) -> void:
+	if not yes:
+		return
+	_fresh_t = 3.0
+	Save.start_new()
+
+
+## A New Hill or a Restore changed the save: the menu, the backdrop and the clock follow it.
+func _on_slot_changed() -> void:
+	refresh_save_state()
+	_set_focus(Choice.PLAY, false)
+	var td = Save.get_value("time_of_day")
+	if td is Dictionary:
+		TimeOfDay.load_save(td)
+	elif not TimeOfDay.frozen:
+		var tod := load(TimeOfDay.DATA_PATH) as TimeOfDayData   # a new hill starts in the morning
+		TimeOfDay.set_time(tod.start_time if tod else 0.08)
+	$Backdrop.apply_skin()   # rebuilds the live Hillville from the save it holds now
+	if visible and is_inside_tree():
+		MenuItem.slam_all(_items, 0.05, 0.05)
+	_countdown.queue_redraw()
+
+
 func press_b(player: int) -> void:
 	if _launched:
 		return
-	if _confirm.active:
+	if new_hill.active:
+		new_hill.choose(false)
+	elif _confirm.active:
 		_confirm.choose(false)
+	elif _settings.active and _settings.asking():
+		_settings.restore.choose(false)
 	elif _settings.active:
 		_settings.close()
 	elif readied[player]:
@@ -451,7 +529,9 @@ func status_headline() -> String:
 		if Players.is_active(other):
 			return "WAITING FOR %s" % UiStyle.player_name(other).to_upper()
 		return "%s READY" % UiStyle.player_name(ready[0]).to_upper()
-	return "PRESS [a] ON PLAY"
+	if _fresh_t > 0.0:
+		return "BRAND NEW HILL!"
+	return "PRESS [a] ON %s" % _buttons[Choice.PLAY].text.to_upper()
 
 
 ## What the status line says when nothing is counting.
@@ -464,8 +544,8 @@ func status_text() -> String:
 		var other: int = P2 if ready[0] == P1 else P1
 		if Players.is_active(other):
 			return "Waiting for %s, or hold [a] to start solo" % UiStyle.player_name(other)
-		return "Hold [a] on Play to start solo"
-	return "Press [a] on Play when you're ready"
+		return "Hold [a] on %s to start solo" % _buttons[Choice.PLAY].text
+	return "Press [a] on %s when you're ready" % _buttons[Choice.PLAY].text
 
 
 func _update_progress() -> void:
@@ -587,6 +667,7 @@ func _on_state_changed(_from: int, to: int) -> void:
 	else:
 		_settings.dismiss()
 		_confirm.dismiss()
+		new_hill.dismiss()
 
 
 func _draw_countdown() -> void:
