@@ -201,16 +201,19 @@ func restore_last() -> bool:
 	return true
 
 
-## Renames the save file to the next backup name. Two in one minute get b, c, ... (sorts newer).
+## Renames the save file to the next backup name. More in one minute get b, c, ... (sorts newer).
 func _backup_current() -> String:
 	var d := Time.get_datetime_dict_from_system()
 	var stamp := "%04d%02d%02d-%02d%02d" % [d.year, d.month, d.day, d.hour, d.minute]
 	var base := "%s/%s.backup-%s" % [saves_dir, profile, stamp]
-	var path := base + ".json"
-	var n := 1
-	while FileAccess.file_exists(path):
-		path = "%s%s.json" % [base, char(97 + n)]   # ...-1944b.json
-		n += 1
+	# After the newest backup of the same minute (not the first free name: a trimmed one's name
+	# would sort as the oldest).
+	var n := -1
+	for b in backups():
+		var rest := b.get_basename().trim_prefix(base)
+		if b.begins_with(base) and rest.length() <= 1:
+			n = maxi(n, 0 if rest == "" else rest.unicode_at(0) - 97)
+	var path := base + ".json" if n < 0 else "%s%s.json" % [base, char(97 + n + 1)]   # ...-1944b.json
 	if DirAccess.rename_absolute(_path(), path) != OK:
 		push_warning("Save: could not back up %s" % _path())
 		return ""

@@ -101,6 +101,9 @@ func _ready() -> void:
 	add_child(new_hill)
 	new_hill.chosen.connect(_on_new_hill_chosen)
 	Save.slot_changed.connect(_on_slot_changed)
+	# The game's last autosave lands after the lobby opens (back_to_lobby): a first run's hill
+	# becomes Continue then.
+	Save.saved.connect(_on_saved)
 	visible = Game.state == Game.State.LOBBY
 	# Solo is playtest-only and never on at boot (Kaden's rule), so a saved solo is not restored.
 	open()
@@ -371,6 +374,11 @@ func _on_new_hill_chosen(yes: bool) -> void:
 		return
 	_fresh_t = 3.0
 	Save.start_new()
+
+
+func _on_saved() -> void:
+	if visible and _live():
+		refresh_save_state()
 
 
 ## A New Hill or a Restore changed the save: the menu, the backdrop and the clock follow it.
