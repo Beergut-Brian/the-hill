@@ -165,6 +165,23 @@ func test_the_intro_plays_once_on_a_new_save_locks_input_and_is_saved() -> void:
 	assert_bool(_hs().played.has(&"intro")).is_false()
 
 
+## Gap-close-8: the depth strips and backpacks fade out while a scene plays (the letterbox bars
+## cut them in half otherwise) and come back when it ends.
+func test_the_hud_fades_out_under_the_bars_and_back_after() -> void:
+	_make(true)
+	_join(P1)
+	var hud := _game.hud as HillHud
+	assert_float(hud.modulate.a).is_equal(1.0)
+	await _until(func() -> bool: return _hs().is_playing(), 120)
+	assert_bool(hud.in_scene()).is_true()
+	await _until(func() -> bool: return hud.modulate.a == 0.0, 600)
+	assert_float(hud.modulate.a).is_equal(0.0)
+	await _until(func() -> bool: return not _hs().is_playing(), 2400)
+	assert_bool(hud.in_scene()).is_false()
+	await _until(func() -> bool: return hud.modulate.a == 1.0, 600)
+	assert_float(hud.modulate.a).is_equal(1.0)
+
+
 func test_a_skips_the_intro_at_once_and_the_pause_menu_replays_it() -> void:
 	_make(true)
 	var p := _join(P1)
