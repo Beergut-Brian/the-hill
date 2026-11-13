@@ -32,7 +32,7 @@ proof extended, totals recounted (226 rows).
 - New: `tests/test_dpad_moves.gd` (4), `tests/test_feel_rules.gd` (7). Staging: each player waits (bounded)
   until it stands on the ground; a walk is judged by direction and 24 px, held until reached (cap 240 frames),
   never by a frame count. The Loader case tries right, then left.
-- Full suite (clean import first): `Overall Summary: 533 test cases | 0 errors | 0 failures | 0 flaky | 0 skipped | 0 orphans | (exit code 0; on `528db5b` + this report)`
+- Full suite (clean import first, on `528db5b`, exit code 0): `Overall Summary: 533 test cases | 0 errors | 0 failures | 0 flaky | 0 skipped | 0 orphans |`
 
 ## Template gaps (openjar-template; not changed here)
 
