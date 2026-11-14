@@ -186,7 +186,7 @@ func _ready() -> void:
 	_update_sleeper()
 	if Game.demo:
 		var beat := HillBeatRunner.beat_arg(OS.get_cmdline_user_args() + OS.get_cmdline_args())
-		var runner: Node = HillDemoRunner.new()
+		var runner: Node = null
 		if beat != "":
 			# TwoDriverBeats is loaded by path: a direct class reference from here makes a parse cycle
 			# (HillGame -> TwoDriverBeats -> VehicleBeats -> HillGame) that breaks every script.
@@ -197,6 +197,11 @@ func _ready() -> void:
 			var dig_beats: Script = load("res://scripts/gameplay/dig_beats.gd")
 			var puzzle_beats: Script = load("res://scripts/gameplay/puzzle_beats.gd")
 			runner = puzzle_beats.new() if puzzle_beats.get("PUZZLE_BEATS").has(beat) else dig_beats.new() if dig_beats.get("DIG_BEATS").has(beat) else ctl.new() if ctl.get("CONTROLS_BEATS").has(beat) else adj_beats.new() if adj_beats.get("ADJACENCY_BEATS").has(beat) else story_beats.new() if story_beats.get("STORY_BEATS").has(beat) else LooseBeats.new() if LooseBeats.LOOSE_BEATS.has(beat) else gap.new() if gap.get("GAP_BEATS").has(beat) else load("res://scripts/gameplay/two_driver_beats.gd").new() if beat == "drivers" else DepthBeats.new() if DepthBeats.DEPTH_BEATS.has(beat) else CameraBeats.new() if CameraBeats.CAMERA_BEATS.has(beat) else HazardBeats.new() if HazardBeats.HAZARD_BEATS.has(beat) else VehicleBeats.new() if VehicleBeats.VEHICLE_BEATS.has(beat) else PolishBeats.new() if PolishBeats.POLISH_BEATS.has(beat) else ArcBeats.new() if ArcBeats.ARC_BEATS.has(beat) else HillBeatRunner.new()
+		elif Graphics.bench:
+			runner = load("res://scripts/gameplay/bench_runner.gd").new()   # S-20, by path like the beats
+		if runner == null:
+			# Made only when nothing replaces it (a discarded one leaked at exit).
+			runner = HillDemoRunner.new()
 		runner.set("game", self)
 		if beat != "":
 			runner.set("beat", beat)

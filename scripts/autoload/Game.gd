@@ -23,7 +23,8 @@ var quit_exits := true
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
 	get_tree().auto_accept_quit = false
-	demo = OS.get_cmdline_user_args().has("--demo")
+	# --bench (S-20) is a scripted demo too: two virtual players on a wiped throwaway save.
+	demo = OS.get_cmdline_user_args().has("--demo") or OS.get_cmdline_user_args().has("--bench")
 
 
 func _notification(what: int) -> void:
