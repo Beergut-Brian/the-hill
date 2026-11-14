@@ -1,78 +1,78 @@
-# Report: hill-pause-door-1 (pause door icon back to Open Jar, 2026-11-13)
+# Report: hill-press-answers-adopt-1 (every menu press answers, 2026-11-13)
 
-Branch `feature/hill-pause-door-1`, based on `origin/dev` at `216670f` (`git merge origin/dev`: already up to
-date). Not pushed. PLAN-STATUS: FR-3 partial → **built**; totals recounted by script (209 built, 8 partial,
-226 rows).
+Branch `feature/press-answers-adopt-1`, based on `origin/dev` at `0f70ea7` (`git merge origin/dev`: already up
+to date). Not pushed. PLAN-STATUS: **FR-5 partial → built** (moved row IDs: `FR-5`); totals recounted by
+script: 210 built, 7 partial, 226 rows.
 
-## Where the template change came from
-
-The local template clone's `origin/dev` ref (`e57d4ec`) is stale: it does not have the door yet. The
-remote could not be fetched (no GitHub credentials here). I did not run a fetch in the template clone
-because it is read only. The door change is on the clone's local branch `feature/template-pause-door-1`
-(`30b4cbd` door icon, `17c04c5` tests, `69ab14a` PLAN-STATUS). I read it from there. **Gary: please check
-that this branch is what was merged to template `dev`.**
-
-**No door art file exists.** The template's door is drawn in code by `IconButton._draw()` (`Icon.DOOR`).
-The template has no `art/ui/` on any branch. So there was no file to copy and nothing to add to
-`assets/CREDITS.md`. I did not invent an art file.
+Source: openjar-template `dev` at `7301e2b` (PR #17, commit `9d99f29` "template: every menu press answers").
+The template clone's `origin/dev` already holds it (checked at the start and again before writing this).
 
 ## What changed
 
-- `scenes/ui/icon_button.gd`: replaced with the template's version. Before this it matched the template's
-  pre-door version byte for byte. Adds `class_name IconButton`, `focus_scale`, `disabled` and `slam_in()`
-  (so the icon can sit in a `MenuItem` focus list), and a bigger drawn door.
-- `scenes/ui/pause_menu.tscn`: this is the game's own scene, not an instance of the template's. The
-  "Back to Open Jar" `MenuItem` bar is gone. In its place is `Card/Door`: `Icon` (`IconButton`, `icon = DOOR`,
-  128 px, `focus_scale` 140/128) with `Label` "Back to Open Jar" (uppercase) centred beneath it. The node
-  layout is the template's. The Hill keeps its fifth bar (Story), so the bar list was tightened to fit
-  (top 380, gap 12) and the door sits at y 856. The label's bottom is at y 1054.
-- `scenes/ui/pause_menu.gd`: the focus list is Resume, Back to menu, Settings, Story, then the door, which
-  is the last stop. The game's look is set in code. `apply_skin()` sets `_door.tint = UiStyle.accent` (The
-  Hill's accent). `_style_door_label()` draws the label cream and 46 px when the door is focused, and 38 px
-  at 75 % when it is not. The label slams in with the door. Resume, Back to menu, Settings, Story, B
-  resumes or backs out, the d-pad through `MenuInput`, and the door's path are all unchanged: A opens the
-  `ConfirmDialog`, and "leave" runs `Game.quit()`, which saves and then quits.
-- `scenes/ui/kit/ui_preview.gd`: adds the `--ui=pause-door` state (four focus moves down), as the template
-  does. I needed it to take the frame.
-- `docs/ui.md`: updated the pause line.
-- The solo icon, the PAUSED title, the pauser colour and the wedge are not touched. Neither is
-  `project.godot`.
+Taken from the template as is (the Hill's copies were identical to the template's pre-fix `f737145`):
+`scenes/ui/confirm_dialog.gd`, `scenes/ui/icon_button.gd` (`wobble()`, `pose_wobble()`, `is_wobbling()`),
+`scenes/ui/kit/menu_item.gd` (same), `scenes/ui/kit/ui_sound.gd` (the `honk` stand-in cue; the Hill's own
+`honk` through `Audio` wins).
+
+Merged by hand / by patch (the Hill's versions differ from the template's):
+- `scenes/ui/kit/menu_input.gd`: the Hill's `read()` kept (it has no d-pad reader: the d-pad comes through the
+  move actions, `Players.add_dpad`); added the template's `other` / `button` fields, `OTHER` / `TRIGGERS`,
+  `refuse()`, `owned_elsewhere()`, `_other()`, `_solo_hold()`, `refusals` / `last_refused`.
+- `scenes/ui/lobby.gd`, `scenes/ui/pause_menu.gd`, `scenes/ui/settings_panel.gd`: template hunks applied
+  cleanly at offsets (the pause list's left / right step works across the Hill's 5 rows incl. Story).
+- `scenes/ui/kit/ui_preview.gd`: `--ui=pause-refuse` (4 steps to the door in the Hill, not 3) and
+  `--ui=lobby-refuse`. `scripts/tools/shots.sh`: help line lists them.
+- **The Hill's own screen** `scenes/ui/hold_confirm.gd` (New Hill? in the lobby, Restore last hill? in
+  settings): unused buttons now refuse the same way (honk + wobble on the focused bar); a refusal never
+  starts or feeds the hold. Start while paused is left to Game.
+- Docs: `docs/press-answers.md` (the template's audit + a Hill section), `docs/ui.md` (`honk` cue row,
+  "Every press answers", the two new screenshot states).
+
+All customisation is in code; no `.tscn` changed. No gameplay code, art, audio or save format touched.
+
+## Screen by screen
+
+| Screen | Before | After | Test |
+| --- | --- | --- | --- |
+| Lobby / start menu | X, Y, LB, RB, LT, RT, L3, R3, Start, Select (not solo), B on Play not ready, left / right on a locked podium: silent | honk + focused bar wobbles; nothing else changes. Join press, solo Select, Select + Start hold unchanged | `test_lobby_unused_buttons_refuse_and_change_nothing`, `_b_with_nothing_to_back_out_of_refuses`, `_join_press_is_not_a_refusal`, `_left_right_on_a_locked_podium_refuses`, `_select_in_solo_still_switches` |
+| Pause list | X, Y, shoulders, triggers, clicks, Select, left / right: silent | refuse; left / right step the list (right = down), refuse past the ends; Start still resumes | `test_pause_unused_buttons_refuse_and_change_nothing`, `_left_right_cycle_then_refuse_at_the_end`, `_start_still_resumes` |
+| Settings (lobby or pause) | unused buttons silent | refuse, the row wobbles, no value changes; Start in pause resumes | `test_settings_unused_button_refuses_and_changes_nothing` (asserts the scratch settings file) |
+| Leave the game? (ConfirmDialog) | silent | refuse, stays open on Stay | `test_confirm_unused_button_refuses_and_stays_open` |
+| New Hill? (HoldConfirm, Hill only) | silent | refuse; no hold, no backup, save untouched | `test_new_hill_question_refuses_unused_buttons` |
+| Restore last hill? (HoldConfirm, Hill only) | silent | refuse; no restore, backups unchanged | `test_restore_question_refuses_unused_buttons` |
+| Build book (X in play) | not a menu screen: gameplay-owned (BuildController), already covered by FR-5 in play | unchanged | existing `test_feel_rules.gd` |
 
 ## Tests
 
-New `tests/test_pause_door.gd` (6 cases). It runs in its own sandbox (`SuiteSandbox.enter("pause_door")`), so
-it never touches the real profile, settings or picks file. Inputs are synthetic presses on pads 5 and 6.
+New: `tests/test_press_answers.gd`, 12 cases, all pass (template's 10 adapted to the Hill + 2 Hill-only).
+Real synthetic pad events on devices 5 and 6, `SuiteSandbox.enter("press_answers")` (own profile, own
+settings file `user://test_settings_press_answers.json`, own picks) and a scratch saves folder
+(`user://test_press_answers_saves`), never the real files.
 
-- `test_door_icon_is_in_the_pause_scene`: an `IconButton` with `Icon.DOOR`, 128 px, 140 px focused. The
-  label reads "Back to Open Jar", sits beneath the icon, is centred under it and is on screen. The old
-  `Card/Buttons/Door` bar is gone.
-- `test_door_icon_takes_the_focus_and_is_the_last_stop`
-- `test_dpad_reaches_the_door`: the d-pad on either pad walks Resume → … → Story → Door, and Up comes back.
-- `test_a_on_the_door_asks_first_then_quits_saved`: A asks first and does not quit. B in the question
-  stays. A then "leave" quits once, and the save is flushed.
-- `test_b_resumes`: B on the door resumes play.
-- `test_door_wears_the_hill_accent`
+Full suite on a clean import (`rm -rf .godot`, `--import`, then
+`godot --headless --path . -s addons/gdUnit4/bin/GdUnitCmdTool.gd -a tests`): **551 test cases, 0 errors, 0 failures, 0 flaky, 0 orphans** (exit 0).
+The log has 9 engine `ERROR` lines ("Cannot convert argument 1 from Object to Object", which gdUnit does not count), in
+`test_build_info`, `test_chooser`, `test_isolation` and `test_hill_barks_freed`: the lobby's deferred
+`UiPreview.run` / `NewHillPreview.run` (`lobby.gd:115-116`, untouched here) firing after those suites free
+the lobby in the same frame. This lane didn't cause them; none come from `test_press_answers.gd`. Worth a
+`is_instance_valid` guard in a later systems lane.
 
-The existing `tests/test_lobby.gd::test_pause_door_asks_then_quits` still passes unchanged.
+## Frames (real, `scripts/tools/shots.sh`, Forward+ on llvmpipe, 4 s)
 
-Clean import (`rm -rf .godot && godot --headless --import --path .`), then the full suite:
+- `handoff/frames/pause_refuse_right_on_door.png`: `--ui=pause-refuse`, right pressed on the door, the door
+  mid-rock. `handoff/frames/pause_door_still.png` is the same state without the refusal;
+  `pause_door_wobble_vs_still.png` crops both side by side (left: tilted door).
+- `handoff/frames/start_menu_refuse_x.png`: `--ui=lobby-refuse`, X refused, Play mid-shake.
+  `start_menu_still.png` (`--ui=lobby-joined`) is the still; `start_menu_play_wobble_vs_still.png` crops the
+  Play bar (top: shifted about 15 px right).
 
-```
-Overall Summary: 539 test cases | 0 errors | 0 failures | 0 flaky | 0 skipped | 0 orphans |
-Exit code: 0
-```
+Looked at all of them: the wobble shows; nothing else differs. The honk is audio only (tests count it via
+`UiSound.plays`).
 
-## Frame
+## Notes
 
-`handoff/frames/pause_door_focused.png` (`scripts/tools/shots.sh "" 3,4.5 … --ui=pause-door`, the 4.5 s
-frame). I looked at it. It shows PAUSED in cream with a red drop and the "PLAYER 2 PAUSED" tag. The four
-bars (Resume, Back to menu, Settings, Story) are all unfocused. Under them is the round yellow door icon
-(The Hill's accent) with a brown door, which is the focused colour. Beneath it, "BACK TO OPEN JAR" is in
-large cream letters and reads clearly. The icon and the text are not clipped. The text ends about 25 px
-above the bottom of the screen and is left of the wedge edge. The hint strip "Move / Select / Resume"
-is bottom right and does not overlap. The game shows blurred behind.
-
-## Notes for Gary
-
-- `handoff/` is git-excluded, so the frame lives in this worktree only.
-- Upstream: nothing new. This lane only adopted the template's change.
+- Template parity: Start pressed first and then Select (to begin the solo hold) honks once for the Start in
+  the lobby; Select pressed second never does. Same as the template.
+- In the pause shots the door does not look larger when focused (128 vs 140 px) in either frame; that is the
+  pause-door lane's state, not changed here.
+- `handoff/` is git-excluded in this repo, so the frames and `handoff.json` live in the worktree only.

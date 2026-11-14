@@ -1,6 +1,7 @@
 ## -- --ui=<state>: boots straight into a menu state, frozen, for screenshots (scripts/tools/shots.sh).
 ## lobby, lobby-joined, lobby-ready, lobby-hold, lobby-settings, lobby-confirm,
-## pause, pause-settings, pause-confirm, pause-door (the door icon focused), and the Showtime motion strip lobby-go1..lobby-go6
+## pause, pause-settings, pause-confirm, pause-door (the door icon focused), pause-refuse (right on the door:
+## the honk, the door mid-wobble), lobby-refuse (X in the lobby: Play mid-wobble), and the Showtime motion strip lobby-go1..lobby-go6
 ## (SETTINGS focused, up to PLAY, A: flash + jump, wipe, round card, into the game; each is one
 ## posed moment, frozen ~1 s after boot), the chooser: lobby-pick (P1 choosing, arrows; P2 ready)
 ## and lobby-swap (P1's podium posed mid-swap, with the poof). Add --ui-pixel for a pixel_art skin
@@ -45,9 +46,14 @@ static func run(lobby: Control) -> void:
 			pm.get_node("Settings").move_focus(1)
 		elif s == "pause-confirm":
 			pm.press(pm.Choice.DOOR)
-		elif s == "pause-door":
+		elif s == "pause-door" or s == "pause-refuse":
 			for i in 4:
 				pm.move_focus(1)
+			if s == "pause-refuse":
+				# Right on the door: no row that way, so the honk and the door rocks. Held mid-rock.
+				await lobby.get_tree().create_timer(0.4).timeout
+				pm.side_step(1)
+				pm.get_node("Card/Door/Icon").pose_wobble(0.92)
 		return
 	if s.begins_with("lobby-go"):
 		_go(lobby, int(s.trim_prefix("lobby-go")))
@@ -83,6 +89,13 @@ static func run(lobby: Control) -> void:
 				for c in spot.get_children():
 					if c is Poof:
 						c.t = 0.3
+		"lobby-refuse":
+			# P1 ready, P2 joined; X does nothing here: the honk, Play shakes. Held mid-shake.
+			Players.join_virtual(P2)
+			lobby.set_ready(P2, false, true)
+			await lobby.get_tree().create_timer(0.6).timeout
+			lobby.refuse("x")
+			lobby.get_node("Buttons/Play").pose_wobble(0.92)
 		"lobby-hold":
 			lobby.hold_step(P1, true, lobby.HOLD_TO_START * 0.6)
 

@@ -5,6 +5,9 @@
 ## the "hill_story" group), then the big door icon (128 px, 140 px focused) with "Back to Open Jar"
 ## beneath it: back to the launcher, asks first, then Game.quit() (saves first).
 ## Either pad moves the cursor, A presses, B resumes or backs out of Settings / the question.
+## Left / right step through the list too (right = down); with no row that way they refuse.
+## Every other button (X, Y, shoulders, triggers, stick clicks, Select) refuses: the soft honk and a
+## wobble on the focused item (docs/press-answers.md).
 ## Start is Game's (it resumes from anywhere). Shown while Game.state == PAUSED.
 extends Control
 
@@ -70,14 +73,32 @@ func _process(_delta: float) -> void:
 	else:
 		if input.move.y != 0:
 			move_focus(input.move.y)
+		elif input.move.x != 0:
+			side_step(input.move.x)
 		if input.a != -1:
 			press()
 		elif input.b != -1:
 			back()
+		elif input.other != -1 and not MenuInput.owned_elsewhere(input):
+			refuse(input.button)
 
 
 func move_focus(dir: int) -> void:
 	_set_focus(MenuItem.step(_buttons, focus, dir) as Choice)
+
+
+## Left / right: the next row that way (right = down the list), or a refusal at the end.
+func side_step(dir: int) -> void:
+	var to := MenuItem.step(_buttons, focus, dir)
+	if to == focus:
+		refuse("left" if dir < 0 else "right")
+	else:
+		_set_focus(to as Choice)
+
+
+## A press that does nothing here: the honk and a wobble on the focused item.
+func refuse(button := "") -> void:
+	MenuInput.refuse(_buttons[focus], button)
 
 
 func press(choice: Choice = focus) -> void:

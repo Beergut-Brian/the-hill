@@ -2,7 +2,8 @@
 ## it moves the focus and presses it; this draws. Unfocused: a bar in the skin's deep colour with
 ## cream text. Focused: the only light thing on screen, a cream bar that grows past its mark and
 ## settles, with the accent block and chevrons. Pressed: it flashes the accent and squashes, then
-## springs back. `slam_in()` slams it in from off screen. `progress` (0..1) fills it (hold to start).
+## springs back. `wobble()`: a quick side-to-side shake, the visual half of a refusal
+## (MenuInput.refuse()). `slam_in()` slams it in from off screen. `progress` (0..1) fills it (hold to start).
 ## Bars lean like everything else and step back along the lean as they go down the list.
 class_name MenuItem
 extends Control
@@ -10,6 +11,9 @@ extends Control
 ## Where the bar runs off screen: RIGHT for menus on the right wedge (the lobby), LEFT for the pause
 ## menu, NONE for a bar that sits inside its own card (the leave question).
 enum Bleed { NONE, LEFT, RIGHT }
+
+const WOBBLE_TIME := 0.32
+const WOBBLE_PX := 16.0
 
 @export var text := "Item":
 	set(v):
@@ -45,8 +49,12 @@ var progress := 0.0:
 var _f := 0.0        # focus amount, 0..1 (overshoots on the way in)
 var _press := 0.0    # press squash, 0..1
 var _in := 1.0       # slam-in, 0 (off screen) .. 1 (home)
+var _wob := 0.0      # refusal wobble, 1 (just refused) .. 0 (still)
 var _tw: Tween
 var _tw_in: Tween
+var _tw_wob: Tween
+## How many times this item wobbled (tests read it).
+var wobbles := 0
 
 
 func _init() -> void:
@@ -80,6 +88,38 @@ func press() -> void:
 	var tw := create_tween()
 	tw.tween_method(_set_press, 0.0, 1.0, 0.06)
 	tw.tween_method(_set_press, 1.0, 0.0, 0.38).set_trans(Tween.TRANS_ELASTIC).set_ease(Tween.EASE_OUT)
+
+
+## The refusal: shakes side to side three times, fading out over WOBBLE_TIME s.
+func wobble() -> void:
+	wobbles += 1
+	if not is_inside_tree():
+		return
+	if _tw_wob:
+		_tw_wob.kill()
+	_tw_wob = create_tween()
+	_tw_wob.tween_method(_set_wob, 1.0, 0.0, WOBBLE_TIME)
+
+
+## Screenshots: hold the wobble at `v` (1 just refused .. 0 still).
+func pose_wobble(v: float) -> void:
+	if _tw_wob:
+		_tw_wob.kill()
+	_set_wob(v)
+
+
+func is_wobbling() -> bool:
+	return _wob > 0.0
+
+
+## Sideways offset of the wobble now, in px.
+func wobble_offset() -> float:
+	return sin((1.0 - _wob) * TAU * 3.0) * WOBBLE_PX * _wob
+
+
+func _set_wob(v: float) -> void:
+	_wob = v
+	queue_redraw()
 
 
 ## In from off screen, past its mark, and back.
@@ -179,7 +219,7 @@ func _draw_frame() -> Rect2:
 	elif bleed == Bleed.LEFT:
 		c.x = r.end.x - 300.0
 	var s := Vector2(1.0 + 0.05 * _press, 1.0 - 0.2 * _press)
-	draw_set_transform(c - c * s, 0.0, s)
+	draw_set_transform(c - c * s + Vector2(wobble_offset(), 0.0), 0.0, s)
 	var flash := _press > 0.5
 	var fill := UiStyle.bar_color().lerp(UiStyle.CREAM, k)
 	if flash:
@@ -207,7 +247,7 @@ func _draw_frame() -> Rect2:
 		UiStyle.para(self, block, bc)
 		var ch := minf(r.size.y * 0.42, 68.0)
 		var cc := block.get_center() + Vector2(r.size.y * UiStyle.LEAN * 0.0, 0)
-		draw_set_transform(c - c * s, 0.0, s)
+		draw_set_transform(c - c * s + Vector2(wobble_offset(), 0.0), 0.0, s)
 		UiStyle.chevrons(self, cc, ch * k, Color(UiStyle.INK_SHOW, k), false)
 	return r
 
