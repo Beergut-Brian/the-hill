@@ -179,6 +179,23 @@ func test_lobby_select_in_solo_still_switches() -> void:
 	assert_int(MenuInput.refusals).is_equal(r0)
 
 
+## --solo (and Settings' solo switch) turn solo on with no single pad (Players.VIRTUAL). Select on
+## a pad must still move it to the other podium (launch-ready-3: it did nothing before).
+func test_lobby_select_after_the_solo_flag_switches() -> void:
+	_main = load("res://scenes/main.tscn").instantiate()
+	add_child(_main)
+	await await_idle_frame()
+	Players.set_solo(true)   # what --solo does at boot
+	await await_idle_frame()
+	await await_idle_frame()
+	assert_int(Players.device_of(P1)).is_equal(Players.VIRTUAL)
+	assert_int(Players.solo_focus).is_equal(P1)
+	await _pad(5, JOY_BUTTON_BACK)
+	assert_int(Players.solo_focus).is_equal(P2)
+	await _pad(5, JOY_BUTTON_BACK)
+	assert_int(Players.solo_focus).is_equal(P1)
+
+
 # ---- pause -------------------------------------------------------------------------------------
 
 func test_pause_unused_buttons_refuse_and_change_nothing() -> void:

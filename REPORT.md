@@ -1,78 +1,115 @@
-# Report: hill-press-answers-adopt-1 (every menu press answers, 2026-11-13)
+# Report: hill-launch-ready-3 (launch-readiness, pass 3, 2026-11-14)
 
-Branch `feature/press-answers-adopt-1`, based on `origin/dev` at `0f70ea7` (`git merge origin/dev`: already up
-to date). Not pushed. PLAN-STATUS: **FR-5 partial → built** (moved row IDs: `FR-5`); totals recounted by
-script: 210 built, 7 partial, 226 rows.
+Branch `feature/hill-launch-ready-3`, based on `origin/dev` at **`bd30d47`** (PR 71; `git fetch`: origin/dev
+unchanged at the end). Not pushed. Checked against everything merged since pass 1 (`40b9157`): PR 66 (D-pad),
+PR 67 (launch-ready-1), PR 68 (spend log), PR 69 (feel-rules audit), PR 70 (pause door), PR 71 (press answers).
 
-Source: openjar-template `dev` at `7301e2b` (PR #17, commit `9d99f29` "template: every menu press answers").
-The template clone's `origin/dev` already holds it (checked at the start and again before writing this).
+**The Hill is launch-ready except the TV-box checks** (S-13 frame rate on the GTX 1060, S-07 zoom, W-27
+darkness, the 8BitDo pads on the TV). Every standing rule is now **yes** (pass 1 had "no stick-only
+requirement" as **no**; PR 66 fixed it). One bug found and fixed (solo Select in the menu after `--solo`).
 
 ## What changed
 
-Taken from the template as is (the Hill's copies were identical to the template's pre-fix `f737145`):
-`scenes/ui/confirm_dialog.gd`, `scenes/ui/icon_button.gd` (`wobble()`, `pose_wobble()`, `is_wobbling()`),
-`scenes/ui/kit/menu_item.gd` (same), `scenes/ui/kit/ui_sound.gd` (the `honk` stand-in cue; the Hill's own
-`honk` through `Audio` wins).
+- **Fix: Select after `--solo` did nothing in the menu** (`scenes/ui/lobby.gd` `_solo_select`). `--solo` and
+  Settings' solo switch turn solo on with no single pad (`Players.VIRTUAL`, -2); the lobby read Select only
+  from a real device, so the one pad could never reach P2's podium in the menu (in play it could, through the
+  `restart` action). Now any pad's Select switches when solo has no single pad; Select + Start stays the solo
+  hold. Test: `tests/test_press_answers.gd::test_lobby_select_after_the_solo_flag_switches` (fails on the old
+  code, passes now). Frame: `handoff/frames/solo_04_solo_select_p2_podium.png`.
+- **Session-flow fixture** (`tests/fixtures/session_flow.gd`): frames the pause door focused before A
+  (`*_pause_door_focused`); the solo flow now stops the auto-countdown with B, switches podium with Select
+  and starts by holding A. Before, `--solo` readied both and the countdown started the game before Select
+  was pressed, so the old `solo_select_p2_podium` frame showed "GO!" and the bug above stayed hidden.
+- **Roster test on fixtures only** (`tests/test_roster.gd::test_real_roster_is_jeff_and_chuck`): the one test
+  on the real `data/roster.json` no longer asserts its order (`roster()[0] == "jeff"`); it keeps only the
+  CLAUDE.md contract (Jeff and Chuck are the defaults, files exist, residents never playable). Every other
+  roster / chooser test already runs on `tests/fixtures/roster_*.json`.
+- **`docs/launch-checklist.md` rewritten** against `bd30d47`: 12 standing rules with yes / no and proof (every
+  cited test name checked by script), session-flow table, the TV-box checks for Kaden (now including the
+  8BitDo pad checks and the pause blur), the load steps.
+- **PLAN-STATUS.md**: notes and proofs updated on FR-4, LR-01, LR-02, LR-06; totals line.
 
-Merged by hand / by patch (the Hill's versions differ from the template's):
-- `scenes/ui/kit/menu_input.gd`: the Hill's `read()` kept (it has no d-pad reader: the d-pad comes through the
-  move actions, `Players.add_dpad`); added the template's `other` / `button` fields, `OTHER` / `TRIGGERS`,
-  `refuse()`, `owned_elsewhere()`, `_other()`, `_solo_hold()`, `refusals` / `last_refused`.
-- `scenes/ui/lobby.gd`, `scenes/ui/pause_menu.gd`, `scenes/ui/settings_panel.gd`: template hunks applied
-  cleanly at offsets (the pause list's left / right step works across the Hill's 5 rows incl. Story).
-- `scenes/ui/kit/ui_preview.gd`: `--ui=pause-refuse` (4 steps to the door in the Hill, not 3) and
-  `--ui=lobby-refuse`. `scripts/tools/shots.sh`: help line lists them.
-- **The Hill's own screen** `scenes/ui/hold_confirm.gd` (New Hill? in the lobby, Restore last hill? in
-  settings): unused buttons now refuse the same way (honk + wobble on the focused bar); a refusal never
-  starts or feeds the hold. Start while paused is left to Game.
-- Docs: `docs/press-answers.md` (the template's audit + a Hill section), `docs/ui.md` (`honk` cue row,
-  "Every press answers", the two new screenshot states).
+## Rows
 
-All customisation is in code; no `.tscn` changed. No gameplay code, art, audio or save format touched.
+- **Moved:** none. Every open row is a TV check, an art pick or Gary's ear (below). Totals recounted by
+  script: 210 built, 7 partial, 0 missing, 1 superseded, 4 dropped, 4 later, 226 rows.
+- **Updated (still built):** FR-4 (the lobby solo Select fix), LR-01 (flows re-run, new frames), LR-02 (soak
+  re-run), LR-06 (checklist rewritten; all rules yes).
 
-## Screen by screen
+## Skipped rows and why
 
-| Screen | Before | After | Test |
-| --- | --- | --- | --- |
-| Lobby / start menu | X, Y, LB, RB, LT, RT, L3, R3, Start, Select (not solo), B on Play not ready, left / right on a locked podium: silent | honk + focused bar wobbles; nothing else changes. Join press, solo Select, Select + Start hold unchanged | `test_lobby_unused_buttons_refuse_and_change_nothing`, `_b_with_nothing_to_back_out_of_refuses`, `_join_press_is_not_a_refusal`, `_left_right_on_a_locked_podium_refuses`, `_select_in_solo_still_switches` |
-| Pause list | X, Y, shoulders, triggers, clicks, Select, left / right: silent | refuse; left / right step the list (right = down), refuse past the ends; Start still resumes | `test_pause_unused_buttons_refuse_and_change_nothing`, `_left_right_cycle_then_refuse_at_the_end`, `_start_still_resumes` |
-| Settings (lobby or pause) | unused buttons silent | refuse, the row wobbles, no value changes; Start in pause resumes | `test_settings_unused_button_refuses_and_changes_nothing` (asserts the scratch settings file) |
-| Leave the game? (ConfirmDialog) | silent | refuse, stays open on Stay | `test_confirm_unused_button_refuses_and_stays_open` |
-| New Hill? (HoldConfirm, Hill only) | silent | refuse; no hold, no backup, save untouched | `test_new_hill_question_refuses_unused_buttons` |
-| Restore last hill? (HoldConfirm, Hill only) | silent | refuse; no restore, backups unchanged | `test_restore_question_refuses_unused_buttons` |
-| Build book (X in play) | not a menu screen: gameplay-owned (BuildController), already covered by FR-5 in play | unchanged | existing `test_feel_rules.gd` |
+| Row | Status | Why skipped |
+| --- | --- | --- |
+| S-13 | partial | TV: 60 fps on the GTX 1060 (the producer box renders in software). Checklist 2.1 |
+| S-07 | partial | TV: camera zoom from the sofa. Checklist 2.2 |
+| W-27 | partial | TV: layer darkness in the living room. Checklist 2.3 |
+| A-18 | partial | Gary's ear: listen to `handoff/audio3_preview.ogg` (from audio-3), then one data line in `data/blocks/sand.tres` |
+| V-03 | partial | Art, waiting on Kaden's style pick (D or E; `feature/art-direction-options-2` unmerged) |
+| F-3 | partial | Roll-up: closes when A-18 and V-03 do |
+| F-6 | partial | Roll-up (art): closes with V-03 |
+| V-01, V-02, V-04 to V-10, M-01, M-02, Q-01 | built | Art, palette, logo and store-art rows: Art Director process, not re-audited here |
+| store art / jar (V-08, `store/`) | built | Art: skipped per the brief |
+
+## Placeholder text, debug prints, dev switches
+
+No new print, flag or placeholder since pass 1's LR-04 audit (`git diff 89c8ac5 bd30d47 -- scenes scripts
+data`: 14 files, no print / TODO / placeholder added). Every print is behind a flag the launcher never passes
+(`--demo`, `--demo-beat=`, `--bark-log`, `--audio-log`, `--proto`, `--shots=`) or `OS.is_debug_build()`.
+The new `--ui=pause-refuse` / `lobby-refuse` previews are behind `--ui=`. Text in the frames reads as finished
+(title, "WHO'S PLAYING?", pause, "LEAVE THE GAME? Progress is saved.", the door's "BACK TO OPEN JAR"). The
+top-right label reads "dev" until CI stamps `data/build.json`. Release export (`.scratch/build/`): "Kaden" 0
+hits, "Premium model budget" 0 hits; the only "GAME.md" string is project.godot's description, which no screen
+shows.
+
+## Frames (`handoff/frames/`, `godot-render` 1920x1080, all three flows exit 0 by themselves)
+
+Looked at every one:
+
+- `two_01_main_menu`: logo, PLAY, "WHO'S PLAYING? Press A on a controller to join", both podiums dark with
+  "A JOIN". `two_02_p1_ready`: Jeff lit, READY!, 1P chip, Settings and Back to Open Jar appear.
+  `two_03_both_ready_countdown`: Chuck READY! too, "BOTH PLAYERS READY 2", "Starting in 2, B Cancel".
+- `two_04_playing_first_frame`: the intro's letterbox bars, A-skip arrow bottom right. `two_05_playing`:
+  Hillville, head-frame, Jeff, Chuck and the Front Loader, both HUD corners (depth bars, bags, B/X hints).
+- `two_06_pause_by_p2`: "PAUSED / PLAYER 2 PAUSED" (red stripe), Resume / Back to menu / Settings / Story,
+  then the round door icon with "BACK TO OPEN JAR". `two_07_pause_door_focused`: the door enlarged with a
+  white ring. `two_08_pause_leave_question`: "LEAVE THE GAME? Progress is saved. You'll go back to Open Jar."
+  Stay (focused) / Leave. `two_09_resumed`: play again.
+- `two_10_p2_dropped_out`: P2's HUD corner gone. `two_11_p2_dropped_in`: both corners back, no menu.
+- `two_12_solo_on_select_start`: the green + red heads icon top left. `two_13_solo_off`: icon gone; P2's corner
+  is gone too, by design: solo off keeps the pad on P1 and lets P2 go (`Players.set_solo(false)` emits
+  `player_left(P2)`); P2 drops back in with A on their own pad, which the fixture does next.
+- `two_14_back_to_menu_continue`: CONTINUE (focused, 2P) / NEW HILL / SETTINGS / BACK TO OPEN JAR, "PRESS A
+  ON CONTINUE", both podiums with Pick / Ready up. `two_15/16`: the leave question, then Leave focused; exit 0.
+- `alone_01..08`: one pad; holding A on Play fills "STARTING SOLO" on Jeff's plate; play; "PLAYER 1 PAUSED"
+  (green stripe); door focused; leave question; Leave; exit 0.
+- `solo_01/02` (`--solo`): heads icon top left, both podiums READY!, "BOTH PLAYERS READY 3". `solo_03`: B stops
+  it, Jeff's plate gets "Pick / Ready up" and arrows, "WAITING FOR PLAYER 1, or hold A to start solo".
+  `solo_04`: Select moved the pad to Chuck (Jeff's arrows gone). `solo_05`: "STARTING SOLO" fills on Chuck's
+  plate. `solo_06/07`: play with the solo icon. `solo_08..11`: pause, door, leave question, Leave; exit 0.
+
+One environment note: the first re-run of the solo flow lost its X server mid-run ("X connection to :84
+broken", the shared virtual display) and exited 1 after `solo_06`; the re-run exited 0. Not a game fault.
+
+## Soak
+
+`tests/fixtures/soak.tscn -- --demo --soak-secs=1800` on `bd30d47`: **1802 s, 12 cycles, 11 demo runs to the
+end, 0 SCRIPT ERROR, 0 ERROR, 0 WARNING**, `Game.quit()` exit 0. Static memory 238 to 254 MB from cycle 2 on;
+orphan nodes 0 at the end. Log: `handoff/soak.log`.
 
 ## Tests
 
-New: `tests/test_press_answers.gd`, 12 cases, all pass (template's 10 adapted to the Hill + 2 Hill-only).
-Real synthetic pad events on devices 5 and 6, `SuiteSandbox.enter("press_answers")` (own profile, own
-settings file `user://test_settings_press_answers.json`, own picks) and a scratch saves folder
-(`user://test_press_answers_saves`), never the real files.
+After a clean import (`rm -rf .godot`, `--import`: 0 errors): `godot --headless --path . -s addons/gdUnit4/bin/GdUnitCmdTool.gd -a tests --ignoreHeadlessMode --continue` → **552 test cases, 63 suites, 0 errors, 0 failures, 0 flaky, 0 skipped, 0 orphans**, exit 0, 11 min 22 s (log `.scratch/tests.log`). One new case this pass (551 before). The log also has the 9 known engine `ERROR: ... Cannot convert argument 1 from Object to Object` lines (the lobby's deferred `UiPreview.run` / `NewHillPreview.run` on a lobby a test already freed); they predate this pass, gdUnit does not count them, and they never appear in the soak or the flows.
 
-Full suite on a clean import (`rm -rf .godot`, `--import`, then
-`godot --headless --path . -s addons/gdUnit4/bin/GdUnitCmdTool.gd -a tests`): **551 test cases, 0 errors, 0 failures, 0 flaky, 0 orphans** (exit 0).
-The log has 9 engine `ERROR` lines ("Cannot convert argument 1 from Object to Object", which gdUnit does not count), in
-`test_build_info`, `test_chooser`, `test_isolation` and `test_hill_barks_freed`: the lobby's deferred
-`UiPreview.run` / `NewHillPreview.run` (`lobby.gd:115-116`, untouched here) firing after those suites free
-the lobby in the same frame. This lane didn't cause them; none come from `test_press_answers.gd`. Worth a
-`is_instance_valid` guard in a later systems lane.
+Hygiene: roster and chooser tests run on `tests/fixtures/roster_*.json` (one deliberate contract test on the
+real file, above). Physics outcomes: spot-checked the pile and boulder tests (`test_crane_pond.gd` stages its
+own 10 dirt and places the player; hazard tests compare a staged before / after); not every one of the
+suite's tests was read.
 
-## Frames (real, `scripts/tools/shots.sh`, Forward+ on llvmpipe, 4 s)
+## Needs Kaden
 
-- `handoff/frames/pause_refuse_right_on_door.png`: `--ui=pause-refuse`, right pressed on the door, the door
-  mid-rock. `handoff/frames/pause_door_still.png` is the same state without the refusal;
-  `pause_door_wobble_vs_still.png` crops both side by side (left: tilted door).
-- `handoff/frames/start_menu_refuse_x.png`: `--ui=lobby-refuse`, X refused, Play mid-shake.
-  `start_menu_still.png` (`--ui=lobby-joined`) is the still; `start_menu_play_wobble_vs_still.png` crops the
-  Play bar (top: shifted about 15 px right).
-
-Looked at all of them: the wobble shows; nothing else differs. The honk is audio only (tests count it via
-`UiSound.plays`).
-
-## Notes
-
-- Template parity: Start pressed first and then Select (to begin the solo hold) honks once for the Start in
-  the lobby; Select pressed second never does. Same as the template.
-- In the pause shots the door does not look larger when focused (128 vs 140 px) in either frame; that is the
-  pause-door lane's state, not changed here.
-- `handoff/` is git-excluded in this repo, so the frames and `handoff.json` live in the worktree only.
+- **`--solo` boot readies both players and starts a 3 s countdown with no press** (`lobby.open()`, since
+  2026-11-09; B stops it). Solo is a playtest switch, so it may be what you want; say if the game should wait
+  for A instead.
+- **FR-6 (carried over):** a vehicle pushed into a one-tile step hops up onto it. Is that auto-steering?
+- **The TV checks** in `docs/launch-checklist.md` section 2 (S-13, S-07, W-27, the pads, the kid-design TV
+  items). Nothing here was played on the TV; no playtest result is claimed.

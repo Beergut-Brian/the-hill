@@ -248,8 +248,13 @@ func _solo_select() -> void:
 		_select_down = false
 		return
 	var dev := Players.device_of(Players.solo_focus)
-	var down := dev >= 0 and Input.is_joy_button_pressed(dev, JOY_BUTTON_BACK) \
-			and not Input.is_joy_button_pressed(dev, JOY_BUTTON_START)
+	# Solo from --solo or Settings has no single pad (VIRTUAL): any pad's Select switches, as it
+	# does in play (the solo map points the pad events at every pad).
+	var devs: Array = [dev] if dev >= 0 else (range(8) if dev == Players.VIRTUAL else [])
+	var down := false
+	for d: int in devs:
+		if Input.is_joy_button_pressed(d, JOY_BUTTON_BACK) and not Input.is_joy_button_pressed(d, JOY_BUTTON_START):
+			down = true
 	if down and not _select_down:
 		solo_switch()
 	_select_down = down

@@ -57,11 +57,13 @@ func _file() -> Dictionary:
 	return JSON.parse_string(FileAccess.get_file_as_string(FILE))
 
 
+## The one test on the real data/roster.json: only the CLAUDE.md contract (Jeff and Chuck are the
+## defaults, every listed character's files exist, residents are never playable), not its order or
+## size, so a character sync never breaks it. Everything else here runs on fixtures.
 func test_real_roster_is_jeff_and_chuck() -> void:
 	Roster.data_path = "res://data/roster.json"
 	_launch([])
 	assert_array(Roster.roster()).contains(["jeff", "chuck"])
-	assert_str(Roster.roster()[0]).is_equal("jeff")
 	assert_str(Roster.characters_tag).is_not_empty()
 	assert_str(Roster.pick(P1)).is_equal("jeff")
 	assert_str(Roster.pick(P2)).is_equal("chuck")
