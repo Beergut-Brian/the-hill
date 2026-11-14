@@ -17,7 +17,7 @@ const REPORT_EVERY := 5.0
 const WARMUP := 1.0
 const LEGS := 4
 ## Walkers turn round this often so they never wedge against a wall.
-const TURN := 4.0
+const TURN := 2.0
 
 var secs := 60.0
 ## Quit when done (tests turn it off and read `summary_line`).
