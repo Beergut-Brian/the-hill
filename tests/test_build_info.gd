@@ -40,9 +40,9 @@ func test_the_lobby_footer_shows_it() -> void:
 	var main: Node = load("res://scenes/main.tscn").instantiate()
 	add_child(main)
 	var label: Label = main.get_node("UI/Lobby/Footer/Version")
-	assert_str(label.text).is_equal(BuildInfo.label())
+	assert_str(label.text).is_equal(Graphics.version_label(BuildInfo.label(), Graphics.tier))
 	if not FileAccess.file_exists(BuildInfo.FILE):
-		assert_str(label.text).is_equal("dev")         # the editor / a local run
+		assert_str(label.text).is_equal("dev · %s" % Graphics.tier)         # the editor / a local run
 	main.free()
 	var w := get_tree().root.get_node_or_null("ShowtimeWipe")
 	if w:
