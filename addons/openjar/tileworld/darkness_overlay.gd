@@ -85,6 +85,9 @@ var bands: Array = []
 ## node -> Vector2(radius_px, strength)
 var lights: Dictionary[Node2D, Vector2] = {}
 var material_shared: ShaderMaterial
+## At most this many lights reach the shader (the nearest to tracked nodes). A game's low graphics
+## tier lowers it (every light is a loop step per pixel); never above MAX_LIGHTS.
+var max_lights := MAX_LIGHTS
 ## darkness 1 renders as this alpha (never pure black).
 var darkness_floor := 0.8:
 	set(v):
@@ -266,7 +269,7 @@ func texel(c: Vector2i) -> Color:
 	return (e.img as Image).get_pixelv(c - (e.lo as Vector2i))
 
 
-## Lights in shader order this frame: the MAX_LIGHTS nearest to a tracked node.
+## Lights in shader order this frame: the max_lights nearest to a tracked node.
 func pick_lights() -> Array[Node2D]:
 	var out: Array[Node2D] = []
 	for node in lights.keys():
@@ -274,7 +277,8 @@ func pick_lights() -> Array[Node2D]:
 			lights.erase(node)
 		elif node.is_inside_tree():
 			out.append(node)
-	if out.size() > MAX_LIGHTS:
+	var cap := clampi(max_lights, 0, MAX_LIGHTS)
+	if out.size() > cap:
 		var anchors: Array[Vector2] = []
 		for t in world._tracked:
 			if is_instance_valid(t) and t.is_inside_tree():
@@ -286,7 +290,7 @@ func pick_lights() -> Array[Node2D]:
 				best = minf(best, a.distance_squared_to(n.global_position))
 			dist[n] = best
 		out.sort_custom(func(a: Node2D, b: Node2D) -> bool: return dist[a] < dist[b])
-		out.resize(MAX_LIGHTS)
+		out.resize(cap)
 	return out
 
 
