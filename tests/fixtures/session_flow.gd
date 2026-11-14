@@ -7,7 +7,8 @@
 ## --flow=two: both pads ready up, play, pause (P2), the leave question, drop-out / drop-in,
 ##             Select + Start held 2 s (solo on, then off), back to the menu, quit from the menu.
 ## --flow=alone: one pad, holds A on Play to start alone, then quits through pause > Back to Open Jar.
-## --flow=solo: booted with --solo; holds A to start, Select switches the podium, quits from pause.
+## --flow=solo: booted with --solo (both ready, countdown); B stops it, Select switches the podium,
+##             holding A starts, quits from pause.
 ## Every step prints "flow: <t> <step>"; the process must exit 0 by itself (Game.quit).
 ## Select + Start: Players reads the hold from Input.get_connected_joypads(), which synthetic pads
 ## never join, so the driver feeds Players.hold_step() itself, the same call Players._process makes.
@@ -114,6 +115,8 @@ func pause_menu() -> Node:
 func leave_from_pause(device: int) -> void:
 	for i in 4:
 		await stick(device, 1)
+	await wait(0.3)
+	await shot("pause_door_focused")
 	await tap(device, A)
 	await wait(0.6)
 	await shot("pause_leave_question")
@@ -162,6 +165,8 @@ func _two() -> void:
 	# The leave question, then Stay: B backs out, B again resumes.
 	for i in 4:
 		await stick(1, 1)
+	await wait(0.3)
+	await shot("pause_door_focused")
 	await tap(1, A)
 	await wait(0.6)
 	await shot("pause_leave_question")
@@ -234,11 +239,15 @@ func _alone() -> void:
 func _solo() -> void:
 	await until(func() -> bool: return Players.solo, 3.0, "--solo")
 	await wait(0.5)
-	await shot("solo_menu")
+	await shot("solo_menu_both_ready_countdown")
+	# Solo readies both and counts down (lobby.open). B on the one pad stops it (P1 un-readies),
+	# Select moves the pad to P2's podium, and holding A there starts the game.
+	await tap(0, B)
+	await wait(0.5)
+	await shot("solo_b_stops_the_countdown")
 	await tap(0, SELECT)
 	await wait(0.5)
 	await shot("solo_select_p2_podium")
-	await tap(0, SELECT)
 	button(0, A, true)
 	await wait(0.9)
 	await shot("solo_holding_a")
