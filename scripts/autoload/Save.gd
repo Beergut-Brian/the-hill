@@ -46,7 +46,7 @@ static func profile_from_args(args: PackedStringArray, default: String) -> Strin
 
 ## Flags that mean nobody is playing: gdUnit, --shots / --screenshot-after frames, --ui= / --demo /
 ## --demo-beat= showcases. Such a run must never read or write the files the family's games share.
-const SCRIPTED_FLAGS := ["--shots=", "--screenshot-after=", "--ui=", "--demo", "--demo-beat="]
+const SCRIPTED_FLAGS := ["--shots=", "--screenshot-after=", "--ui=", "--demo", "--demo-beat=", "--bench"]
 const SCRATCH_SETTINGS := "user://scratch_settings.json"
 
 

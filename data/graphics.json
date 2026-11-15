@@ -1,0 +1,27 @@
+{
+	"_about": "Graphics tiers (S-20). Graphics.gd picks one at boot from the GPU (Intel integrated / software / unknown = low; NVIDIA or AMD discrete = high); --graphics=low|high overrides. high is empty on purpose: it changes nothing, so it is exactly today's look (the GTX 1060). The Hill is 2D: the 3D keys only reach the lobby's 3D character slots; max_lights and particle_scale are the 2D costs.",
+	"tiers": {
+		"high": {},
+		"low": {
+			"msaa_2d": 0,
+			"msaa_3d": 0,
+			"screen_space_aa": 0,
+			"use_taa": false,
+			"scaling_3d_mode": "fsr",
+			"scaling_3d_scale": 0.75,
+			"mesh_lod_threshold": 4.0,
+			"shadows": false,
+			"ssao": false,
+			"ssil": false,
+			"ssr": false,
+			"glow": false,
+			"volumetric_fog": false,
+			"sdfgi": false,
+			"camera_far": 80.0,
+			"particle_scale": 0.5,
+			"max_lights": 12,
+			"max_fps": 60,
+			"vsync": true
+		}
+	}
+}
