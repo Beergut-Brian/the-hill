@@ -230,5 +230,8 @@ func test_bench_quits_by_itself_and_prints_the_summary() -> void:
 	var re := RegEx.create_from_string("(?m)^BENCH avg=[\\d.]+ low1=[\\d.]+ ms=[\\d.]+ worst=[\\d.]+ frames=\\d+ secs=[\\d.]+ tier=low ")
 	assert_object(re.search(log)).override_failure_message("no summary line:\n%s" % log.right(2000)).is_not_null()
 	assert_str(log).contains("BENCH t=")
+	# S-21: the hitch count line, and nothing over 33 ms logged without its cause.
+	assert_object(RegEx.create_from_string("(?m)^HITCH count>33ms=\\d+ worst=[\\d.]+ frames=\\d+").search(log)) \
+			.override_failure_message("no HITCH line:\n%s" % log.right(2000)).is_not_null()
 	assert_str(log).contains("graphics: tier=low (flag --graphics=low)")
 	assert_str(log).not_contains("SCRIPT ERROR")
