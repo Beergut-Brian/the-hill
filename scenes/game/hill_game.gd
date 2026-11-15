@@ -543,7 +543,9 @@ func _enter(p: int, scene: StringName) -> void:
 		underground.world.track(node)
 		underground.world.add_light(node, LIGHT_RADIUS)
 		VehicleLamp.attach(node, underground.world)
-		underground.world.update_chunks()
+		# S-21: only the chunks under the feet now (a floor this frame); the rest of the
+		# neighbourhood loads nearest-first over the next frames (12 at once was a 150 ms hitch).
+		underground.world.load_under(node)
 		Progress.visit_layer(p, underground.layer_index_at(node.position))
 	else:
 		node.world = null

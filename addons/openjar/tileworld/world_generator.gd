@@ -8,6 +8,11 @@ const WATER_BIT := 1 << 20
 
 var shape: WorldShape
 var world_seed: int
+## TileWorld.prewarm runs base_chunk on a worker thread while it holds this. A generator that changes
+## its plan after setup() takes it first and bumps `revision`, so cached base chunks of an older
+## plan are dropped instead of read.
+var plan_lock := Mutex.new()
+var revision := 0
 
 
 func setup(p_shape: WorldShape, p_seed: int) -> void:

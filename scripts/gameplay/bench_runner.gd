@@ -30,6 +30,19 @@ var _window := PackedFloat32Array()     # ms, since the last report
 var _last_us := 0
 var _clock := 0.0                       # game s since START
 var _next_report := REPORT_EVERY
+## Frames over HITCH_LOG_MS print a "HITCH …" line with what changed that frame; frames over
+## HITCH_MS count toward the final "HITCH count>33ms=…" line (S-21).
+const HITCH_MS := 33.0
+## `--bench-log-ms=N` moves the log threshold (a software renderer needs ~25 ms for any frame).
+var hitch_log_ms := 25.0
+var hitch_line := ""
+var hitches := 0
+var _what := PackedStringArray()        # events since the last measured frame
+var _chunks_in := 0
+var _chunks_out := 0
+var _last_nodes := 0
+var _last_objects := 0
+var _last_res := 0
 
 
 ## {"avg": fps, "low1": fps of the slowest 1 % of frames, "ms": mean ms, "worst": max ms, "frames": n}.
@@ -58,8 +71,15 @@ static func format_stats(s: Dictionary) -> String:
 func _ready() -> void:
 	beat = "bench"
 	secs = Graphics.bench_secs
+	for a in OS.get_cmdline_user_args():
+		if a.begins_with("--bench-log-ms="):
+			hitch_log_ms = maxf(1.0, float(a.trim_prefix("--bench-log-ms=")))
 	super()
 	process_priority = 1000   # measure after everything else this frame
+	if game != null and game.underground != null:
+		game.underground.world.chunk_loaded.connect(func(_k): _chunks_in += 1)
+		if game.underground.world.has_signal(&"chunk_freed"):
+			game.underground.world.chunk_freed.connect(func(_k): _chunks_out += 1)
 	print("BENCH start secs=%.0f tier=%s adapter=\"%s\" (%s)" % [secs, Graphics.tier, Graphics.adapter, Graphics.reason])
 
 
@@ -105,6 +125,7 @@ func _stage_leg(leg: int) -> void:
 			_town(P1, Hillville.SHAFT_X - 500.0)
 			_place(P2, u.landing(_layer(&"crystal")) + Vector2(30, 0))
 	log_event("bench leg %d (split %s)" % [leg + 1, str(game.director.is_split())])
+	_what.append("leg %d" % (leg + 1))
 
 
 func _town(p: int, x: float) -> void:
@@ -140,12 +161,36 @@ func _process(_delta: float) -> void:
 		return
 	_frames.append(ms)
 	_window.append(ms)
+	_note_frame(ms)
 	if _clock >= _next_report:
 		print("BENCH t=%02d %s split=%s" % [roundi(_next_report), format_stats(stats(_window)), str(game.director.is_split())])
 		_window = PackedFloat32Array()
 		_next_report += REPORT_EVERY
 	if _clock >= secs:
 		finish()
+
+
+## One line per slow frame: what the frame did (leg switches, chunks built/freed, node, object and
+## resource count changes, draw calls) so a stall can be traced to its cause.
+func _note_frame(ms: float) -> void:
+	var nodes := int(Performance.get_monitor(Performance.OBJECT_NODE_COUNT))
+	var objs := int(Performance.get_monitor(Performance.OBJECT_COUNT))
+	var res := int(Performance.get_monitor(Performance.OBJECT_RESOURCE_COUNT))
+	if ms > HITCH_MS:
+		hitches += 1
+	if ms > hitch_log_ms:
+		print("HITCH t=%.2f ms=%.1f leg=%d chunks=+%d/-%d nodes=%+d objs=%+d res=%+d draws=%d phys=%.1f proc=%.1f %s" % [
+				_clock, ms, _leg + 1, _chunks_in, _chunks_out, nodes - _last_nodes, objs - _last_objects,
+				res - _last_res,
+				int(Performance.get_monitor(Performance.RENDER_TOTAL_DRAW_CALLS_IN_FRAME)),
+				Performance.get_monitor(Performance.TIME_PHYSICS_PROCESS) * 1000.0,
+				Performance.get_monitor(Performance.TIME_PROCESS) * 1000.0, ",".join(_what)])
+	_last_nodes = nodes
+	_last_objects = objs
+	_last_res = res
+	_chunks_in = 0
+	_chunks_out = 0
+	_what = PackedStringArray()
 
 
 func finish() -> void:
@@ -156,5 +201,7 @@ func finish() -> void:
 	summary_line = "BENCH %s frames=%d secs=%.1f tier=%s adapter=\"%s\"" % [
 			format_stats(s), s.frames, _clock, Graphics.tier, Graphics.adapter]
 	print(summary_line)
+	hitch_line = "HITCH count>33ms=%d worst=%.2f frames=%d" % [hitches, s.worst, s.frames]
+	print(hitch_line)
 	if quits:
 		Game.quit(0)

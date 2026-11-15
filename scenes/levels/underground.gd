@@ -160,6 +160,20 @@ func _ready() -> void:
 	world.water_entered.connect(_on_water_entered)
 	players_root.child_entered_tree.connect(_on_player_added)
 	world.update_chunks()
+	# S-21: a player walking over a chunk border keeps the column behind them, and every chunk's
+	# base tiles are generated on worker threads now, so a chunk load mid-game only lays tiles.
+	world.chunk_keep_margin = 1
+	world.prewarm(all_chunks())
+
+
+## Every chunk key of the world (RectShape, WIDTH x HEIGHT cells).
+func all_chunks() -> Array[Vector2i]:
+	var rect := world.shape as RectShape
+	var keys: Array[Vector2i] = []
+	for cy in ceili(rect.height / float(rect.chunk_size)):
+		for cx in ceili(rect.width / float(rect.chunk_size)):
+			keys.append(Vector2i(cx, cy))
+	return keys
 
 
 func build_palette() -> Array[TileDef]:
