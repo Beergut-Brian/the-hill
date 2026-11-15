@@ -681,14 +681,31 @@ class _DeepArt extends Node2D:
 		_t += delta
 		queue_redraw()
 
+	## Features drawn at the last _draw (the bench and tests read it).
+	var drawn := 0
+
+	## hill-igpu-2: only pools and holes a split-screen view shows are drawn (DigFeel.visible_rects);
+	## every one in the world used to be ~10 draw calls a view, every frame.
 	func _draw() -> void:
 		if not is_instance_valid(hazards) or hazards.u == null:
 			return
 		var g := hazards.u.generator
+		var views := DigFeel.visible_rects(self)
+		drawn = 0
 		for lp in g.lava_pockets:
-			_lava(lp.pool)
+			var pool: Rect2i = lp.pool
+			if DigFeel.in_view(Rect2(Vector2(pool.position) * 16.0, Vector2(pool.size) * 16.0).grow(40.0), views):
+				_lava(pool)
+				drawn += 1
 		for ih in g.ice_holes:
-			_hole(ih)
+			if DigFeel.in_view(hole_box(ih), views):
+				_hole(ih)
+				drawn += 1
+
+	## Everything _hole draws (rink, hole, nest, the flakes falling 96 px down the chute), with room.
+	static func hole_box(ih: Dictionary) -> Rect2:
+		var r := Rect2i(ih.rink).merge(ih.hole).merge(ih.nest)
+		return Rect2(Vector2(r.position) * 16.0, Vector2(r.size) * 16.0).grow(120.0)
 
 	## A bright, juicy orange pool on the floor of the bottom row: a wobbly top, bubbles, glints.
 	func _lava(pool: Rect2i) -> void:

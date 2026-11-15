@@ -176,8 +176,43 @@ func _build() -> void:
 
 
 func _enter_tree() -> void:
+	if not _live.has(self):
+		_live.append(self)
 	if _built:
 		_copy_render_settings()
+
+
+func _exit_tree() -> void:
+	_live.erase(self)
+
+
+# --- what the views show (for hosted scenes that skip drawing what nobody sees) -----------------
+
+static var _live: Array[ScreenDirector] = []
+
+
+## Whether a director in the tree hosts a scene drawing into `world`.
+static func hosts_world(world: World2D) -> bool:
+	for d in _live:
+		for host: SubViewport in d._hosts.values():
+			if host.world_2d == world:
+				return true
+	return false
+
+
+## The canvas rects of `world` that shown views cover this frame (each grown by `margin` px for
+## the camera moving before the frame is drawn). Empty when no view shows that world.
+static func view_rects_of(world: World2D, margin: float = 96.0) -> Array[Rect2]:
+	var out: Array[Rect2] = []
+	for d in _live:
+		for i in d._views.size():
+			var v := d._views[i]
+			if v.world_2d != world or v.render_target_update_mode == SubViewport.UPDATE_DISABLED:
+				continue
+			var cam := d._cameras[i]
+			var sz := Vector2(v.size) / cam.zoom
+			out.append(Rect2(cam.position + cam.offset - sz * 0.5, sz).abs().grow(margin))
+	return out
 
 
 func _copy_render_settings() -> void:

@@ -254,10 +254,46 @@ func _process(delta: float) -> void:
 	queue_redraw()
 
 
+## hill-igpu-2: every crack used to be ~10 polygons, each its own draw call, and every crack and
+## sign near a player was drawn whether a view showed it or not. Now only what a split-screen view
+## shows is built (ScreenDirector.view_rects_of), and the cracks go out as one triangle array
+## (TriBatch): same picture, a fraction of the draw calls.
+var _batch := TriBatch.new()
+## Cracks and signs built at the last _draw (the bench and tests read them).
+var drawn_cracks := 0
+var drawn_signs := 0
+const _EVERYWHERE := Rect2(-1e9, -1e9, 2e9, 2e9)
+
+
+## The rects of `ci`'s own space that a view shows this frame (grown a little); everything when no
+## ScreenDirector hosts its world (tests, tools, the beats' stand-ins).
+static func visible_rects(ci: Node2D) -> Array[Rect2]:
+	var world := ci.get_world_2d() if ci.is_inside_tree() else null
+	if world == null or not ScreenDirector.hosts_world(world):
+		return [_EVERYWHERE]
+	var to_local := ci.get_global_transform().affine_inverse()
+	var out: Array[Rect2] = []
+	for r in ScreenDirector.view_rects_of(world):
+		out.append((to_local * r).abs())
+	return out
+
+
+static func in_view(r: Rect2, views: Array[Rect2]) -> bool:
+	for v in views:
+		if v.intersects(r, true):
+			return true
+	return false
+
+
 func _draw() -> void:
 	var cs := float(world.shape.cell_size)
+	var views := visible_rects(self)
+	drawn_cracks = 0
 	for c: Vector2i in damage:
-		_draw_crack(c, crack_of(c), cs)
+		if in_view(Rect2(Vector2(c) * cs, Vector2(cs, cs)), views):
+			_draw_crack(_batch, c, crack_of(c), cs)
+			drawn_cracks += 1
+	_batch.flush(self)
 	for c: Vector2i in _flash:
 		draw_rect(Rect2(Vector2(c) * cs, Vector2(cs, cs)), Color(1, 1, 1, 0.45 * float(_flash[c])))
 	for p: Dictionary in _pops:
@@ -267,10 +303,10 @@ func _draw() -> void:
 		for i in 4:
 			var d := Vector2.from_angle(i * TAU / 4.0 + 0.4) * (6.0 + 16.0 * k)
 			draw_circle(p.pos + d, 2.5 * (1.0 - k), Color((p.color as Color).lightened(0.4), 1.0 - k))
-	_draw_signs(cs)
+	_draw_signs(cs, views)
 
 
-func _draw_crack(c: Vector2i, stage: float, cs: float) -> void:
+func _draw_crack(b: TriBatch, c: Vector2i, stage: float, cs: float) -> void:
 	if stage <= 0.0:
 		return
 	var o := Vector2(c) * cs
@@ -283,21 +319,22 @@ func _draw_crack(c: Vector2i, stage: float, cs: float) -> void:
 		var a := float((h >> (i * 3)) % 8) * TAU / 8.0 + i * 2.1
 		var p1 := mid + Vector2.from_angle(a) * cs * (0.3 + 0.12 * stage)
 		var p2 := p1 + Vector2.from_angle(a + (0.7 if i % 2 else -0.7)) * cs * (0.18 + 0.12 * stage)
-		draw_line(mid + Vector2(0.8, 0.8), p1 + Vector2(0.8, 0.8), lit, 1.2)
-		draw_line(mid, p1, CRACK, 2.6)
-		draw_line(p1, p2, CRACK, 2.0)
-	draw_circle(mid, 1.6 + stage * 1.6, CRACK)
+		b.line(mid + Vector2(0.8, 0.8), p1 + Vector2(0.8, 0.8), lit, 1.2)
+		b.line(mid, p1, CRACK, 2.6)
+		b.line(p1, p2, CRACK, 2.0)
+	b.circle(mid, 1.6 + stage * 1.6, CRACK)
 	if stage > 0.6:
 		# Nearly gone: chips knocked out of two corners.
 		var k := cs * 0.22
-		draw_colored_polygon(PackedVector2Array([o, o + Vector2(k, 0), o + Vector2(0, k)]), Color(CRACK, 0.9))
+		b.polygon(PackedVector2Array([o, o + Vector2(k, 0), o + Vector2(0, k)]), Color(CRACK, 0.9))
 		var e := o + Vector2(cs, cs)
-		draw_colored_polygon(PackedVector2Array([e, e - Vector2(k, 0), e - Vector2(0, k)]), Color(CRACK, 0.9))
+		b.polygon(PackedVector2Array([e, e - Vector2(k, 0), e - Vector2(0, k)]), Color(CRACK, 0.9))
 
 
 ## The band's signs near any player: a plate with the picture of what opens it. Glowing gold
 ## with sparkles once earned; a bonk makes the nearest ones wiggle.
-func _draw_signs(cs: float) -> void:
+func _draw_signs(cs: float, views: Array[Rect2]) -> void:
+	drawn_signs = 0
 	if generator == null or generator.gate_bands.is_empty():
 		return
 	var near: Array[Vector2i] = []
@@ -324,7 +361,10 @@ func _draw_signs(cs: float) -> void:
 				if not world.is_solid(cell) or block_at(cell) == null or block_at(cell).id != &"gaterock":
 					continue
 				var c := Vector2(x * cs + cs * 0.5, row_mid)
+				if not in_view(Rect2(c, Vector2.ZERO).grow(SIGN_SIZE * 1.2), views):
+					continue
 				draw_sign(self, c, g.picture, earned, _t + x * 0.37, wig)
+				drawn_signs += 1
 
 
 ## One sign plate (also used by beats and tests for a look at it).
