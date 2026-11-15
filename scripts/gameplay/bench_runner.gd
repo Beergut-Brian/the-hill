@@ -9,6 +9,11 @@
 ## Every 5 s it prints "BENCH t=… avg=… low1=… ms=… worst=…" (that window), at the end
 ## "BENCH avg=… low1=… ms=… worst=… frames=… secs=… tier=… adapter=…" (the whole run, the first second
 ## after the start skipped as warm-up), then quits with code 0.
+## Every 5 s line and the final "WORK draws=… dark_chunks=… dark_lights=… per_chunk=… taps=…" line
+## say how much the frame asked of the GPU (hill-igpu-2): draw calls, darkness chunk sprites, the
+## lights their shader loops over and how often a pixel runs that loop. A/B on the box:
+## `--bench-nocull` (every chunk loops over every light) and `--bench-four-tap` (low's darkness as
+## before hill-igpu-2).
 ## Frame times are wall clock (Time.get_ticks_usec), not delta, so a capped or stalled frame counts;
 ## the route itself runs on game time, so every run walks the same legs.
 extends HillBeatRunner
@@ -43,6 +48,11 @@ var _chunks_out := 0
 var _last_nodes := 0
 var _last_objects := 0
 var _last_res := 0
+## Work per frame (hill-igpu-2): draw calls, darkness chunk sprites and the lights their shader
+## loops over (summed), so a change can be shown to do the same frame fewer ways on any machine.
+var work_line := ""
+var _work := {"frames": 0, "draws": 0.0, "sprites": 0.0, "lights": 0.0, "max_lights": 0}
+var _wwin := {"frames": 0, "draws": 0.0, "sprites": 0.0, "lights": 0.0, "max_lights": 0}
 
 
 ## {"avg": fps, "low1": fps of the slowest 1 % of frames, "ms": mean ms, "worst": max ms, "frames": n}.
@@ -77,6 +87,10 @@ func _ready() -> void:
 	super()
 	process_priority = 1000   # measure after everything else this frame
 	if game != null and game.underground != null:
+		if OS.get_cmdline_user_args().has("--bench-nocull"):
+			game.underground.world._darkness.cull_lights = false   # A/B: every chunk loops over every light
+		if OS.get_cmdline_user_args().has("--bench-four-tap"):
+			game.underground.world._darkness.one_tap = false   # A/B: low's darkness as before hill-igpu-2
 		game.underground.world.chunk_loaded.connect(func(_k): _chunks_in += 1)
 		if game.underground.world.has_signal(&"chunk_freed"):
 			game.underground.world.chunk_freed.connect(func(_k): _chunks_out += 1)
@@ -162,12 +176,44 @@ func _process(_delta: float) -> void:
 	_frames.append(ms)
 	_window.append(ms)
 	_note_frame(ms)
+	_note_work()
 	if _clock >= _next_report:
-		print("BENCH t=%02d %s split=%s" % [roundi(_next_report), format_stats(stats(_window)), str(game.director.is_split())])
+		print("BENCH t=%02d %s split=%s %s" % [roundi(_next_report), format_stats(stats(_window)),
+				str(game.director.is_split()), format_work(_wwin)])
 		_window = PackedFloat32Array()
+		_wwin = {"frames": 0, "draws": 0.0, "sprites": 0.0, "lights": 0.0, "max_lights": 0}
 		_next_report += REPORT_EVERY
 	if _clock >= secs:
 		finish()
+
+
+func _note_work() -> void:
+	var draws := Performance.get_monitor(Performance.RENDER_TOTAL_DRAW_CALLS_IN_FRAME)
+	var sprites := 0
+	var lights := 0
+	if game != null and game.underground != null:
+		var d = game.underground.world._darkness
+		sprites = d.stat_sprites
+		lights = d.stat_light_sum
+	for w in [_work, _wwin]:
+		w.frames += 1
+		w.draws += draws
+		w.sprites += sprites
+		w.lights += lights
+		w.max_lights = maxi(w.max_lights, lights)
+
+
+## "draws=… dark_chunks=… dark_lights=… per_chunk=… taps=…": per-frame means. dark_lights sums
+## over the darkness chunk sprites the lights each one's shader loops over; taps is how many times
+## a pixel runs that loop (4 = one per nearest cell, 1 = one_tap).
+func format_work(w: Dictionary) -> String:
+	var n := maxf(1.0, float(w.frames))
+	var per := float(w.lights) / maxf(1.0, float(w.sprites))
+	var taps := 4
+	if game != null and game.underground != null and game.underground.world._darkness.one_tap:
+		taps = 1
+	return "draws=%.0f dark_chunks=%.1f dark_lights=%.1f per_chunk=%.2f taps=%d" % [
+			w.draws / n, w.sprites / n, w.lights / n, per, taps]
 
 
 ## One line per slow frame: what the frame did (leg switches, chunks built/freed, node, object and
@@ -203,5 +249,8 @@ func finish() -> void:
 	print(summary_line)
 	hitch_line = "HITCH count>33ms=%d worst=%.2f frames=%d" % [hitches, s.worst, s.frames]
 	print(hitch_line)
+	work_line = "WORK %s max_dark_lights=%d" % [format_work(_work), _work.max_lights]
+	print(work_line)
 	if quits:
 		Game.quit(0)
+
