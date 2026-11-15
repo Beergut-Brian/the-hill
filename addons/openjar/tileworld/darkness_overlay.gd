@@ -7,8 +7,10 @@
 ## distance falloff, shortened in solid ground) and blends the four nearest cells of this chunk
 ## bilinearly, so light is soft from cell to cell and leaks into rock less than along a tunnel.
 ## Darkness never reaches black: d renders as alpha d * darkness_floor of the band tint mixed toward
-## darkness_night. All sprites share one ShaderMaterial and lights are in world space, so two
-## SubViewports looking at the same world both see them. A dig rewrites only the touched texels.
+## darkness_night. Every sprite has its own copy of one ShaderMaterial holding only the lights that
+## reach it (cull_lights); lights are in world space, so two SubViewports looking at the same world
+## both see them. `one_tap` (a low graphics tier) works the light out once per pixel instead.
+## A dig rewrites only the touched texels.
 extends Node2D
 
 const MAX_LIGHTS := 32
@@ -47,6 +49,7 @@ float light_at(vec2 centre, float occ) {
 	return clamp(l, 0.0, 1.0);
 }
 
+#ifndef ONE_TAP
 void fragment() {
 	ivec2 sz = textureSize(TEXTURE, 0);
 	vec2 p = UV * vec2(sz);
@@ -78,6 +81,50 @@ void fragment() {
 	acc /= max(wsum, 0.0001);
 	COLOR = vec4(acc.rgb / max(acc.a, 0.0001), acc.a);
 }
+#else
+// One light evaluation per pixel (a low graphics tier): the four nearest cells' darkness, tint and
+// reach blend first, then the light is worked out once at the pixel itself.
+void fragment() {
+	ivec2 sz = textureSize(TEXTURE, 0);
+	vec2 p = UV * vec2(sz);
+	ivec2 own = clamp(ivec2(floor(p)), ivec2(0), sz - 1);
+	if (texelFetch(TEXTURE, own, 0).a < 0.5) {
+		discard;
+	}
+	vec2 q = p - 0.5;
+	ivec2 i0 = ivec2(floor(q));
+	vec2 f = fract(q);
+	vec4 acc = vec4(0.0);
+	float r_k = 0.0;
+	float wsum = 0.0;
+	for (int j = 0; j < 2; j++) {
+		for (int i = 0; i < 2; i++) {
+			ivec2 ti = clamp(i0 + ivec2(i, j), ivec2(0), sz - 1);
+			vec4 t = texelFetch(TEXTURE, ti, 0);
+			float w = (i == 0 ? 1.0 - f.x : f.x) * (j == 0 ? 1.0 - f.y : f.y);
+			w *= step(0.5, t.a);
+			float a = t.r * floor_alpha;
+			vec3 col = mix(tints[int(t.g * 255.0 + 0.5)], night, 0.5);
+			acc += vec4(col * a, a) * w;
+			r_k += (t.b < 0.25 ? reach.x : (t.b < 0.75 ? reach.y : reach.z)) * w;
+			wsum += w;
+		}
+	}
+	acc /= max(wsum, 0.0001);
+	r_k /= max(wsum, 0.0001);
+	float l = 0.0;
+	for (int k = 0; k < 32; k++) {
+		if (k >= light_count) {
+			break;
+		}
+		vec4 L = lights[k];
+		float r = L.z * r_k;
+		l = max(l, L.w * (1.0 - smoothstep(r * 0.3, r, distance(world_pos, L.xy))));
+	}
+	float lit = 1.0 - clamp(l, 0.0, 1.0);
+	COLOR = vec4(acc.rgb / max(acc.a, 0.0001), acc.a * lit);
+}
+#endif
 """
 
 var world: TileWorld
@@ -88,19 +135,36 @@ var material_shared: ShaderMaterial
 ## At most this many lights reach the shader (the nearest to tracked nodes). A game's low graphics
 ## tier lowers it (every light is a loop step per pixel); never above MAX_LIGHTS.
 var max_lights := MAX_LIGHTS
+## Each chunk's sprite gets only the lights that can reach its rectangle (the rest add exactly
+## nothing there), so a pixel loops over a few lights, not every picked one. Same picture either way.
+var cull_lights := true
+## One light evaluation per pixel instead of one per each of the four nearest cells (a game's low
+## graphics tier): the light falls off smoothly per pixel instead of blending from cell to cell.
+var one_tap := false:
+	set(v):
+		if v == one_tap:
+			return
+		one_tap = v
+		if material_shared:
+			material_shared.shader = _shader_for(v)
+			for m: ShaderMaterial in _mats.values():
+				m.shader = material_shared.shader
 ## darkness 1 renders as this alpha (never pure black).
 var darkness_floor := 0.8:
 	set(v):
 		darkness_floor = v
-		if material_shared:
-			material_shared.set_shader_parameter("floor_alpha", v)
+		_set_param("floor_alpha", v)
 ## The dim navy the band tint is mixed toward in the dark.
 var darkness_night := Color(0.06, 0.07, 0.16):
 	set(v):
 		darkness_night = v
-		if material_shared:
-			material_shared.set_shader_parameter("night", v)
+		_set_param("night", v)
+## Last update_lights: chunk sprites, and the lights summed over them (what the shader loops over).
+var stat_sprites := 0
+var stat_light_sum := 0
 var _sprites: Dictionary[Vector2i, Sprite2D] = {}
+## Per chunk sprite its own copy of material_shared (its own light list when cull_lights).
+var _mats: Dictionary[Vector2i, ShaderMaterial] = {}
 ## Per chunk with a sprite: {"img": Image, "lo": Vector2i (top-left cell)}.
 var _images: Dictionary[Vector2i, Dictionary] = {}
 var _dirty: Dictionary[Vector2i, bool] = {}
@@ -110,13 +174,33 @@ func _init(p_world: TileWorld) -> void:
 	world = p_world
 	name = "Darkness"
 	z_index = 10
-	var shader := Shader.new()
-	shader.code = SHADER_CODE
 	material_shared = ShaderMaterial.new()
-	material_shared.shader = shader
+	material_shared.shader = _shader_for(one_tap)
 	material_shared.set_shader_parameter("floor_alpha", darkness_floor)
 	material_shared.set_shader_parameter("night", darkness_night)
 	material_shared.set_shader_parameter("reach", Vector3(REACH[0], REACH[1], REACH[2]))
+
+
+static var _shaders: Dictionary[bool, Shader] = {}
+
+
+## The darkness shader, compiled once per variant for the whole run.
+static func _shader_for(p_one_tap: bool) -> Shader:
+	var sh: Shader = _shaders.get(p_one_tap)
+	if sh == null:
+		sh = Shader.new()
+		sh.code = ("#define ONE_TAP\n" if p_one_tap else "") + SHADER_CODE
+		_shaders[p_one_tap] = sh
+	return sh
+
+
+## A shader parameter on material_shared and every chunk's copy.
+func _set_param(param: StringName, v: Variant) -> void:
+	if material_shared == null:
+		return
+	material_shared.set_shader_parameter(param, v)
+	for m: ShaderMaterial in _mats.values():
+		m.set_shader_parameter(param, v)
 
 
 func is_active() -> bool:
@@ -150,8 +234,8 @@ func set_bands(p_bands: Array) -> void:
 	for i in mini(bands.size(), MAX_BANDS):
 		var t: Color = bands[i].get("tint", Color.BLACK)
 		tints[i] = Vector3(t.r, t.g, t.b)
-	material_shared.set_shader_parameter("tints", tints)
-	material_shared.set_shader_parameter("cell_size", float(world.shape.cell_size) if world.shape else 16.0)
+	_set_param("tints", tints)
+	_set_param("cell_size", float(world.shape.cell_size) if world.shape else 16.0)
 	for key in _sprites.keys():
 		remove_chunk(key)
 	if bands.is_empty():
@@ -202,9 +286,11 @@ func add_chunk(key: Vector2i, cells: Array, grid: Dictionary = {}) -> void:
 	s.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	s.position = Vector2(lo) * shape.cell_size
 	s.scale = Vector2.ONE * shape.cell_size
-	s.material = material_shared
+	var mat := material_shared.duplicate() as ShaderMaterial
+	s.material = mat
 	add_child(s)
 	_sprites[key] = s
+	_mats[key] = mat
 	_images[key] = {"img": img, "lo": lo}
 
 
@@ -219,6 +305,7 @@ func remove_chunk(key: Vector2i) -> void:
 	var s: Sprite2D = _sprites.get(key)
 	if s:
 		_sprites.erase(key)
+		_mats.erase(key)
 		_images.erase(key)
 		_dirty.erase(key)
 		s.queue_free()
@@ -300,6 +387,8 @@ func update_lights() -> void:
 		if s:
 			(s.texture as ImageTexture).update(_images[key].img)
 	_dirty.clear()
+	stat_sprites = _sprites.size()
+	stat_light_sum = 0
 	if _sprites.is_empty():
 		return
 	var arr := PackedVector4Array()
@@ -312,3 +401,33 @@ func update_lights() -> void:
 		arr[i] = Vector4(p.x, p.y, l.x, l.y)
 	material_shared.set_shader_parameter("lights", arr)
 	material_shared.set_shader_parameter("light_count", picked.size())
+	var reach_max: float = REACH.max()
+	for key in _mats:
+		var mat: ShaderMaterial = _mats[key]
+		if not cull_lights:
+			mat.set_shader_parameter("lights", arr)
+			mat.set_shader_parameter("light_count", picked.size())
+			stat_light_sum += picked.size()
+			continue
+		var spr := _sprites[key]
+		var img: Image = _images[key].img
+		var rect := Rect2(spr.global_position, Vector2(img.get_size()) * spr.global_scale).abs()
+		var own := PackedVector4Array()
+		own.resize(MAX_LIGHTS)
+		var n := 0
+		for i in picked.size():
+			var v := arr[i]
+			var at := Vector2(v.x, v.y)
+			var r := v.z * reach_max
+			if at.clamp(rect.position, rect.end).distance_squared_to(at) <= r * r:
+				own[n] = v
+				n += 1
+		mat.set_shader_parameter("lights", own)
+		mat.set_shader_parameter("light_count", n)
+		stat_light_sum += n
+
+
+## Lights the shader loops over in one chunk's sprite (tests and the bench).
+func chunk_light_count(key: Vector2i) -> int:
+	var m: ShaderMaterial = _mats.get(key)
+	return int(m.get_shader_parameter("light_count")) if m else 0

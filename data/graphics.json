@@ -19,7 +19,9 @@
 			"sdfgi": false,
 			"camera_far": 80.0,
 			"particle_scale": 0.5,
+			"particle_max": 12,
 			"max_lights": 12,
+			"darkness_one_tap": true,
 			"max_fps": 60,
 			"vsync": true
 		}
