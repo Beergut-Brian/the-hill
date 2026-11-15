@@ -29,6 +29,10 @@ var chunk_radius: int = 1
 ## New chunks built per physics frame (direct update_chunks() calls are unlimited by default).
 ## A chunk costs a few ms (generator, tiles, collision), so keep this at 1 for a steady 60 fps.
 var chunk_budget_per_frame := 1
+## Chunks stay loaded until they are this many chunks past the wanted neighbourhood, so a node
+## walking to and fro over a chunk border does not free and rebuild a column every turn. 0: free
+## everything outside the neighbourhood at once.
+var chunk_keep_margin := 0
 var drain_per_second: float = 0.0
 ## How far (cells) water looks along a level line for a drop before it spreads toward it.
 @export var flow_reach := 8
@@ -85,6 +89,14 @@ var _darkness: DarknessOverlay
 var _water_acc := 0.0
 ## Chunks loaded + freed by the last update_chunks() call.
 var _changed_chunks := 0
+## Base chunks (generator.base_chunk) by key, from prewarm() or an earlier load: the generator is
+## the costly part of a chunk load (most of it), and its output never changes after setup().
+var _base_cache: Dictionary[Vector2i, PackedInt32Array] = {}
+var _pre_task := -1
+var _pre_keys: Array[Vector2i] = []
+var _pre_cells: Array = []
+var _pre_out: Dictionary = {}           # worker threads write here, under _pre_mutex
+var _pre_mutex := Mutex.new()
 
 
 func setup(p_shape: WorldShape, p_generator: WorldGenerator, p_palette: Array[TileDef], p_seed: int) -> void:
@@ -94,6 +106,8 @@ func setup(p_shape: WorldShape, p_generator: WorldGenerator, p_palette: Array[Ti
 	generator = p_generator
 	palette = p_palette
 	world_seed = p_seed
+	_finish_prewarm(true)
+	_base_cache.clear()
 	generator.setup(shape, world_seed)
 	edits.clear()
 	_edited_chunks.clear()
@@ -257,12 +271,25 @@ func update_chunks(budget: int = -1) -> void:
 	if keys != _last_track_keys or _chunks_pending:
 		_last_track_keys = keys
 		var wanted: Dictionary[Vector2i, bool] = {}
+		var order: Array[Vector2i] = []
 		for k in keys:
 			for w in shape.neighbourhood(k, chunk_radius):
-				wanted[w] = true
+				if not wanted.has(w):
+					wanted[w] = true
+					order.append(w)
+		var kept := wanted
+		if chunk_keep_margin > 0:
+			kept = wanted.duplicate()
+			for k in keys:
+				for w in shape.neighbourhood(k, chunk_radius + chunk_keep_margin):
+					kept[w] = true
+		if budget >= 0:
+			# Nearest first: the chunk a node stands in, then its neighbours.
+			order.sort_custom(func(a: Vector2i, b: Vector2i) -> bool:
+				return _key_dist(a, keys) < _key_dist(b, keys))
 		_chunks_pending = false
 		var made := 0
-		for k in wanted:
+		for k in order:
 			if _chunks.has(k):
 				continue
 			if budget >= 0 and made >= budget:
@@ -272,7 +299,7 @@ func update_chunks(budget: int = -1) -> void:
 			made += 1
 		var unwanted: Array[Vector2i] = []
 		for k in _chunks:
-			if not wanted.has(k):
+			if not kept.has(k):
 				unwanted.append(k)
 		var free_budget := -1 if budget < 0 else (0 if made > 0 else maxi(budget, 1) * 2)
 		var freed := 0
@@ -289,6 +316,92 @@ func update_chunks(budget: int = -1) -> void:
 		_bodies.sync_awake()
 
 
+static func _key_dist(k: Vector2i, keys: Array[Vector2i]) -> int:
+	var best := 1 << 30
+	for o in keys:
+		best = mini(best, absi(k.x - o.x) + absi(k.y - o.y))
+	return best
+
+
+## Loads only the chunks under `node` (its cell and the cell under its feet) right now, so it has a
+## floor this frame; the rest of its neighbourhood follows chunk_budget_per_frame from
+## _physics_process. Use it instead of update_chunks() when a node jumps somewhere new mid-game.
+func load_under(node: Node2D) -> void:
+	if shape == null:
+		return
+	var cell := shape.cell_at(local_pos(node))
+	for c in [cell, shape.below(cell)]:
+		if shape.contains(c):
+			var k := shape.chunk_of(c)
+			if not _chunks.has(k):
+				_load_chunk(k)
+	_chunks_pending = true
+
+
+## Generates these chunks' base tiles on worker threads (WorkerThreadPool), so a later load only lays
+## tiles. Call it after setup(). The generator must not change after setup(): base_chunk runs on
+## several threads at once. Results are picked up on the main thread by the next chunk load.
+func prewarm(keys: Array[Vector2i]) -> void:
+	if shape == null or generator == null:
+		return
+	_finish_prewarm(true)
+	_pre_keys = []
+	_pre_cells = []
+	for k in keys:
+		if not _base_cache.has(k) and not _chunks.has(k):
+			_pre_keys.append(k)
+			_pre_cells.append(shape.chunk_cells(k))
+	if _pre_keys.is_empty():
+		return
+	_pre_task = WorkerThreadPool.add_group_task(_prewarm_one, _pre_keys.size(), -1, false, "TileWorld.prewarm")
+
+
+func _prewarm_one(i: int) -> void:
+	var cells: Array[Vector2i] = []
+	cells.assign(_pre_cells[i])
+	var base := generator.base_chunk(cells)
+	_pre_mutex.lock()
+	_pre_out[_pre_keys[i]] = base
+	_pre_mutex.unlock()
+
+
+## True while prewarm() is still generating.
+func prewarming() -> bool:
+	_finish_prewarm(false)
+	return _pre_task >= 0
+
+
+## How many chunks' base tiles are generated and waiting (prewarmed or kept from a free).
+func cached_chunks() -> int:
+	_finish_prewarm(false)
+	return _base_cache.size()
+
+
+## Moves finished prewarm results into the cache; `wait` blocks until the task is done (setup, exit).
+func _finish_prewarm(wait: bool) -> void:
+	if _pre_task < 0:
+		return
+	var complete := WorkerThreadPool.is_group_task_completed(_pre_task)
+	if wait or complete:
+		WorkerThreadPool.wait_for_group_task_completion(_pre_task)
+		_pre_task = -1
+	_pre_mutex.lock()
+	for k in _pre_out:
+		if not _base_cache.has(k):
+			_base_cache[k] = _pre_out[k]
+	_pre_out.clear()
+	_pre_mutex.unlock()
+
+
+func _base_chunk(key: Vector2i, cells: Array[Vector2i]) -> PackedInt32Array:
+	_finish_prewarm(false)
+	var base: PackedInt32Array = _base_cache.get(key, PackedInt32Array())
+	if base.size() != cells.size():
+		base = generator.base_chunk(cells)
+		_base_cache[key] = base
+	return base
+
+
 func local_pos(n: Node2D) -> Vector2:
 	if n.is_inside_tree() and is_inside_tree():
 		return to_local(n.global_position)
@@ -297,7 +410,7 @@ func local_pos(n: Node2D) -> Vector2:
 
 func _load_chunk(key: Vector2i) -> void:
 	var cells := shape.chunk_cells(key)
-	var base := generator.base_chunk(cells)
+	var base := _base_chunk(key, cells)
 	var edited := _edited_chunks.has(key)
 	var layer := TileMapLayer.new()
 	layer.name = "Chunk_%d_%d" % [key.x, key.y]
@@ -634,6 +747,7 @@ func _enter_tree() -> void:
 
 
 func _exit_tree() -> void:
+	_finish_prewarm(true)
 	if get_tree().physics_frame.is_connected(_on_physics_frame):
 		get_tree().physics_frame.disconnect(_on_physics_frame)
 
