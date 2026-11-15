@@ -42,6 +42,9 @@ const HITCH_MS := 33.0
 var hitch_log_ms := 25.0
 var hitch_line := ""
 var hitches := 0
+## The slowest frame: where it was and what it did (on the final HITCH line, hill-igpu-2).
+var _worst_ms := 0.0
+var _worst_at := ""
 var _what := PackedStringArray()        # events since the last measured frame
 var _chunks_in := 0
 var _chunks_out := 0
@@ -224,6 +227,11 @@ func _note_frame(ms: float) -> void:
 	var res := int(Performance.get_monitor(Performance.OBJECT_RESOURCE_COUNT))
 	if ms > HITCH_MS:
 		hitches += 1
+	if ms > _worst_ms:
+		_worst_ms = ms
+		_worst_at = "t=%.2f leg=%d chunks=+%d/-%d nodes=%+d draws=%d%s" % [_clock, _leg + 1, _chunks_in, _chunks_out,
+				nodes - _last_nodes, int(Performance.get_monitor(Performance.RENDER_TOTAL_DRAW_CALLS_IN_FRAME)),
+				(" " + ",".join(_what)) if not _what.is_empty() else ""]
 	if ms > hitch_log_ms:
 		print("HITCH t=%.2f ms=%.1f leg=%d chunks=+%d/-%d nodes=%+d objs=%+d res=%+d draws=%d phys=%.1f proc=%.1f %s" % [
 				_clock, ms, _leg + 1, _chunks_in, _chunks_out, nodes - _last_nodes, objs - _last_objects,
@@ -247,7 +255,7 @@ func finish() -> void:
 	summary_line = "BENCH %s frames=%d secs=%.1f tier=%s adapter=\"%s\"" % [
 			format_stats(s), s.frames, _clock, Graphics.tier, Graphics.adapter]
 	print(summary_line)
-	hitch_line = "HITCH count>33ms=%d worst=%.2f frames=%d" % [hitches, s.worst, s.frames]
+	hitch_line = "HITCH count>33ms=%d worst=%.2f frames=%d worst_at %s" % [hitches, s.worst, s.frames, _worst_at]
 	print(hitch_line)
 	work_line = "WORK %s max_dark_lights=%d" % [format_work(_work), _work.max_lights]
 	print(work_line)
