@@ -165,6 +165,9 @@ var stat_light_sum := 0
 var _sprites: Dictionary[Vector2i, Sprite2D] = {}
 ## Per chunk sprite its own copy of material_shared (its own light list when cull_lights).
 var _mats: Dictionary[Vector2i, ShaderMaterial] = {}
+## Per chunk the light list last handed to its material, so a chunk whose lights did not move
+## costs no upload.
+var _uploaded: Dictionary[Vector2i, PackedVector4Array] = {}
 ## Per chunk with a sprite: {"img": Image, "lo": Vector2i (top-left cell)}.
 var _images: Dictionary[Vector2i, Dictionary] = {}
 var _dirty: Dictionary[Vector2i, bool] = {}
@@ -306,6 +309,7 @@ func remove_chunk(key: Vector2i) -> void:
 	if s:
 		_sprites.erase(key)
 		_mats.erase(key)
+		_uploaded.erase(key)
 		_images.erase(key)
 		_dirty.erase(key)
 		s.queue_free()
@@ -405,8 +409,7 @@ func update_lights() -> void:
 	for key in _mats:
 		var mat: ShaderMaterial = _mats[key]
 		if not cull_lights:
-			mat.set_shader_parameter("lights", arr)
-			mat.set_shader_parameter("light_count", picked.size())
+			_upload(key, mat, arr, picked.size())
 			stat_light_sum += picked.size()
 			continue
 		var spr := _sprites[key]
@@ -422,9 +425,18 @@ func update_lights() -> void:
 			if at.clamp(rect.position, rect.end).distance_squared_to(at) <= r * r:
 				own[n] = v
 				n += 1
-		mat.set_shader_parameter("lights", own)
-		mat.set_shader_parameter("light_count", n)
+		_upload(key, mat, own, n)
 		stat_light_sum += n
+
+
+## Hands a chunk's light list to its material unless it is the one it already has.
+func _upload(key: Vector2i, mat: ShaderMaterial, list: PackedVector4Array, n: int) -> void:
+	# Slots past n are zero, so the list alone says the count too.
+	if _uploaded.get(key) == list:
+		return
+	_uploaded[key] = list
+	mat.set_shader_parameter("lights", list)
+	mat.set_shader_parameter("light_count", n)
 
 
 ## Lights the shader loops over in one chunk's sprite (tests and the bench).
