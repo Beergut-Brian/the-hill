@@ -1,8 +1,10 @@
 ## Graphics tiers (S-20). Autoload: Graphics. Tiers live in data/graphics.json.
 ##   high  today's look (the GTX 1060). Its entry is empty: high applies nothing at all.
 ##   low   the TV box's Intel HD 530: no MSAA/AA, 3D at 0.75 with FSR 1, no shadows/SSAO/SSIL/SSR/
-##         glow/volumetrics/SDFGI, LOD bias up, shorter 3D far plane, half the particles, at most
-##         `max_lights` lights in the darkness shader, 60 fps cap, vsync on.
+##         glow/volumetrics/SDFGI, LOD bias up, shorter 3D far plane, half the particles (at most
+##         `particle_max` per emitter), at most
+##         `max_lights` lights in the darkness shader, worked out once per pixel instead of once per
+##         each of the four nearest cells (`darkness_one_tap`), 60 fps cap, vsync on.
 ## Boot picks from the GPU (pick_tier): Intel integrated, software renderers and anything unknown get
 ## low; NVIDIA or AMD discrete get high. `--graphics=low|high` (either side of `--`) overrides.
 ## Headless runs have no renderer and stay on high (nothing applied, the test suite sees today).
@@ -165,6 +167,8 @@ func apply_node(n: Node) -> void:
 	elif n is DarknessOverlay:
 		if settings.has("max_lights"):
 			(n as DarknessOverlay).max_lights = clampi(int(settings.max_lights), 1, DarknessOverlay.MAX_LIGHTS)
+		if settings.has("darkness_one_tap"):
+			(n as DarknessOverlay).one_tap = bool(settings.darkness_one_tap)
 
 
 func _apply_viewport(v: Viewport) -> void:
@@ -208,4 +212,7 @@ func _apply_particles(n: Node) -> void:
 		return
 	n.set_meta(META, true)
 	var amount := int(n.get("amount"))
-	n.set("amount", maxi(1, roundi(amount * float(settings.particle_scale))))
+	var scaled := maxi(1, roundi(amount * float(settings.particle_scale)))
+	if settings.has("particle_max"):
+		scaled = mini(scaled, maxi(1, int(settings.particle_max)))
+	n.set("amount", scaled)

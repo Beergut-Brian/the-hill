@@ -231,7 +231,10 @@ func test_bench_quits_by_itself_and_prints_the_summary() -> void:
 	assert_object(re.search(log)).override_failure_message("no summary line:\n%s" % log.right(2000)).is_not_null()
 	assert_str(log).contains("BENCH t=")
 	# S-21: the hitch count line, and nothing over 33 ms logged without its cause.
-	assert_object(RegEx.create_from_string("(?m)^HITCH count>33ms=\\d+ worst=[\\d.]+ frames=\\d+").search(log)) \
+	assert_object(RegEx.create_from_string("(?m)^HITCH count>33ms=\\d+ worst=[\\d.]+ frames=\\d+ worst_at t=[\\d.]+ leg=\\d").search(log)) \
 			.override_failure_message("no HITCH line:\n%s" % log.right(2000)).is_not_null()
+	# hill-igpu-2: the work line (draw calls, darkness chunks and the lights their shader loops over).
+	assert_object(RegEx.create_from_string("(?m)^WORK draws=\\d+ dark_chunks=[\\d.]+ dark_lights=[\\d.]+ per_chunk=[\\d.]+ taps=1 ").search(log)) \
+			.override_failure_message("no WORK line:\n%s" % log.right(2000)).is_not_null()
 	assert_str(log).contains("graphics: tier=low (flag --graphics=low)")
 	assert_str(log).not_contains("SCRIPT ERROR")
