@@ -210,3 +210,19 @@ func test_a_jump_underground_builds_at_most_the_two_chunks_under_the_feet() -> v
 	var key := w.shape.chunk_of(feet)
 	for k in w.shape.neighbourhood(key, w.chunk_radius):
 		assert_bool(w.loaded_chunks().has(k)).is_true()
+
+
+func test_a_replan_during_prewarm_waits_and_drops_the_old_plan() -> void:
+	# Tests (test_balance, test_puzzles ...) re-plan a live generator with other seeds: the worker
+	# must not read it mid-change, and no chunk of the old plan may be used afterwards.
+	var u: Underground = auto_free(load("res://scenes/levels/underground.tscn").instantiate())
+	add_child(u)
+	var w := u.world
+	var g := u.generator
+	var rev := g.revision
+	g._plan(g.world_seed + 1)
+	assert_int(g.revision).is_equal(rev + 1)
+	await _wait_prewarm(w)
+	for key in u.all_chunks():
+		var cells := w.shape.chunk_cells(key)
+		assert_array(Array(w._base_chunk(key, cells))).is_equal(Array(g.base_chunk(cells)))
