@@ -92,10 +92,10 @@ var _changed_chunks := 0
 ## Base chunks (generator.base_chunk) by key, from prewarm() or an earlier load: the generator is
 ## the costly part of a chunk load (most of it), and its output never changes after setup().
 var _base_cache: Dictionary[Vector2i, PackedInt32Array] = {}
+var _base_rev: Dictionary[Vector2i, int] = {}   # generator.revision each cached chunk came from
 var _pre_task := -1
-var _pre_keys: Array[Vector2i] = []
-var _pre_cells: Array = []
-var _pre_out: Dictionary = {}           # worker threads write here, under _pre_mutex
+var _pre_cancel := false
+var _pre_out: Dictionary = {}           # the worker writes [revision, base] here, under _pre_mutex
 var _pre_mutex := Mutex.new()
 
 
@@ -108,6 +108,7 @@ func setup(p_shape: WorldShape, p_generator: WorldGenerator, p_palette: Array[Ti
 	world_seed = p_seed
 	_finish_prewarm(true)
 	_base_cache.clear()
+	_base_rev.clear()
 	generator.setup(shape, world_seed)
 	edits.clear()
 	_edited_chunks.clear()
@@ -338,31 +339,41 @@ func load_under(node: Node2D) -> void:
 	_chunks_pending = true
 
 
-## Generates these chunks' base tiles on worker threads (WorkerThreadPool), so a later load only lays
-## tiles. Call it after setup(). The generator must not change after setup(): base_chunk runs on
-## several threads at once. Results are picked up on the main thread by the next chunk load.
+## Generates these chunks' base tiles on a worker thread (WorkerThreadPool), so a later load only
+## lays tiles. Call it after setup(). The worker holds generator.plan_lock for each chunk; results
+## are picked up on the main thread by the next chunk load. Freeing the world or setup() cancels it.
 func prewarm(keys: Array[Vector2i]) -> void:
 	if shape == null or generator == null:
 		return
 	_finish_prewarm(true)
-	_pre_keys = []
-	_pre_cells = []
+	var todo: Array[Vector2i] = []
+	var cells: Array = []
 	for k in keys:
 		if not _base_cache.has(k) and not _chunks.has(k):
-			_pre_keys.append(k)
-			_pre_cells.append(shape.chunk_cells(k))
-	if _pre_keys.is_empty():
+			todo.append(k)
+			cells.append(shape.chunk_cells(k))
+	if todo.is_empty():
 		return
-	_pre_task = WorkerThreadPool.add_group_task(_prewarm_one, _pre_keys.size(), -1, false, "TileWorld.prewarm")
+	_pre_cancel = false
+	_pre_task = WorkerThreadPool.add_task(_prewarm_all.bind(generator, todo, cells), false, "TileWorld.prewarm")
 
 
-func _prewarm_one(i: int) -> void:
-	var cells: Array[Vector2i] = []
-	cells.assign(_pre_cells[i])
-	var base := generator.base_chunk(cells)
-	_pre_mutex.lock()
-	_pre_out[_pre_keys[i]] = base
-	_pre_mutex.unlock()
+func _prewarm_all(gen: WorldGenerator, keys: Array[Vector2i], all_cells: Array) -> void:
+	for i in keys.size():
+		_pre_mutex.lock()
+		var stop := _pre_cancel
+		_pre_mutex.unlock()
+		if stop:
+			return
+		var cells: Array[Vector2i] = []
+		cells.assign(all_cells[i])
+		gen.plan_lock.lock()
+		var rev := gen.revision
+		var base := gen.base_chunk(cells)
+		gen.plan_lock.unlock()
+		_pre_mutex.lock()
+		_pre_out[keys[i]] = [rev, base]
+		_pre_mutex.unlock()
 
 
 ## True while prewarm() is still generating.
@@ -377,18 +388,24 @@ func cached_chunks() -> int:
 	return _base_cache.size()
 
 
-## Moves finished prewarm results into the cache; `wait` blocks until the task is done (setup, exit).
-func _finish_prewarm(wait: bool) -> void:
+## Moves finished prewarm results into the cache. `cancel`: stop the worker after its chunk in
+## flight and wait for it (setup, exit, a new prewarm).
+func _finish_prewarm(cancel: bool) -> void:
 	if _pre_task < 0:
 		return
-	var complete := WorkerThreadPool.is_group_task_completed(_pre_task)
-	if wait or complete:
-		WorkerThreadPool.wait_for_group_task_completion(_pre_task)
+	if cancel:
+		_pre_mutex.lock()
+		_pre_cancel = true
+		_pre_mutex.unlock()
+	if cancel or WorkerThreadPool.is_task_completed(_pre_task):
+		WorkerThreadPool.wait_for_task_completion(_pre_task)
 		_pre_task = -1
 	_pre_mutex.lock()
 	for k in _pre_out:
+		var e: Array = _pre_out[k]
 		if not _base_cache.has(k):
-			_base_cache[k] = _pre_out[k]
+			_base_cache[k] = e[1]
+			_base_rev[k] = e[0]
 	_pre_out.clear()
 	_pre_mutex.unlock()
 
@@ -396,9 +413,10 @@ func _finish_prewarm(wait: bool) -> void:
 func _base_chunk(key: Vector2i, cells: Array[Vector2i]) -> PackedInt32Array:
 	_finish_prewarm(false)
 	var base: PackedInt32Array = _base_cache.get(key, PackedInt32Array())
-	if base.size() != cells.size():
+	if base.size() != cells.size() or _base_rev.get(key, -1) != generator.revision:
 		base = generator.base_chunk(cells)
 		_base_cache[key] = base
+		_base_rev[key] = generator.revision
 	return base
 
 

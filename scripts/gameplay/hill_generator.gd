@@ -226,7 +226,16 @@ func layer_of_depth(depth: int) -> int:
 	return _layer_lut[clampi(depth, 0, HEIGHT - 1)]
 
 
+## Re-planning (setup, or a test trying other seeds) waits for TileWorld.prewarm's chunk in flight
+## and bumps `revision` so no chunk of the old plan is used.
 func _plan(p_seed: int) -> void:
+	plan_lock.lock()
+	revision += 1
+	_plan_now(p_seed)
+	plan_lock.unlock()
+
+
+func _plan_now(p_seed: int) -> void:
 	var rng := RandomNumberGenerator.new()
 	rng.seed = p_seed
 	landings.clear()
