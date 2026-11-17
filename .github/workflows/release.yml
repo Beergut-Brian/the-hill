@@ -12,8 +12,12 @@ env:
 permissions:
   contents: write   # the Release step creates releases and uploads the zip
 
+# Checks run once (Kaden D1 a, 2026-11-17): the full suite runs on the PR (and on Gary's machine
+# before the merge). A dev tag only builds the code that already passed; a stable tag is never
+# rebuilt here: ~/openjar/lanes/promote-fast.sh republishes the booted dev zip under the stable tag.
 jobs:
   test:
+    if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
     container:
       image: barichello/godot-ci:4.7.2   # verify this tag exists on Docker Hub; else pin the nearest 4.7.x
@@ -37,7 +41,7 @@ jobs:
 
   build:
     needs: test
-    if: startsWith(github.ref, 'refs/tags/v')
+    if: always() && startsWith(github.ref, 'refs/tags/v') && contains(github.ref_name, '-dev')
     runs-on: ubuntu-latest
     container:
       image: barichello/godot-ci:4.7.2   # verify this tag exists on Docker Hub; else pin the nearest 4.7.x
