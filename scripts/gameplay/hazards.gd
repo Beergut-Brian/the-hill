@@ -292,6 +292,7 @@ func _ice(pl: HillPlayer, it: Dictionary) -> Dictionary:
 		return it
 	var out := it.duplicate()
 	out.move = Vector2(eff, raw.y)
+	out.stick = raw   # PT-1119-1: what the stick really says (A in the cage reads it, not the glide)
 	return out
 
 

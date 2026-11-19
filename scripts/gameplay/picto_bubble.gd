@@ -172,6 +172,17 @@ static func picture(ci: CanvasItem, id: StringName, c: Vector2, s: float, a := 1
 				var r: float = sizes[i] * u
 				ci.draw_colored_polygon(PackedVector2Array([o + Vector2(0, -r), o + Vector2(r * 0.3, 0), o + Vector2(0, r), o + Vector2(-r * 0.3, 0)]), Color(GOLD, a))
 				ci.draw_colored_polygon(PackedVector2Array([o + Vector2(-r, 0), o + Vector2(0, r * 0.3), o + Vector2(r, 0), o + Vector2(0, -r * 0.3)]), Color(GOLD, a))
+		&"rope":
+			# PT-1119-1: a rope hanging from a hook with an up arrow (the crew pulls you up).
+			var rope := Color("a07a4a", a)
+			ci.draw_arc(c + Vector2(-4, -6) * u, 3.0 * u, PI, TAU * 1.0, 8, ol, 1.6 * u)
+			ci.draw_line(c + Vector2(-1, -6) * u, c + Vector2(-1, 9) * u, ol, 3.2 * u)
+			ci.draw_line(c + Vector2(-1, -6) * u, c + Vector2(-1, 9) * u, rope, 1.8 * u)
+			for i in 4:
+				ci.draw_line(c + Vector2(-2, -3 + i * 3.5) * u, c + Vector2(0, -1.5 + i * 3.5) * u, ol, 0.8 * u)
+			var tip := c + Vector2(6, -9) * u
+			ci.draw_colored_polygon(PackedVector2Array([tip, tip + Vector2(-4.5, 5) * u, tip + Vector2(4.5, 5) * u]), Color(GOLD, a))
+			ci.draw_line(tip + Vector2(0, 4) * u, tip + Vector2(0, 16) * u, Color(GOLD, a), 2.6 * u)
 		&"hardhat":
 			ci.draw_circle(c + Vector2(0, 2) * u, 7.0 * u, Color(GOLD, a))
 			ci.draw_rect(Rect2(c + Vector2(-10, 2) * u, Vector2(20, 3) * u), Color(GOLD, a))

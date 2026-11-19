@@ -23,8 +23,10 @@ var quit_exits := true
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
 	get_tree().auto_accept_quit = false
-	# --bench (S-20) is a scripted demo too: two virtual players on a wiped throwaway save.
-	demo = OS.get_cmdline_user_args().has("--demo") or OS.get_cmdline_user_args().has("--bench")
+	# --bench (S-20) and --trap-audit (PT-1119-1) are scripted demos too: two virtual players on a
+	# wiped throwaway save.
+	var args := OS.get_cmdline_user_args()
+	demo = args.has("--demo") or args.has("--bench") or args.has("--trap-audit")
 
 
 func _notification(what: int) -> void:

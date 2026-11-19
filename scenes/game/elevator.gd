@@ -13,6 +13,11 @@
 ## Down from the deepest layer goes no further; up past the top layer picks Hillville, and the
 ## cage comes back up. Each press keeps the cage going PICK_LINGER longer (at most PICK_MAX).
 ## The rules live in Door (who rides, when) and destination() (where to): no scene needed.
+## PT-1119-1 (Kaden 2026-11-19): the car also stops at **any row** along the shaft. Standing on
+## your feet (or a vehicle's wheels) beside the shaft between the landings (Underground.
+## shaft_stop_at) is a stop of your own (cage key "s<player>"): the same blinking A, A (stick not
+## down: A + down still digs) calls the car down the rope to your row, and up you go as from a
+## landing (backpack into the pile, anyone near pulled along). The shaft is never dug (DigFeel).
 class_name HillElevator
 extends Node
 
@@ -152,6 +157,8 @@ var walk_in: bool:
 	set(v):
 		door.walk_in = v
 var _rope: ShaftRope
+## PT-1119-1: player -> the floor row of their stop beside the shaft (this frame).
+var _stop_rows := {}
 
 
 ## PT10-9: what the glyph over player p shows: 0 nothing, 1 ready (blinking A: they stand in a
@@ -161,8 +168,24 @@ func prompt_of(player: int) -> int:
 		return 2
 	for key in door.waiting:
 		if door.waiting[key].riders.has(player):
-			return 1
+			return 0 if is_stop_key(key) and _digging_down(player) else 1
 	return 0
+
+
+## PT-1119-1: a stop beside the shaft (not a landing's cage).
+static func is_stop_key(key: StringName) -> bool:
+	return String(key).begins_with("s")
+
+
+## Beside the shaft, A with the stick held down digs down (a kid digging a pit by the cage).
+func _digging_down(player: int) -> bool:
+	var node: Node = game.player_node(player)
+	return node != null and float((node.get("move_intent") as Vector2).y) > PICK_PRESS
+
+
+## PT-1119-1: the floor row player p's stop beside the shaft is at, or -1.
+func stop_row_of(player: int) -> int:
+	return int(_stop_rows.get(player, -1))
 
 
 ## True when A belongs to the elevator for player p (they stand in a cage, or are riding): the
@@ -180,7 +203,7 @@ func car_position() -> float:
 	for r in _rides:
 		var k := clampf(r.t / maxf(float(r.get("until", RIDE_TIME)), 0.001), 0.0, 1.0)
 		if r.from == UNDERGROUND:
-			return lerpf(float(String(r.cage).trim_prefix("u")), -1.0, k)
+			return lerpf(float(r.pos) if r.has("pos") else float(String(r.cage).trim_prefix("u")), -1.0, k)
 		return lerpf(-1.0, float(r.get("pick", r.to.layer)), k)
 	return float(car_at)
 
@@ -211,7 +234,22 @@ func cage_of(player: int) -> StringName:
 		var i: int = game.underground.cage_zone_at(node.global_position)
 		if i >= 0:
 			return cage_key(UNDERGROUND, i)
+		var row := _stop_row(node)
+		if row >= 0:
+			return StringName("s%d" % player)
 	return &""
+
+
+func _stop_row(node: Node2D) -> int:
+	var ug: Node = game.underground
+	if ug == null or not ug.has_method("shaft_stop_at"):
+		return -1
+	var body := node as CharacterBody2D
+	var standing := body == null or body.is_on_floor() or bool(node.call("in_water")) \
+			or (node.has_method("on_ladder") and bool(node.call("on_ladder")))
+	if not standing or bool(node.get("locked")):
+		return -1
+	return int(ug.shaft_stop_at(node.global_position))
 
 
 ## Players within the pull radius of each occupied cage (not in a cage themselves, same scene):
@@ -242,7 +280,20 @@ func cage_rect_of(key: StringName) -> Rect2:
 	if key == HILLVILLE:
 		var hv: Node = game.hillville
 		return hv.cage_zone() if hv != null and hv.has_method("cage_zone") else Rect2()
+	if is_stop_key(key):
+		var row := int(_stop_rows.get(int(String(key).trim_prefix("s")), -1))
+		return game.underground.car_rect_at_row(row).grow_individual(Underground.SHAFT_REACH, 0, Underground.SHAFT_REACH, 0) if row >= 0 else Rect2()
 	return game.underground.cage_rect(int(String(key).trim_prefix("u")))
+
+
+## Where on the rope a cage key is (layer units, -1 = up top; a stop: its row's position).
+func _key_pos(key: StringName) -> float:
+	if key == HILLVILLE:
+		return -1.0
+	if is_stop_key(key):
+		var row := int(_stop_rows.get(int(String(key).trim_prefix("s")), -1))
+		return float(game.underground.shaft_pos_of_row(row)) if row >= 0 else float(car_at)
+	return float(String(key).trim_prefix("u"))
 
 
 func check(delta: float) -> void:
@@ -251,12 +302,18 @@ func check(delta: float) -> void:
 	for p: int in game.players:
 		if door.busy.has(p):
 			continue
+		var node: Node2D = game.players[p]
 		inside[p] = cage_of(p)
-		press[p] = bool(game.players[p].get("a_press_frame"))
+		if is_stop_key(inside[p]):
+			_stop_rows[p] = _stop_row(node)
+		press[p] = bool(node.get("a_press_frame")) and not (is_stop_key(inside[p]) and _digging_down(p))
 	for r in door.step(inside, press, delta, _near(inside)):
+		if is_stop_key(r.cage):
+			_board_stops(r)
 		_call(r.cage, r.riders)
 	for e in door.just_entered():
-		Audio.play("cage_door")
+		if not is_stop_key(e[0]):
+			Audio.play("cage_door")   # a stop beside the shaft only blinks (walking past it clanked)
 		door_started.emit(e[0], e[1])
 	_animate_doors()
 	for c in _calls.duplicate():
@@ -266,8 +323,28 @@ func check(delta: float) -> void:
 	_ensure_rope()
 
 
+## PT-1119-1: a car called to a stop beside the shaft also takes whoever waits at another stop
+## (the other player beside the shaft) within the pull radius of it.
+func _board_stops(r: Dictionary) -> void:
+	var rect := cage_rect_of(r.cage)
+	for key in door.waiting.keys():
+		if key == r.cage or not is_stop_key(key):
+			continue
+		for q: int in door.waiting[key].riders.duplicate():
+			var feet: Vector2 = game.players[q].global_position
+			var nearest := Vector2(clampf(feet.x, rect.position.x, rect.end.x), clampf(feet.y, rect.position.y, rect.end.y))
+			if feet.distance_to(nearest) <= tuning.pull_radius_px() and not r.riders.has(q):
+				r.riders.append(q)
+				door.forget(q)
+				door.busy[q] = true
+	r.riders.sort()
+
+
 ## PT10-7b: A was pressed in `cage`: if the car is elsewhere it comes down / up the rope first.
 func _call(cage: StringName, riders: Array) -> void:
+	if is_stop_key(cage):
+		_call_stop(cage, riders)
+		return
 	var at := -1 if cage == HILLVILLE else int(String(cage).trim_prefix("u"))
 	var dur := tuning.call_time(car_at, at)
 	for p in riders:
@@ -281,11 +358,27 @@ func _call(cage: StringName, riders: Array) -> void:
 	_calls.append({"cage": cage, "riders": riders.duplicate(), "t": 0.0, "dur": dur, "from": car_at, "to": at})
 
 
+## PT-1119-1: the car comes down (or up) the rope to a stop's row, then the ride up starts there.
+func _call_stop(cage: StringName, riders: Array) -> void:
+	var pos := _key_pos(cage)
+	for p in riders:
+		var node: Node = game.player_node(p)
+		if node != null:
+			node.locked = true
+	Audio.play("elevator_clank")
+	_calls.append({"cage": cage, "riders": riders.duplicate(), "t": 0.0, "dur": tuning.call_time_at(float(car_at), pos),
+			"from": float(car_at), "to": pos, "stop": true})
+
+
 func _advance_call(c: Dictionary, delta: float) -> void:
 	c.t += delta
 	if c.t < c.dur:
 		return
 	_calls.erase(c)
+	if c.has("stop"):
+		Audio.play("elevator_ding")
+		_start(c.cage, c.riders, float(c.to))
+		return
 	car_at = c.to
 	Audio.play("elevator_ding")
 	_start(c.cage, c.riders)
@@ -320,7 +413,7 @@ func _cage_busy(key: StringName) -> bool:
 	return false
 
 
-func _start(cage: StringName, riders: Array) -> void:
+func _start(cage: StringName, riders: Array, stop_pos := NAN) -> void:
 	var from := HILLVILLE if cage == HILLVILLE else UNDERGROUND
 	var to := destination(from, riders, Progress.deepest)
 	for p in riders:
@@ -329,6 +422,8 @@ func _start(cage: StringName, riders: Array) -> void:
 			node.locked = true
 	Audio.play("elevator")
 	var ride := {"riders": riders.duplicate(), "from": from, "cage": cage, "t": 0.0, "to": to}
+	if not is_nan(stop_pos):
+		ride.pos = stop_pos
 	if from == HILLVILLE:
 		ride.deep = int(to.layer)
 		ride.pick = int(to.layer)
@@ -336,7 +431,7 @@ func _start(cage: StringName, riders: Array) -> void:
 		ride.prev = {}
 		ride.pictures = _make_pictures(riders, int(to.layer))
 	_rides.append(ride)
-	if from == UNDERGROUND:
+	if from == UNDERGROUND and not is_stop_key(cage):
 		game.underground.flash_layer = int(String(cage).trim_prefix("u"))
 	ride_started.emit(riders, from)
 
@@ -446,6 +541,8 @@ func _advance(r: Dictionary, delta: float) -> void:
 		_read_picks(r)
 	var k := clampf(r.t / RIDE_TIME, 0.0, 1.0)
 	var root: Node = game.hillville if r.from == HILLVILLE else game.underground
+	if r.has("pos"):
+		root = null   # a stop beside the shaft has no landing cage to flash (the car shows it)
 	for p in r.riders:
 		var node: Node2D = game.player_node(p)
 		if node == null:

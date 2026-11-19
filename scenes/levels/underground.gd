@@ -220,10 +220,64 @@ func cage_rect(layer_index: int) -> Rect2:
 	return Rect2(Vector2(r.position) * 16.0, Vector2(r.size) * 16.0 + Vector2(0, 4))
 
 
-## The layer whose cage the feet at pos stand in, or -1.
+## PT-1119-1: feet this close (px) to either side of the shaft can call the car to their row.
+const SHAFT_REACH := 20.0
+
+
+## PT-1119-1: the floor row (cell row under the feet) where the car can stop for feet at `pos`
+## standing beside (or in) the shaft between the landings, or -1 (not beside it, or in a landing
+## room: there the cage is the stop).
+func shaft_stop_at(pos: Vector2) -> int:
+	var x0 := HillGenerator.SHAFT_X * 16.0
+	if pos.x < x0 - SHAFT_REACH or pos.x > x0 + 32.0 + SHAFT_REACH:
+		return -1
+	var feet := Vector2i(int(floor(pos.x / 16.0)), int(floor((pos.y - 1.0) / 16.0)))
+	if feet.y < generator.landing_floor(0) - 1:
+		return -1
+	for r: Rect2i in generator.landings:
+		if r.grow_individual(0, 0, 0, 1).has_point(feet):
+			return -1
+	return feet.y + 1
+
+
+## PT-1119-1: a row as a position on the car's rope (layer units: 2.0 = the third landing, 2.5 =
+## half way down to the fourth); below the deepest landing it keeps going a layer per 40 rows.
+func shaft_pos_of_row(row: float) -> float:
+	var n := generator.landings.size()
+	var f0 := float(generator.landing_floor(0))
+	if row <= f0:
+		return clampf((row - f0) / maxf(f0, 1.0), -1.0, 0.0)
+	for i in n - 1:
+		var a := float(generator.landing_floor(i))
+		var b := float(generator.landing_floor(i + 1))
+		if row <= b:
+			return i + (row - a) / maxf(b - a, 1.0)
+	return (n - 1) + (row - float(generator.landing_floor(n - 1))) / 40.0
+
+
+## The floor row for a rope position (shaft_pos_of_row's inverse, from the first landing down).
+func shaft_row_of_pos(at: float) -> float:
+	var n := generator.landings.size()
+	if at <= 0.0:
+		return float(generator.landing_floor(0))
+	var i := mini(int(floor(at)), n - 1)
+	if i >= n - 1:
+		return float(generator.landing_floor(n - 1)) + (at - (n - 1)) * 40.0
+	var a := float(generator.landing_floor(i))
+	var b := float(generator.landing_floor(i + 1))
+	return a + (at - i) * (b - a)
+
+
+## The car's rect (px) standing on floor row `row` (the size of a landing cage).
+func car_rect_at_row(row: float) -> Rect2:
+	return Rect2(Vector2(HillGenerator.SHAFT_X * 16.0, (row - 2.0) * 16.0), Vector2(32.0, 36.0))
+
+
+## The layer whose cage the feet at pos stand in, or -1. PT-1119-1: the zone reaches the landing
+## room's ceiling, so a player floating in a flooded room (the Clay pocket burst) is in the cage.
 func cage_zone_at(pos: Vector2) -> int:
 	for i in generator.landings.size():
-		if cage_rect(i).has_point(pos):
+		if cage_rect(i).grow_individual(0, 16.0, 0, 0).has_point(pos):
 			return i
 	return -1
 

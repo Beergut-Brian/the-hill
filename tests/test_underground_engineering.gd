@@ -211,7 +211,9 @@ func test_walking_up_to_hard_rock_on_foot_pops_the_vehicle_that_breaks_it() -> v
 	_make()
 	var node := _join()
 	var u := _game.underground
-	_game.place_player(P1, HillGame.UNDERGROUND, u.landing(1))
+	# Three tiles right of the cage: since PT-1119-1 the shaft's columns are never dug and bonk
+	# with the shaft's picture, so the block goes in the room's rock, not the shaft.
+	_game.place_player(P1, HillGame.UNDERGROUND, u.landing(1) + Vector2(48, 0))
 	await _physics(20)
 	assert_str(String(node.need_hint())).is_equal("")
 	# A Hard Rock block beside the player at feet height, the side they face.

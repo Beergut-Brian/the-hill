@@ -481,6 +481,40 @@ Save key `"time_of_day"`.
   climbs onto it (`HillPlayer.step_dig()`, `is_stepping_aim()`); the dig marker shows what it
   takes. Ladders: `HillGame.ladders` (`LadderSet`, data/ladders.tres, empty), `add(column, top,
   bottom)`; up / down climbs, letting go hangs. The Gnome crew lane adds them.
+- **You can always get back out (PT1119-1, Kaden 2026-11-19, v1.0.1).**
+  - *A stop at any row.* Feet on the ground (or water, a ladder) within `Underground.SHAFT_REACH`
+    (20 px) of either side of the shaft, between the landings or below the deepest one
+    (`Underground.shaft_stop_at(pos)` → floor row, -1 in a landing room: there the cage is the
+    stop), is a stop of the player's own: cage key `"s<player>"` (`HillElevator.is_stop_key`,
+    `stop_row_of(p)`). Same blinking A (`prompt_of` 1, but 0 while the stick is held down: A + down
+    digs there); A calls the car down the rope to that row (`ElevatorTuning.call_time_at(from,
+    to)` on rope positions, `Underground.shaft_pos_of_row` / `shaft_row_of_pos`,
+    `car_rect_at_row`), then the ride up runs as from a landing (dump, autosave, Hillville). Other
+    players within the pull radius of the car ride along, also from their own stop. Entering a
+    stop makes no door sound (walking past the shaft clanked).
+  - *The shaft is never dug.* `DigFeel.is_shaft(cell)` (columns `SHAFT_X`, `SHAFT_X + 1`):
+    `can_break` is false for hand and vehicle, the bonk shows the `shaft` picture. `--demo` and the
+    older beats (`DigFeel.demo_open`) keep the old rules.
+  - *Steps.* `HillPlayer.step_cell_ok(cell)`: the tier rules, plus Gate Rock at or above the feet
+    always gives way to a step (never down). A step blocked by a cell it may not carve tries the
+    other side (if it has a block to step on), else digs sideways (`dig_now`) toward the step, then
+    the other side.
+  - *Rope rescue.* `HillGame.rescue` (`RopeRescue`, under the Underground): on foot underground,
+    `horn` (Y) held `HOLD` (1.5 s) → `start(p)`: locked `PULL` (1.5 s; a fresh A or B skips to the
+    landing), `whistle` + `crane_hook`, picture bubble `rope`, `float_up`, placed at
+    `Underground.landing(landing_for(feet))` (the lowest landing whose floor is at or above the
+    feet), `crew_cheer`, `pulled(player, layer)`. Backpack kept. A Y still held from the last pull
+    does not start another. `hold_of(p)` 0..1 (the ring), `is_pulling(p)`, `stuck(p)`: no tile of
+    height gained for `STUCK_SECS` (10 s) while below their landing and out of the car's reach;
+    only then does `HillHintLayer` add `{button: "y", icon: &"rope_up"}`. The pause menu shows
+    `RopeHelp` always.
+  - *Ice.* `Hazards` adds `stick` (the raw stick) to a glided intent; `HillPlayer` reads its x for
+    the cage's "stick not sideways" (`a_press_frame`, `lift_ready`), so a glide never blocks A.
+  - *Trap-finder.* `TrapAudit` (`scripts/gameplay/trap_audit.gd`): `stage(shape, layer)`,
+    `run_one(shape, layer, mode)` (`climb` / `rope`, real controls through `intent_source`),
+    `restore()`; `--trap-audit [--trap-layers= --trap-shapes= --trap-modes= --trap-shots
+    --trap-tag=]` runs the matrix and prints `trap:` lines (a scripted demo: two virtual players,
+    throwaway save, real dig rules).
 - The dig respects the story lane's `has_shovel` / `can_dig` flags on the player when they exist
   (`HillPlayer.shovel_ok()`): no dig, no step, no marker without the shovel.
 - Going up empties the riders' backpacks into the shaft pile.

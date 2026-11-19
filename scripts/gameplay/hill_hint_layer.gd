@@ -19,11 +19,22 @@ func _ready() -> void:
 	# PT10-4/5 (dig lane): "A needs this" pictures after a bonk.
 	for pic in DigFeel.need_pictures():
 		ButtonHints.register_icon(StringName("need:%s" % pic), Callable(DigFeel, "draw_need_icon").bind(pic))
+	ButtonHints.register_icon(&"rope_up", Callable(HillHintLayer, "draw_rope_icon"))
 
 
 func _exit_tree() -> void:
 	for pic in DigFeel.need_pictures():
 		ButtonHints.unregister_icon(StringName("need:%s" % pic))
+	ButtonHints.unregister_icon(&"rope_up")
+
+
+## PT-1119-1: "hold Y: rope up": the crew's rope with an up arrow inside a hold ring.
+static func draw_rope_icon(ci: CanvasItem, r: Rect2, a: float) -> void:
+	var c := r.get_center()
+	var rad := r.size.x * 0.46
+	ci.draw_circle(c, rad, Color(0.07, 0.06, 0.09, 0.55 * a), true, -1.0, true)
+	ci.draw_arc(c, rad, -PI * 0.5, PI * 1.1, 28, Color(1.0, 0.82, 0.25, a), 3.0, true)
+	PictoBubble.picture(ci, &"rope", c, r.size.x * 0.72, a)
 
 
 func panel_of(p: int) -> ButtonHints:
@@ -99,6 +110,10 @@ static func for_player(game: Node, n: HillPlayer) -> Array:
 		out.append({"button": "b", "icon": b})
 	if up_top and build != null:
 		out.append({"button": "x", "icon": &"book"})
+	# PT-1119-1: the rope only when stuck (or while Y is held for it), so it is not noise.
+	var rescue: Object = game.get("rescue")
+	if not up_top and n.vehicle == null and rescue != null and (rescue.stuck(p) or rescue.hold_of(p) > 0.0):
+		out.append({"button": "y", "icon": &"rope_up"})
 	return out
 
 

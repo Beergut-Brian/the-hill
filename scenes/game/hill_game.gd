@@ -26,6 +26,8 @@ var hillville: Hillville
 var underground: Underground
 var build: BuildController
 var elevator: HillElevator
+## PT-1119-1: the rope rescue (hold Y underground), a child of the Underground.
+var rescue: RopeRescue
 var save: HillSave
 var hud: Control
 ## PT10-7c: ladders underground (data/ladders.tres; the Gnome crew adds them later).
@@ -73,7 +75,9 @@ func _ready() -> void:
 	var beat_name := HillBeatRunner.beat_arg(OS.get_cmdline_user_args() + OS.get_cmdline_args())
 	var dig_beat := Game.demo and ((load("res://scripts/gameplay/dig_beats.gd").get("DIG_BEATS") as Array).has(beat_name)
 			or (load("res://scripts/gameplay/puzzle_beats.gd").get("REAL_RULES") as Array).has(beat_name))
-	DigFeel.demo_open = Game.demo and not dig_beat
+	# PT-1119-1: the trap audit plays the real dig rules (the gate bands are what can trap you).
+	var trap_audit := Game.demo and OS.get_cmdline_user_args().has("--trap-audit")
+	DigFeel.demo_open = Game.demo and not dig_beat and not trap_audit
 	HillPlayer.hand_clear = DigFeel.demo_open
 	name = "Game"
 	director = ScreenDirector.new()
@@ -97,6 +101,10 @@ func _ready() -> void:
 	elevator.name = "Elevator"
 	elevator.game = self
 	add_child(elevator)
+	# PT-1119-1 (c): hold Y underground and the Gnome crew's rope pulls you up to a landing.
+	rescue = RopeRescue.new()
+	rescue.game = self
+	underground.add_child(rescue)
 	save = HillSave.new()
 	save.name = "Save"
 	save.game = self
@@ -199,11 +207,13 @@ func _ready() -> void:
 			runner = puzzle_beats.new() if puzzle_beats.get("PUZZLE_BEATS").has(beat) else dig_beats.new() if dig_beats.get("DIG_BEATS").has(beat) else ctl.new() if ctl.get("CONTROLS_BEATS").has(beat) else adj_beats.new() if adj_beats.get("ADJACENCY_BEATS").has(beat) else story_beats.new() if story_beats.get("STORY_BEATS").has(beat) else LooseBeats.new() if LooseBeats.LOOSE_BEATS.has(beat) else gap.new() if gap.get("GAP_BEATS").has(beat) else load("res://scripts/gameplay/two_driver_beats.gd").new() if beat == "drivers" else DepthBeats.new() if DepthBeats.DEPTH_BEATS.has(beat) else CameraBeats.new() if CameraBeats.CAMERA_BEATS.has(beat) else HazardBeats.new() if HazardBeats.HAZARD_BEATS.has(beat) else VehicleBeats.new() if VehicleBeats.VEHICLE_BEATS.has(beat) else PolishBeats.new() if PolishBeats.POLISH_BEATS.has(beat) else ArcBeats.new() if ArcBeats.ARC_BEATS.has(beat) else HillBeatRunner.new()
 		elif Graphics.bench:
 			runner = load("res://scripts/gameplay/bench_runner.gd").new()   # S-20, by path like the beats
+		elif trap_audit:
+			runner = (load("res://scripts/gameplay/trap_audit.gd") as GDScript).Runner.new()   # PT-1119-1
 		if runner == null:
 			# Made only when nothing replaces it (a discarded one leaked at exit).
 			runner = HillDemoRunner.new()
 		runner.set("game", self)
-		if beat != "":
+		if beat != "" and not trap_audit:
 			runner.set("beat", beat)
 		add_child(runner)
 
