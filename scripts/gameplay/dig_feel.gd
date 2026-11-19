@@ -111,6 +111,8 @@ func can_break(pl: HillPlayer, cell: Vector2i, def: BlockData) -> bool:
 		return true   # TileWorld bonks it itself (dig_blocked)
 	if demo_open:
 		return def.dig_tier <= (pl.vehicle.dig_tier if pl.vehicle != null else 0)
+	if is_shaft(cell):
+		return false   # PT-1119-1: the car runs here and stops at any row, so nobody digs it away
 	if def.id == &"gaterock":
 		var g := gate_at(cell)
 		return g == null or gate_open_for(pl, g)
@@ -119,8 +121,15 @@ func can_break(pl: HillPlayer, cell: Vector2i, def: BlockData) -> bool:
 	return pl.vehicle.dig_tier >= def.dig_tier
 
 
+## PT-1119-1: the elevator shaft's two columns, top to bottom: never dug, by hand or by vehicle.
+static func is_shaft(cell: Vector2i) -> bool:
+	return cell.x >= HillGenerator.SHAFT_X and cell.x <= HillGenerator.SHAFT_X + 1
+
+
 ## The picture of what breaks the block at `cell` (the bonk bubble and the hint panel).
 func need_picture(cell: Vector2i, def: BlockData) -> StringName:
+	if is_shaft(cell) and not demo_open:
+		return &"shaft"   # nothing breaks it: the picture says "this is the elevator"
 	if def != null and def.id == &"gaterock":
 		var g := gate_at(cell)
 		return g.picture if g != null else &"question"

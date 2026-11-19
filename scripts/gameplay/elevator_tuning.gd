@@ -33,3 +33,10 @@ func call_time(from: int, to: int) -> float:
 	if from == to:
 		return 0.0
 	return minf(call_base + call_per_layer * absi(to - from), call_max)
+
+
+## PT-1119-1: the same for rope positions between landings (a stop beside the shaft).
+func call_time_at(from: float, to: float) -> float:
+	if is_equal_approx(from, to):
+		return 0.0
+	return minf(call_base + call_per_layer * absf(to - from), call_max)

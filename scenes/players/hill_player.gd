@@ -105,6 +105,8 @@ var _mark_shown := Rect2()
 var _mark_hot := false
 ## PT10-7a: a climb onto a step in progress: {from, to, t} (global px), or {}.
 var _climb := {}
+## The stick's own left / right this frame (move_intent is the ice glide on ice).
+var _stick_x := 0.0
 var _a_after_lock := false
 var _in_water := false
 var _prev := {}
@@ -305,6 +307,7 @@ func _physics_process(delta: float) -> void:
 		_a_after_lock = true
 		_prev = {}
 		move_intent = Vector2.ZERO
+		_stick_x = 0.0
 		a_press_frame = false
 		return
 	if not _climb.is_empty():
@@ -316,7 +319,9 @@ func _physics_process(delta: float) -> void:
 	# PT10-9: A still held from before a ride (or any lock) is not a new press for the elevator.
 	if not it.get("dig", false):
 		_a_after_lock = false
-	a_press_frame = a_press and not _a_after_lock and absf(move.x) < LIFT_SIDE
+	# PT-1119-1: on ice the move is the glide; the cage asks what the stick itself says.
+	_stick_x = (it.get("stick", move) as Vector2).x
+	a_press_frame = a_press and not _a_after_lock and absf(_stick_x) < LIFT_SIDE
 	var b_press := _pressed(it, "jump")
 	var x_press := _pressed(it, "book")
 	var y_press := _pressed(it, "horn")
@@ -415,7 +420,7 @@ func _physics_process(delta: float) -> void:
 
 
 func _lift_wants_a() -> bool:
-	if absf(move_intent.x) >= LIFT_SIDE:
+	if absf(_stick_x) >= LIFT_SIDE:
 		return false
 	var el: Object = game.get("elevator") if game != null else null
 	return el != null and el.has_method("wants_a") and bool(el.wants_a(player))
@@ -423,7 +428,7 @@ func _lift_wants_a() -> bool:
 
 ## True when A rides the elevator right now (in a cage, stick not pushed sideways, not riding).
 func lift_ready() -> bool:
-	return lift_prompt() == 1 and absf(move_intent.x) < LIFT_SIDE
+	return lift_prompt() == 1 and absf(_stick_x) < LIFT_SIDE
 
 
 ## PT10-9: the elevator's prompt over this player: 0 none, 1 ready (blink), 2 moving (dim).
@@ -649,10 +654,14 @@ func _step_geometry(dir: int) -> Dictionary:
 ## The cells still in the way of a step up toward `facing`, in carving order: the rock over the
 ## head, then the two cells over the step in front. The step itself (front, row) is kept.
 func step_cells() -> Array[Vector2i]:
-	var out: Array[Vector2i] = []
 	if world == null:
-		return out
-	var g := _step_geometry(_step_dir())
+		return [] as Array[Vector2i]
+	return _step_cells_toward(_step_dir())
+
+
+func _step_cells_toward(dir: int) -> Array[Vector2i]:
+	var out: Array[Vector2i] = []
+	var g := _step_geometry(dir)
 	var want: Array[Vector2i] = []
 	for c: int in g.cols:
 		want.append(Vector2i(c, g.row - 2))
@@ -678,41 +687,88 @@ func _step_dir() -> int:
 	return facing
 
 
+## PT-1119-1: true when a step up may carve cell `c`. The shovel's tier rules, except that Gate
+## Rock at or above the feet always gives way to a step: a locked band never stops you climbing
+## *out* (you only ever go up with a step, so it never lets you deeper). The shaft never does.
+func step_cell_ok(c: Vector2i) -> bool:
+	var def := world.tile_def(world.get_tile(c))
+	if def == null:
+		return true
+	if not def.breakable or (def is BlockData and (def as BlockData).dig_tier > 0):
+		return false
+	var feel := DigFeel.of(world)
+	if feel == null or feel.can_break(self, c, def as BlockData):
+		return true
+	var g := _step_geometry(facing)
+	return (def as BlockData) != null and (def as BlockData).id == &"gaterock" and c.y <= int(g.row) \
+			and not DigFeel.is_shaft(c)
+
+
+## The first cell of the step toward `dir` that may not be carved, or Vector2i.MIN.
+func _step_blocker(dir: int) -> Vector2i:
+	for c in _step_cells_toward(dir):
+		if not step_cell_ok(c):
+			return c
+	return Vector2i.MIN
+
+
 ## One A tick of a step up: carve the cells in the way, or (all clear and a block to stand on
 ## in front) climb onto it. True when something happened.
+## PT-1119-1: a step whose way up is blocked (Hard Rock over the head, the shaft) tries the other
+## side; when both are blocked, A carves sideways into a diggable neighbour instead, so the next
+## step can go up from there. Gate Rock at or above the feet is carved (step_cell_ok).
 func step_dig() -> bool:
 	_swing = 1.0
-	var cells := step_cells()
+	var dir := _step_dir()
+	var blocker := _step_blocker(dir)
+	if blocker != Vector2i.MIN:
+		if _step_blocker(-dir) == Vector2i.MIN and world.is_solid(Vector2i(_step_geometry(-dir).front, _step_geometry(-dir).row)):
+			dir = -dir
+			facing = dir
+		else:
+			for d in [dir, -dir]:
+				if _side_dig(d):
+					return true
+			var feel := DigFeel.of(world)
+			if feel != null:
+				feel.bonk(self, blocker)
+			swung.emit(blocker)
+			return false
+	var cells := _step_cells_toward(dir)
 	if not cells.is_empty():
 		# One swing carves the whole step (the dig lane's speed applies per swing).
-		for c in cells:
-			var def := world.tile_def(world.get_tile(c))
-			if def == null or not def.breakable or (def is BlockData and (def as BlockData).dig_tier > 0):
-				swung.emit(c)
-				return false
-			var feel := DigFeel.of(world)
-			if feel != null and not feel.can_break(self, c, def as BlockData):
-				feel.bonk(self, c)
-				swung.emit(c)
-				return false
 		var offsets: Array[Vector2i] = []
 		for c in cells:
 			offsets.append(c - cells[0])
 		world.dig(cells[0], offsets, player)
 		_squash = maxf(_squash, 0.4)
 		return true
-	var g := _step_geometry(_step_dir())
+	var g := _step_geometry(dir)
 	if not world.is_solid(Vector2i(g.front, g.row)) or not (is_on_floor() or _in_water):
 		swung.emit(Vector2i(g.front, g.row))
 		return false
 	var cs := float(world.shape.cell_size)
 	var to_local := Vector2((g.front + 0.5) * cs, g.row * cs - 1.0)
 	_climb = {"from": global_position, "to": world.to_global(to_local), "t": 0.0}
-	facing = _step_dir()
+	facing = dir
 	velocity = Vector2.ZERO
 	Audio.play("jump")
 	_squash = 1.0
 	return true
+
+
+## PT-1119-1: a sideways dig toward `d` at body height when the way up is blocked; true if it
+## carved (or cracked) something there.
+func _side_dig(d: int) -> bool:
+	var cells := dig_targets(Vector2i(d, 0))
+	if cells.is_empty():
+		return false
+	var keep := facing
+	facing = d
+	var did := dig_now(Vector2(d, 0))
+	if not did:
+		facing = keep
+	return did
 
 
 ## PT10-7c: on foot underground with the body's middle on a ladder cell.

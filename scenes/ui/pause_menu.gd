@@ -40,6 +40,10 @@ func _ready() -> void:
 	_confirm.chosen.connect(_on_confirm_chosen)
 	add_to_group("openjar_skinned")
 	_by.draw.connect(_draw_paused_by)
+	# PT-1119-1: the rope rescue is always in the pause menu's help.
+	var help := RopeHelp.new()
+	_card.add_child(help)
+	help.position = Vector2(1240, 900)
 	apply_skin()
 	visible = Game.state == Game.State.PAUSED
 	_set_focus(Choice.RESUME, false)

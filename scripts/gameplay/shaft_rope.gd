@@ -32,6 +32,9 @@ func car_rect(at: float) -> Rect2:
 	var n: int = ug.layers().size() if ug.has_method("layers") else 1
 	var top: Rect2 = ug.cage_rect(0)
 	var above := Rect2(top.position - Vector2(0, top.size.y * 3.0), top.size)
+	if at >= 0.0 and ug.has_method("car_rect_at_row"):
+		# PT-1119-1: between the landings (and below the deepest) the car stops at any row.
+		return ug.car_rect_at_row(ug.shaft_row_of_pos(at))
 	var lo := int(floor(at))
 	var hi := mini(lo + 1, n - 1)
 	var k := at - lo
@@ -58,6 +61,7 @@ func _draw() -> void:
 	var x := car.get_center().x
 	var mouth: float = get_parent().cage_rect(0).position.y - 64.0
 	var deep: Rect2 = get_parent().cage_rect(deepest_reached())
+	deep = deep.merge(car)   # a stop deeper than any landing reached: the rope still reaches it
 	# Guide rope from the car down to the deepest landing reached (faint), then the real rope.
 	if deep.end.y > car.end.y:
 		_rope(Vector2(x, car.end.y), Vector2(x, deep.end.y), 0.35)
